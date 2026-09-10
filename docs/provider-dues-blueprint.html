@@ -180,7 +180,7 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
 <header class="mast">
   <p class="eyebrow">Solution design &middot; draft for review</p>
   <h1>Provider Dues Collection</h1>
-  <p class="stand">A configuration-driven framework for assessing, billing, collecting and reconciling network provider dues in Salesforce — built for Texas CIN, designed so the second market needs no new code.</p>
+  <p class="stand">A configuration-driven framework for assessing, billing, collecting and reconciling network provider dues in Salesforce, built for Texas CIN, designed so the second market needs no new code.</p>
   <dl class="metagrid">
     <div><dt>Initial market</dt><dd>Texas CIN</dd></div>
     <div><dt>Payment platform</dt><dd>Salesforce Pay Now</dd></div>
@@ -222,17 +222,17 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
 
 <section id="summary">
   <div class="sechead"><span class="num">01</span><h2>Executive summary</h2></div>
-  <p class="lede">Network Services collects annual dues from providers in the Texas CIN. Today invoices are produced outside Salesforce, providers can only pay by check, payment status is invisible in the CRM — and in 2024, <strong>17% ($172k) of dues went uncollected</strong>.</p>
-  <p>This design replaces that with an automated pipeline: a roster file lands, a daily job resolves and deduplicates it, provider charges roll up into one obligation per account, a Pay Now link is generated, notices go out on the approved calendar, and payment settles straight back onto the obligation — with a nightly reconciliation that turns "usually right" into "provably correct".</p>
+  <p class="lede">Network Services collects annual dues from providers in the Texas CIN. Today invoices are produced outside Salesforce, providers can only pay by check, payment status is invisible in the CRM, and in 2024, <strong>17% ($172k) of dues went uncollected</strong>.</p>
+  <p>This design replaces that with an automated pipeline: a roster file lands, a daily job resolves and deduplicates it, provider charges roll up into one obligation per account, a Pay Now link is generated, notices go out on the approved calendar, and payment settles straight back onto the obligation, with a nightly reconciliation that turns "usually right" into "provably correct".</p>
   <p>Two principles govern every decision that follows.</p>
-  <div class="call inv"><span class="tag">Principle 1 — the obligation is the source of truth</span><p>The dues obligation record states what an account owes, whether it is paid, and what was sent to them. Roster files and provider assessments are <em>inputs</em> that can be replayed or purged; the obligation is not.</p></div>
-  <div class="call inv"><span class="tag">Principle 2 — configuration over code</span><p>Anything that varies by market, year, price, cadence or notification rule lives in Custom Metadata — not Apex, not Flow decision elements. Onboarding market #2 must require <strong>zero lines of new code</strong>.</p></div>
+  <div class="call inv"><span class="tag">Principle 1: the obligation is the source of truth</span><p>The dues obligation record states what an account owes, whether it is paid, and what was sent to them. Roster files and provider assessments are <em>inputs</em> that can be replayed or purged; the obligation is not.</p></div>
+  <div class="call inv"><span class="tag">Principle 2: configuration over code</span><p>Anything that varies by market, year, price, cadence or notification rule lives in Custom Metadata, not Apex, not Flow decision elements. Onboarding market #2 must require <strong>zero lines of new code</strong>.</p></div>
 
   <h3>The three questions the team asked up front</h3>
   <div class="answers">
     <div>
       <p class="q">Can Salesforce email ~10K accounts today?</p>
-      <p class="a ok">Yes — throttled</p>
+      <p class="a ok">Yes, throttled</p>
       <p class="why">The org-wide cap is 5,000 external recipients per day, shared with every other feature. Send in a throttled window, never a single blast.</p>
     </div>
     <div>
@@ -243,7 +243,7 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
     <div>
       <p class="q">So what do we build now?</p>
       <p class="a plan">A channel interface</p>
-      <p class="why">The dispatcher writes to an interface; a metadata value picks the implementation. Salesforce email for MVP, Marketing Cloud Next or an ESP later — same code.</p>
+      <p class="why">The dispatcher writes to an interface; a metadata value picks the implementation. Salesforce email for MVP, Marketing Cloud Next or an ESP later, same code.</p>
     </div>
   </div>
   <p style="font-size:15px;color:var(--muted)">Full working in <a href="#email">&sect;15</a>.</p>
@@ -252,10 +252,10 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
 <section id="journey">
   <div class="sechead"><span class="num">02</span><h2>The journey, end to end</h2></div>
   <div class="stages">
-    <div class="stage"><span class="sn">Stage 1 — Load</span><h4>The roster arrives</h4><p>The upstream team bulk-loads NPI, TIN, amount and dues year. Rows may repeat; a corrected file may follow an hour later. Everything is stored exactly as delivered — nothing is rejected at load time.</p></div>
-    <div class="stage"><span class="sn">Stage 2 — Bill</span><h4>One obligation per account</h4><p>Each row is matched to a provider and a billing account, duplicates collapse on NPI + TIN, and the provider charges add up to a single amount owed. An account with 12 providers gets one bill, not twelve.</p></div>
-    <div class="stage"><span class="sn">Stage 3 — Notify</span><h4>Link and reminders</h4><p>A secure Pay Now link is generated and emailed to the billing contact on the approved calendar. Every send re-checks that the account is still unpaid before it goes.</p></div>
-    <div class="stage"><span class="sn">Stage 4 — Collect</span><h4>Paid, closed, reconciled</h4><p>The provider pays on the hosted page. The obligation is marked Paid, remaining reminders are cancelled, a receipt goes out, and anything unpaid after the final notice becomes a termination review task.</p></div>
+    <div class="stage"><span class="sn">Stage 1: Load</span><h4>The roster arrives</h4><p>The upstream team bulk-loads NPI, TIN, amount and dues year. Rows may repeat; a corrected file may follow an hour later. Everything is stored exactly as delivered, nothing is rejected at load time.</p></div>
+    <div class="stage"><span class="sn">Stage 2: Bill</span><h4>One obligation per account</h4><p>Each row is matched to a provider and a billing account, duplicates collapse on NPI + TIN, and the provider charges add up to a single amount owed. An account with 12 providers gets one bill, not twelve.</p></div>
+    <div class="stage"><span class="sn">Stage 3: Notify</span><h4>Link and reminders</h4><p>A secure Pay Now link is generated and emailed to the billing contact on the approved calendar. Every send re-checks that the account is still unpaid before it goes.</p></div>
+    <div class="stage"><span class="sn">Stage 4: Collect</span><h4>Paid, closed, reconciled</h4><p>The provider pays on the hosted page. The obligation is marked Paid, remaining reminders are cancelled, a receipt goes out, and anything unpaid after the final notice becomes a termination review task.</p></div>
   </div>
   <h3>Who does what</h3>
   <div class="tw"><table>
@@ -267,14 +267,14 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
       <tr><td><strong>Dues Automation</strong><br><span style="color:var(--muted);font-size:13px">what we build</span></td><td>Everything between the roster file and a paid obligation: resolution, dedup, roll-up, links, notices, settlement, reconciliation, retention.</td></tr>
       <tr><td><strong>Salesforce Pay Now</strong></td><td>Hosted checkout, tokenisation, payment result. No card data reaches our objects.</td></tr>
       <tr><td><strong>Notification channel</strong></td><td>Salesforce email in MVP; Marketing Cloud Next or an ESP later. Selected by configuration.</td></tr>
-      <tr><td><strong>Billing contact</strong></td><td>Receives one consolidated notice per account and pays online — or by check, which ops records through the same settlement path.</td></tr>
+      <tr><td><strong>Billing contact</strong></td><td>Receives one consolidated notice per account and pays online, or by check, which ops records through the same settlement path.</td></tr>
     </tbody>
   </table></div>
 </section>
 
 <section id="example">
   <div class="sechead"><span class="num">03</span><h2>What the business actually sees</h2></div>
-  <p><strong>North Texas Family Medicine</strong>, TIN <code>75-1234567</code>, 12 providers. The roster file contains <strong>14 rows</strong> for that TIN — 12 unique NPIs plus 2 rows repeating NPIs already listed, a known quirk of the source extract.</p>
+  <p><strong>North Texas Family Medicine</strong>, TIN <code>75-1234567</code>, 12 providers. The roster file contains <strong>14 rows</strong> for that TIN, 12 unique NPIs plus 2 rows repeating NPIs already listed, a known quirk of the source extract.</p>
   <div class="tw"><table>
     <thead><tr><th>Step</th><th>What happens</th><th>Result</th></tr></thead>
     <tbody>
@@ -287,7 +287,7 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
       <tr><td>Pay</td><td>Contact pays $2,580 by card or ACH.</td><td>Paid &middot; reminders cancelled &middot; receipt sent</td></tr>
     </tbody>
   </table></div>
-  <div class="call risk"><span class="tag">The case that matters</span><p>If one repeated row carried a <em>different</em> amount — $215 against $250 — the pipeline does not guess. It raises an exception, excludes that provider from the obligation, and puts it in the exception queue for business correction. <strong>No obligation is ever published from a file that does not balance.</strong></p></div>
+  <div class="call risk"><span class="tag">The case that matters</span><p>If one repeated row carried a <em>different</em> amount ($215 against $250), the pipeline does not guess. It raises an exception, excludes that provider from the obligation, and puts it in the exception queue for business correction. <strong>No obligation is ever published from a file that does not balance.</strong></p></div>
 </section>
 
 <section id="model">
@@ -296,30 +296,30 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
     <thead><tr><th>Object</th><th>Diagram name</th><th>Purpose</th><th>Vol/yr</th><th>Retention</th></tr></thead>
     <tbody>
       <tr><td><code>Dues_Roster_File__c</code></td><td>Roster_Import__c</td><td>File header: source id, received time, row count, control total, status</td><td>~50</td><td>5 yr</td></tr>
-      <tr><td><code>Dues_Roster_Row__c</code></td><td>&mdash; (staging)</td><td>Raw row exactly as delivered. <strong>No uniqueness, no trigger.</strong></td><td>10K&ndash;200K</td><td>1 yr</td></tr>
+      <tr><td><code>Dues_Roster_Row__c</code></td><td>(staging)</td><td>Raw row exactly as delivered. <strong>No uniqueness, no trigger.</strong></td><td>10K-200K</td><td>1 yr</td></tr>
       <tr><td><code>Dues_Assessment__c</code></td><td>Provider_Dues_Assessment__c</td><td>One deduplicated, resolved charge per provider per cycle</td><td>10K</td><td>1 yr + archive</td></tr>
-      <tr><td><code>Dues_Obligation__c</code></td><td>Annual_Account_Dues__c</td><td>Account-level amount owed. <strong>Source of truth.</strong></td><td>2K&ndash;5K</td><td>5 yr+</td></tr>
+      <tr><td><code>Dues_Obligation__c</code></td><td>Annual_Account_Dues__c</td><td>Account-level amount owed. <strong>Source of truth.</strong></td><td>2K-5K</td><td>5 yr+</td></tr>
       <tr><td><code>Dues_Cycle__c</code></td><td>Billing_Program_Cycle__c</td><td>Market + period: dues year, invoice date, due date, freeze, approval</td><td>~5</td><td>5 yr+</td></tr>
-      <tr><td><code>Dues_Communication__c</code></td><td>Dues_Communication__c</td><td>One row per planned or sent notice</td><td>15K&ndash;25K</td><td>5 yr</td></tr>
-      <tr><td><code>Dues_Run_Log__c</code></td><td>&mdash;</td><td>Job telemetry: stage, counts, errors, restart point</td><td>~2K</td><td>1 yr</td></tr>
+      <tr><td><code>Dues_Communication__c</code></td><td>Dues_Communication__c</td><td>One row per planned or sent notice</td><td>15K-25K</td><td>5 yr</td></tr>
+      <tr><td><code>Dues_Run_Log__c</code></td><td>n/a</td><td>Job telemetry: stage, counts, errors, restart point</td><td>~2K</td><td>1 yr</td></tr>
     </tbody>
   </table></div>
 
-  <div class="call decide"><span class="tag">Decision D-01 — rename before first deploy</span><p><code>Annual_Account_Dues__c</code> &rarr; <code>Dues_Obligation__c</code>. The PRD already requires <strong>monthly invoices</strong> on a Net-30 relative schedule. An object called "Annual Account Dues" will be carrying monthly obligations within a year, and API names are painful to change once reports, flows, permission sets, integrations and five years of data reference them. Keep the <em>label</em> "Annual Account Dues" for Texas CIN users. Everything else in this design holds either way.</p></div>
+  <div class="call decide"><span class="tag">Decision D-01: rename before first deploy</span><p><code>Annual_Account_Dues__c</code> &rarr; <code>Dues_Obligation__c</code>. The PRD already requires <strong>monthly invoices</strong> on a Net-30 relative schedule. An object called "Annual Account Dues" will be carrying monthly obligations within a year, and API names are painful to change once reports, flows, permission sets, integrations and five years of data reference them. Keep the <em>label</em> "Annual Account Dues" for Texas CIN users. Everything else in this design holds either way.</p></div>
 
   <h3>The four keys that make the pipeline safe</h3>
-  <p>Every stage is idempotent because of a deterministic key. Re-running any job produces the same result — it never double-charges, double-links or double-emails.</p>
+  <p>Every stage is idempotent because of a deterministic key. Re-running any job produces the same result, it never double-charges, double-links or double-emails.</p>
   <div class="keys">
     <div><p class="kn">RowKey</p><p class="kf">SourceFileId + SourceRowNumber</p><p class="ku">External Id &middot; not unique</p></div>
     <div><p class="kn">AssessmentKey</p><p class="kf">CycleId + Market + normNPI + normTIN</p><p class="ku u">External Id &middot; unique</p></div>
     <div><p class="kn">ObligationKey</p><p class="kf">CycleId + AccountId + Currency</p><p class="ku u">External Id &middot; unique</p></div>
     <div><p class="kn">MessageKey</p><p class="kf">ObligationId + NoticeType + ScheduleVersion</p><p class="ku u">External Id &middot; unique</p></div>
   </div>
-  <div class="call"><span class="tag">Why RowKey is deliberately not unique</span><p>The roster is ingested <em>as delivered</em>. A unique constraint at the staging layer would make the upstream bulk load fail on duplicate rows — the exact failure we must avoid, because a failed load is worse than a duplicate row. Deduplication happens on the way <em>into</em> assessments, where we control the transaction. This is the direct answer to "we can't use NPI or TIN as unique — we need to ingest whatever we get, then calculate."</p></div>
+  <div class="call"><span class="tag">Why RowKey is deliberately not unique</span><p>The roster is ingested <em>as delivered</em>. A unique constraint at the staging layer would make the upstream bulk load fail on duplicate rows, the exact failure we must avoid, because a failed load is worse than a duplicate row. Deduplication happens on the way <em>into</em> assessments, where we control the transaction. This is the direct answer to "we can't use NPI or TIN as unique, we need to ingest whatever we get, then calculate."</p></div>
 </section>
 
 <section id="config">
-  <div class="sechead"><span class="num">05</span><h2>The configuration layer — this is the framework</h2></div>
+  <div class="sechead"><span class="num">05</span><h2>The configuration layer: this is the framework</h2></div>
   <div class="tw"><table>
     <thead><tr><th>Custom metadata type</th><th>Controls</th></tr></thead>
     <tbody>
@@ -327,19 +327,19 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
       <tr><td><code>Dues_Rate__mdt</code></td><td>Default amount per provider, effective year range, per-TIN override, amount precedence (file &gt; TIN override &gt; market default)</td></tr>
       <tr><td><code>Dues_Notification_Schedule__mdt</code></td><td>Per market and invoice type: notice type, calculation method (<code>FIXED_DATE</code> / <code>RELATIVE_TO_DUE</code> / <code>RELATIVE_TO_INVOICE</code>), offset or fixed date, template, sender, channel, sequence, <code>Active__c</code>, suppress-if-paid</td></tr>
       <tr><td><code>Dues_Feature_Flag__mdt</code></td><td>Master kill switch, notifications on/off, link generation on/off, purge on/off, dry-run, daily email cap, per-stage batch scope, ingest quiet period</td></tr>
-      <tr><td><code>Dues_Source_Mapping__mdt</code></td><td>Source object API name and field mapping for the roster feed — a new upstream format is config, not code</td></tr>
+      <tr><td><code>Dues_Source_Mapping__mdt</code></td><td>Source object API name and field mapping for the roster feed, a new upstream format is config, not code</td></tr>
       <tr><td><code>Dues_Integration_Setting__mdt</code></td><td>Payment method set, link expiry, notification channel class, named credential, retry limits, newsletter document</td></tr>
     </tbody>
   </table></div>
-  <div class="call"><span class="tag">The operational promise</span><p>Turning notifications off in production is <strong>edit one checkbox &rarr; save</strong>. No deployment, no code review, no release window. Every job reads the flags at the start of every run, and the dispatcher re-reads them immediately before each send. Custom Metadata records are editable directly in production and still version-controlled as metadata — which is why they, and not constants or Custom Settings, are the right home for these switches. Grant edit rights through a dedicated permission set; changes land in the Setup Audit Trail.</p></div>
-  <p>Splitting config from data matters here: <strong>market rules</strong> live in metadata (deployable, rarely changed), while the <strong>cycle</strong> — this year's dues year, invoice date and due date — is a record the business edits without involving a release.</p>
+  <div class="call"><span class="tag">The operational promise</span><p>Turning notifications off in production is <strong>edit one checkbox &rarr; save</strong>. No deployment, no code review, no release window. Every job reads the flags at the start of every run, and the dispatcher re-reads them immediately before each send. Custom Metadata records are editable directly in production and still version-controlled as metadata, which is why they, and not constants or Custom Settings, are the right home for these switches. Grant edit rights through a dedicated permission set; changes land in the Setup Audit Trail.</p></div>
+  <p>Splitting config from data matters here: <strong>market rules</strong> live in metadata (deployable, rarely changed), while the <strong>cycle</strong> (this year's dues year, invoice date and due date) is a record the business edits without involving a release.</p>
 </section>
 
 <section id="pipeline">
   <div class="sechead"><span class="num">06</span><h2>The daily pipeline</h2></div>
   <p>One scheduled entry point, <code>DuesOrchestratorSchedulable</code>, chains every stage in order. Not eight separate scheduled jobs: ordering is guaranteed, there is one place to disable everything, one job to monitor, and the org's 100-scheduled-job ceiling stays untouched as markets are added.</p>
   <div class="pipe">
-    <div class="row skip"><div class="n">00</div><div class="b"><strong>Guard</strong><span>Kill switch and market active? New complete roster file since the last run?</span><em>skips 1&ndash;5 if none</em></div></div>
+    <div class="row skip"><div class="n">00</div><div class="b"><strong>Guard</strong><span>Kill switch and market active? New complete roster file since the last run?</span><em>skips 1-5 if none</em></div></div>
     <div class="row"><div class="n">01</div><div class="b"><strong>Ingest &amp; validate</strong><span>Normalise NPI/TIN/amount, schema checks, control totals</span><em>batch 2000</em></div></div>
     <div class="row"><div class="n">02</div><div class="b"><strong>Resolve identity</strong><span>Bulk NPI &rarr; provider, TIN &rarr; account, effective dates, market precedence</span><em>batch 200</em></div></div>
     <div class="row"><div class="n">03</div><div class="b"><strong>Assess</strong><span>Deduplicate on the business key, upsert one charge per provider</span><em>batch 2000</em></div></div>
@@ -351,7 +351,7 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
     <div class="row"><div class="n">09</div><div class="b"><strong>Reconcile</strong><span>Repair safe gaps, raise exceptions for unsafe ones</span><em>nightly</em></div></div>
     <div class="row"><div class="n">10</div><div class="b"><strong>Purge</strong><span>Archive then delete beyond the retention window</span><em>weekly</em></div></div>
   </div>
-  <div class="call"><span class="tag">Important nuance on "don't run if there is no file"</span><p>The <em>roster</em> stages (1&ndash;5) skip when no new file arrived — no batch is enqueued at all, so no async slots are consumed. <strong>Stages 6&ndash;9 always run</strong>, because payment links, reminders, settlements and reconciliation must continue every day whether or not a roster file landed. Skipping them would stop reminders and delay payment posting.</p></div>
+  <div class="call"><span class="tag">Important nuance on "don't run if there is no file"</span><p>The <em>roster</em> stages (1-5) skip when no new file arrived, no batch is enqueued at all, so no async slots are consumed. <strong>Stages 6-9 always run</strong>, because payment links, reminders, settlements and reconciliation must continue every day whether or not a roster file landed. Skipping them would stop reminders and delay payment posting.</p></div>
 </section>
 
 <section id="ingest">
@@ -359,7 +359,7 @@ hr.thin{border:none;border-top:1px solid var(--rule);margin:30px 0}
   <h3>The load itself must not be slowed down</h3>
   <ul>
     <li><code>Dues_Roster_Row__c</code> has <strong>no Apex trigger, no flow, no roll-up summary, no querying validation rule</strong>. Load throughput is protected absolutely; all processing is deferred to the scheduled batch.</li>
-    <li>The only exception is an optional, metadata-bypassable after-insert trigger that upserts the file header — one query and one upsert per 200 rows, never per row. If the upstream team creates the header themselves, even that is removed.</li>
+    <li>The only exception is an optional, metadata-bypassable after-insert trigger that upserts the file header, one query and one upsert per 200 rows, never per row. If the upstream team creates the header themselves, even that is removed.</li>
     <li>Fields are wide text at ingest (<code>NPI_Raw__c</code>, <code>TIN_Raw__c</code>, <code>Amount_Raw__c</code>) so a malformed value <em>stores</em> rather than <em>rejects</em>. It becomes a reportable exception in stage 1, not a load failure.</li>
   </ul>
 
@@ -377,11 +377,11 @@ flowchart TB
   D -- yes --> G["Mark older Received files<br/>for the same market and cycle SUPERSEDED"]
   G --> H["Mark chosen file PROCESSING<br/>enqueue ingest batch"]
 </pre>
-    <figcaption>Fig. 1 — Latest-file selection. Two independent guards prevent processing a half-loaded file.</figcaption>
+    <figcaption>Fig. 1. Latest-file selection. Two independent guards prevent processing a half-loaded file.</figcaption>
   </figure>
   <div class="call risk"><span class="tag">Why the quiet period exists</span><p>A 200K-row Bulk API load takes minutes. If the daily job fires mid-load, "the latest file" is a <em>partial</em> file and every obligation it produces is understated. An explicit completion signal (preferred) and a configurable quiet period (fallback) both guard against it. Both are metadata-driven.</p></div>
-  <p>A corrected file arriving <em>after</em> processing is handled as a re-run against the same cycle: assessments are upserted by key, providers no longer present are marked Removed, and the obligation is recomputed — unless it is frozen, in which case it goes to the adjustment queue rather than silently changing a bill someone has already received.</p>
-  <div class="call verify"><span class="tag">Verify V-05 — ask the upstream team for a file id</span><p>Without a file or batch identifier, "latest file" degrades to grouping by created-date bucket, which merges two loads in the same window and splits a slow one. One text column removes the risk entirely.</p></div>
+  <p>A corrected file arriving <em>after</em> processing is handled as a re-run against the same cycle: assessments are upserted by key, providers no longer present are marked Removed, and the obligation is recomputed, unless it is frozen, in which case it goes to the adjustment queue rather than silently changing a bill someone has already received.</p>
+  <div class="call verify"><span class="tag">Verify V-05: ask the upstream team for a file id</span><p>Without a file or batch identifier, "latest file" degrades to grouping by created-date bucket, which merges two loads in the same window and splits a slow one. One text column removes the risk entirely.</p></div>
 
   <h3>Validation in stage 1</h3>
   <div class="tw"><table>
@@ -391,13 +391,13 @@ flowchart TB
       <tr><td>TIN present, 9 digits after normalisation</td><td><code>INVALID_TIN</code></td></tr>
       <tr><td>Amount parses to a positive decimal within the configured maximum</td><td><code>INVALID_AMOUNT</code></td></tr>
       <tr><td>Dues year matches an open cycle for an active market</td><td><code>NO_OPEN_CYCLE</code></td></tr>
-      <tr><td>File control total = sum(valid) + sum(exception)</td><td><code>TOTAL_MISMATCH</code> — <strong>publication blocked</strong></td></tr>
+      <tr><td>File control total = sum(valid) + sum(exception)</td><td><code>TOTAL_MISMATCH</code>: <strong>publication blocked</strong></td></tr>
     </tbody>
   </table></div>
 
-  <h3>Identity resolution — never row by row</h3>
+  <h3>Identity resolution: never row by row</h3>
   <p>The batch collects the distinct NPIs and TINs in its chunk and issues a small fixed number of bulk queries. Ambiguity is never resolved by guessing: more than one active account for a TIN raises <code>AMBIGUOUS_ACCOUNT</code> with all candidates listed, because a wrong bill-to means a wrong invoice to a real customer.</p>
-<pre class="code"><span class="c">// One query per identifier type per chunk — not per row</span>
+<pre class="code"><span class="c">// One query per identifier type per chunk, not per row</span>
 Map&lt;String, Id&gt; providerByNpi = <span class="k">new</span> Map&lt;String, Id&gt;();
 <span class="k">for</span> (HealthcareProviderNpi n : [
         <span class="k">SELECT</span> Id, NpiNumber, HealthcareProviderId
@@ -406,30 +406,30 @@ Map&lt;String, Id&gt; providerByNpi = <span class="k">new</span> Map&lt;String, 
           <span class="k">AND</span> (EffectiveToDate = <span class="k">NULL</span> <span class="k">OR</span> EffectiveToDate &gt;= :cycleStart)]) {
     providerByNpi.put(n.NpiNumber, n.HealthcareProviderId);
 }</pre>
-  <p>NPI is read from the structured Health Cloud identifier record. <strong>A display name is never parsed to derive an NPI</strong> — pipe-delimited names are not a data contract.</p>
+  <p>NPI is read from the structured Health Cloud identifier record. <strong>A display name is never parsed to derive an NPI</strong>: pipe-delimited names are not a data contract.</p>
 </section>
 
 <section id="accuracy">
   <div class="sechead"><span class="num">08</span><h2>Deduplication and the accuracy invariants</h2></div>
-  <p>This is the accuracy-critical stage — the one the business will judge the system on.</p>
+  <p>This is the accuracy-critical stage, the one the business will judge the system on.</p>
 <pre class="code">AssessmentKey = CycleId + '|' + MarketCode + '|' + normalize(NPI) + '|' + normalize(TIN)</pre>
   <p>A provider practising under two TINs is <strong>two legitimate assessments</strong> on two obligations. A provider repeated under the same TIN is <strong>one</strong>.</p>
   <div class="tw"><table>
     <thead><tr><th>Strategy (metadata-selected)</th><th>Behaviour</th><th>Use</th></tr></thead>
     <tbody>
-      <tr><td><code>COLLAPSE_IDENTICAL_ELSE_EXCEPTION</code> <strong>(default)</strong></td><td>Identical amounts collapse silently; differing amounts raise <code>DUPLICATE_AMOUNT_CONFLICT</code></td><td>Dues — never invent a number</td></tr>
+      <tr><td><code>COLLAPSE_IDENTICAL_ELSE_EXCEPTION</code> <strong>(default)</strong></td><td>Identical amounts collapse silently; differing amounts raise <code>DUPLICATE_AMOUNT_CONFLICT</code></td><td>Dues: never invent a number</td></tr>
       <tr><td><code>LAST_ROW_WINS</code></td><td>Highest source row number wins</td><td>Feeds where later rows are corrections</td></tr>
       <tr><td><code>MAX_AMOUNT</code></td><td>Highest amount wins</td><td>Conservative billing</td></tr>
       <tr><td><code>SUM_LINES</code></td><td>Rows are separate line items and are summed</td><td>Multi-line fees in a future market</td></tr>
     </tbody>
   </table></div>
 
-  <div class="call inv"><span class="tag">INV-1 — the total comes from assessments, never from raw rows</span><p>Because <code>Assessment_Key__c</code> is unique-enforced at the database level, a provider <strong>cannot</strong> be counted twice in a cycle for a TIN — regardless of how many times the file repeats them, how many times the job runs, or whether two jobs overlap. <em>The database, not the code, is the guarantee.</em></p></div>
-  <div class="call inv"><span class="tag">INV-2 — round at the line, sum the rounded values</span><p>Amounts are rounded to two decimals at the assessment level and the obligation is the sum of already-rounded values. Rounding only at the total would let the invoice disagree with its attached roster by cents.</p></div>
-  <div class="call inv"><span class="tag">INV-3 — every obligation carries a calculation hash</span><p>A hash of the ordered contributing (key, amount) pairs. Reconciliation recomputes it nightly; a mismatch means data changed behind the pipeline's back and raises an exception.</p></div>
-  <div class="call inv"><span class="tag">INV-4 — nothing publishes from an unbalanced file</span><p>Valid + exception must equal the control total, and every exception must have an ops disposition, before a single notice goes out.</p></div>
+  <div class="call inv"><span class="tag">INV-1: the total comes from assessments, never from raw rows</span><p>Because <code>Assessment_Key__c</code> is unique-enforced at the database level, a provider <strong>cannot</strong> be counted twice in a cycle for a TIN, regardless of how many times the file repeats them, how many times the job runs, or whether two jobs overlap. <em>The database, not the code, is the guarantee.</em></p></div>
+  <div class="call inv"><span class="tag">INV-2: round at the line, sum the rounded values</span><p>Amounts are rounded to two decimals at the assessment level and the obligation is the sum of already-rounded values. Rounding only at the total would let the invoice disagree with its attached roster by cents.</p></div>
+  <div class="call inv"><span class="tag">INV-3: every obligation carries a calculation hash</span><p>A hash of the ordered contributing (key, amount) pairs. Reconciliation recomputes it nightly; a mismatch means data changed behind the pipeline's back and raises an exception.</p></div>
+  <div class="call inv"><span class="tag">INV-4: nothing publishes from an unbalanced file</span><p>Valid + exception must equal the control total, and every exception must have an ops disposition, before a single notice goes out.</p></div>
 
-  <p>DML is deliberately partial-success — <code>Database.upsert(records, key, false)</code> — so one malformed row never fails the other 1,999 in its chunk. Each failure is captured with its source row reference.</p>
+  <p>DML is deliberately partial-success, <code>Database.upsert(records, key, false)</code>, so one malformed row never fails the other 1,999 in its chunk. Each failure is captured with its source row reference.</p>
 </section>
 
 <section id="rollup">
@@ -439,7 +439,7 @@ Map&lt;String, Id&gt; providerByNpi = <span class="k">new</span> Map&lt;String, 
   <div class="tw"><table>
     <thead><tr><th>Concern</th><th>Roll-up summary</th><th>Deterministic recompute <em>(chosen)</em></th></tr></thead>
     <tbody>
-      <tr><td>Freeze after publication</td><td class="no">Impossible — a late child edit silently changes an invoiced amount</td><td class="yes">Freeze flag blocks recompute; changes route to adjustments</td></tr>
+      <tr><td>Freeze after publication</td><td class="no">Impossible: a late child edit silently changes an invoiced amount</td><td class="yes">Freeze flag blocks recompute; changes route to adjustments</td></tr>
       <tr><td>Auditability</td><td class="no">No record of when or why the number changed</td><td class="yes">Calculated-at timestamp, calculation hash, run log</td></tr>
       <tr><td>Restartability</td><td class="no">Opaque</td><td class="yes">Re-run any time, same result</td></tr>
       <tr><td>Insert ordering</td><td class="no">Parent must exist before children</td><td class="yes">Parent upserted by key in the same stage</td></tr>
@@ -459,23 +459,23 @@ Map&lt;String, Id&gt; providerByNpi = <span class="k">new</span> Map&lt;String, 
     <span class="k">else</span>:                                               <span class="c">// continuation chunk</span>
         obligation.Amount_Due__c     += chunkSum        <span class="c">// accumulate</span>
         obligation.Provider_Count__c += chunkCount</pre>
-  <p>Batch chunks for one job execute serially, so accumulation is deterministic, and the run-id reset makes the whole job idempotent — re-running produces the same totals, never doubled ones. The final chunk stamps the timestamp and calculation hash.</p>
-  <div class="call"><span class="tag">Batch Apex constraint worth knowing</span><p><code>start()</code> cannot return a <code>GROUP BY</code> aggregate as a QueryLocator. Hence the row-level locator with in-chunk aggregation above. Beyond roughly 100K accounts, switch to two-phase: write per-run, per-account partials, then sum partials into obligations. Same keys, same invariants, no ceiling — a planned step rather than a surprise.</p></div>
-  <p>Single-provider accounts need <strong>no separate code path</strong> — they are simply an obligation with a provider count of 1. Whether the notice carries a roster attachment is a metadata threshold.</p>
+  <p>Batch chunks for one job execute serially, so accumulation is deterministic, and the run-id reset makes the whole job idempotent, re-running produces the same totals, never doubled ones. The final chunk stamps the timestamp and calculation hash.</p>
+  <div class="call"><span class="tag">Batch Apex constraint worth knowing</span><p><code>start()</code> cannot return a <code>GROUP BY</code> aggregate as a QueryLocator. Hence the row-level locator with in-chunk aggregation above. Beyond roughly 100K accounts, switch to two-phase: write per-run, per-account partials, then sum partials into obligations. Same keys, same invariants, no ceiling, a planned step rather than a surprise.</p></div>
+  <p>Single-provider accounts need <strong>no separate code path</strong>: they are simply an obligation with a provider count of 1. Whether the notice carries a roster attachment is a metadata threshold.</p>
 
   <h3>The approval and freeze gate</h3>
-  <p>No obligation publishes until the file balances, every exception has a disposition, business approval is recorded on the cycle, and contributing assessments are locked. On approval the amount is frozen. <strong>This gate is what makes the number trustworthy</strong> — after it, nothing changes the amount except an explicit, audited adjustment. Auto-approval is available per market for markets that do not want a manual gate.</p>
+  <p>No obligation publishes until the file balances, every exception has a disposition, business approval is recorded on the cycle, and contributing assessments are locked. On approval the amount is frozen. <strong>This gate is what makes the number trustworthy</strong>: after it, nothing changes the amount except an explicit, audited adjustment. Auto-approval is available per market for markets that do not want a manual gate.</p>
 </section>
 
 <section id="links">
   <div class="sechead"><span class="num">10</span><h2>Payment links at 10K+ scale</h2></div>
   <p>Salesforce Payments provides a <strong>Generate Payment Link</strong> flow action, normally used from a record-triggered or screen flow. At 10,000 obligations that pattern fails on three counts: one flow interview per record, one gateway callout per record with no batching or throttle, and no retry or dead-letter path when the provider rate-limits or times out.</p>
-  <h3>Chosen approach — batch that calls the standard action</h3>
+  <h3>Chosen approach: batch that calls the standard action</h3>
   <div class="pipe">
     <div class="row"><div class="n">1</div><div class="b"><strong>Select</strong><span>Approved obligations with no link, not in progress, attempts below the limit</span></div></div>
-    <div class="row"><div class="n">2</div><div class="b"><strong>Stamp before the callout</strong><span>Request id = ObligationKey, status In Progress — so a timeout is recoverable</span></div></div>
-    <div class="row"><div class="n">3</div><div class="b"><strong>Generate</strong><span>Through <code>IPaymentLinkProvider</code>, scope 10&ndash;20 per chunk</span></div></div>
-    <div class="row"><div class="n">4</div><div class="b"><strong>Store or fail</strong><span>URL, link reference, expiry, status — or increment attempts and record the error</span></div></div>
+    <div class="row"><div class="n">2</div><div class="b"><strong>Stamp before the callout</strong><span>Request id = ObligationKey, status In Progress, so a timeout is recoverable</span></div></div>
+    <div class="row"><div class="n">3</div><div class="b"><strong>Generate</strong><span>Through <code>IPaymentLinkProvider</code>, scope 10-20 per chunk</span></div></div>
+    <div class="row"><div class="n">4</div><div class="b"><strong>Store or fail</strong><span>URL, link reference, expiry, status, or increment attempts and record the error</span></div></div>
     <div class="row"><div class="n">5</div><div class="b"><strong>Retry, then dead-letter</strong><span>Nightly retry below the limit; beyond it, an actionable exception</span></div></div>
   </div>
 <pre class="code"><span class="c">// Wrapped behind IPaymentLinkProvider so it is mockable and swappable</span>
@@ -485,31 +485,31 @@ action.setInvocationParameter(<span class="k">'currencyIsoCode'</span>,    req.c
 action.setInvocationParameter(<span class="k">'paymentMethodSetId'</span>, CONFIG.Payment_Method_Set_Id__c);
 action.setInvocationParameter(<span class="k">'accountId'</span>,          req.accountId);
 List&lt;Invocable.Action.Result&gt; results = action.invoke();</pre>
-  <div class="call verify"><span class="tag">Verify V-01 — and why it does not block us</span><p>The exact action API name, its parameter contract and whether it accepts a list are org- and release-specific. <code>IPaymentLinkProvider</code> exists precisely so that uncertainty is contained in <strong>one class</strong>. If the action proves unsuitable, we swap the implementation for a supported REST call or a gateway adapter — the batch, the obligation model, the notification engine and every test stay untouched.</p></div>
+  <div class="call verify"><span class="tag">Verify V-01: and why it does not block us</span><p>The exact action API name, its parameter contract and whether it accepts a list are org- and release-specific. <code>IPaymentLinkProvider</code> exists precisely so that uncertainty is contained in <strong>one class</strong>. If the action proves unsuitable, we swap the implementation for a supported REST call or a gateway adapter, the batch, the obligation model, the notification engine and every test stay untouched.</p></div>
 
   <h3>Governor budget and throughput</h3>
   <div class="tw"><table>
     <thead><tr><th>Limit</th><th>Value</th><th>Design response</th></tr></thead>
     <tbody>
-      <tr><td>Callouts per transaction</td><td>100</td><td>Scope 10&ndash;20 &rarr; 10&ndash;20 callouts per chunk</td></tr>
+      <tr><td>Callouts per transaction</td><td>100</td><td>Scope 10-20 &rarr; 10-20 callouts per chunk</td></tr>
       <tr><td>Cumulative callout time per transaction</td><td>120 s</td><td>Scope 10 at ~2 s each &asymp; 20 s</td></tr>
       <tr><td>Concurrent batch jobs</td><td>5</td><td>Orchestrator chains stages; never fans out</td></tr>
-      <tr><td>Async executions per day</td><td>250K</td><td>500&ndash;1,000 chunks per cycle — negligible</td></tr>
+      <tr><td>Async executions per day</td><td>250K</td><td>500-1,000 chunks per cycle, negligible</td></tr>
     </tbody>
   </table></div>
   <p><strong>Throughput:</strong> 10,000 obligations &divide; scope 10 = 1,000 chunks &times; ~3 s &asymp; <strong>50 minutes</strong>, run overnight, days ahead of the first notice. Scope is metadata-tunable, so it is dialled in during performance testing rather than redeployed.</p>
 
   <h3>No duplicate links, ever</h3>
   <p>The request id is stamped <em>before</em> the callout. If the transaction dies after the gateway created the link but before Salesforce committed, nightly reconciliation finds the orphan and repairs the obligation instead of generating a second link. Only one link may be active per obligation; regeneration after an approved adjustment deactivates the previous one first, so an old email never points at a stale amount.</p>
-  <div class="call decide"><span class="tag">Decision D-04 — "one-time-use" needs a business ruling</span><p>The PRD says "a unique, one-time-use payment URL for each invoice", but the same link is emailed in up to five notices. <strong>Interpretation adopted:</strong> the link is unique per obligation per cycle, with a locked predefined amount, deactivated on successful payment — one-time-<em>payment</em>, not one-time-<em>open</em>. A fresh nonce per email would multiply link volume fivefold, break the reminder flow and confuse a payer holding an earlier email.</p></div>
-  <p><strong>Checks still work.</strong> A "Record Offline Payment" action writes method, reference, date and amount through the <em>same</em> settlement service used by card and ACH — so a check payment also cancels remaining reminders, sends a receipt and closes assessments. One settlement path, not two.</p>
+  <div class="call decide"><span class="tag">Decision D-04: "one-time-use" needs a business ruling</span><p>The PRD says "a unique, one-time-use payment URL for each invoice", but the same link is emailed in up to five notices. <strong>Interpretation adopted:</strong> the link is unique per obligation per cycle, with a locked predefined amount, deactivated on successful payment, one-time-<em>payment</em>, not one-time-<em>open</em>. A fresh nonce per email would multiply link volume fivefold, break the reminder flow and confuse a payer holding an earlier email.</p></div>
+  <p><strong>Checks still work.</strong> A "Record Offline Payment" action writes method, reference, date and amount through the <em>same</em> settlement service used by card and ACH, so a check payment also cancels remaining reminders, sends a receipt and closes assessments. One settlement path, not two.</p>
 </section>
 
 <section id="notify">
   <div class="sechead"><span class="num">11</span><h2>The notification engine</h2></div>
   <h3>Two calculation methods, one config table</h3>
   <p>Annual dues run on a fixed calendar; monthly invoices run on offsets from the invoice date. Both resolve through one method, and adding a cadence is a metadata row.</p>
-  <h4 style="margin-top:22px">Annual dues — the PRD calendar, implemented</h4>
+  <h4 style="margin-top:22px">Annual dues: the PRD calendar, implemented</h4>
   <div class="tl">
     <div><p class="d">Dec 15</p><p class="l">Invoice issued</p></div>
     <div><p class="d">Jan 2</p><p class="l">Reminder 1</p></div>
@@ -518,7 +518,7 @@ List&lt;Invocable.Action.Result&gt; results = action.invoke();</pre>
     <div class="esc"><p class="d">Feb 6</p><p class="l">Final overdue notice</p></div>
     <div class="esc"><p class="d">Feb 14</p><p class="l">Termination review task</p></div>
   </div>
-  <h4>Monthly invoices — relative to invoice date</h4>
+  <h4>Monthly invoices: relative to invoice date</h4>
   <div class="tl">
     <div><p class="d">+15</p><p class="l">Reminder 1</p></div>
     <div><p class="d">+23</p><p class="l">Reminder 2</p></div>
@@ -526,7 +526,7 @@ List&lt;Invocable.Action.Result&gt; results = action.invoke();</pre>
     <div class="esc"><p class="d">+37</p><p class="l">Final overdue notice</p></div>
     <div class="esc"><p class="d">+45</p><p class="l">Termination review</p></div>
   </div>
-  <div class="call decide"><span class="tag">Decision D-03 — a discrepancy to close</span><p>The notification lifecycle diagram shows T&minus;30 / T&minus;15 / T&minus;7 with a 1 January due date; PRD &sect;4.3 specifies the calendar above with a <strong>30 January</strong> due date. <strong>The PRD dates are implemented</strong> and the diagram should be updated. Because both are pure configuration, correcting it later costs one metadata edit — but templates and business communications should be built against the right dates from day one.</p></div>
+  <div class="call decide"><span class="tag">Decision D-03: a discrepancy to close</span><p>The notification lifecycle diagram shows T&minus;30 / T&minus;15 / T&minus;7 with a 1 January due date; PRD &sect;4.3 specifies the calendar above with a <strong>30 January</strong> due date. <strong>The PRD dates are implemented</strong> and the diagram should be updated. Because both are pure configuration, correcting it later costs one metadata edit, but templates and business communications should be built against the right dates from day one.</p></div>
 
   <h3>Materialise, then dispatch</h3>
   <p>Planned notices are created for the whole cycle the moment an obligation is approved, then a daily dispatcher claims the ones that are due. Separating the two means operations can see exactly what an account will receive and when, notices can be cancelled en masse on payment before they are ever sent, and the send step is a small, restartable, throttleable job.</p>
@@ -543,14 +543,14 @@ List&lt;Invocable.Action.Result&gt; results = action.invoke();</pre>
   <p>MessageKey uniqueness means a double-run of the dispatcher cannot produce a second email. A schedule version increments if the business changes the calendar mid-cycle, which intentionally allows a corrected notice without breaking that guarantee.</p>
   <p><strong>Recipient resolution ladder</strong> (metadata-ordered): designated billing contact &rarr; account primary contact &rarr; account billing email field &rarr; <code>NO_RECIPIENT</code> exception. Never a guessed address. The resolved address is snapshotted on the communication row, so a year later the record still shows exactly where the notice went even if the contact has since changed.</p>
 
-  <h3>The channel interface — the key to the volume question</h3>
+  <h3>The channel interface: the key to the volume question</h3>
 <pre class="code"><span class="k">public interface</span> IDuesNotificationChannel {
     List&lt;DuesSendResult&gt; send(List&lt;DuesSendRequest&gt; requests);  <span class="c">// bulk by contract</span>
     Integer remainingCapacityToday();                            <span class="c">// throttle input</span>
     Boolean supportsDeliveryEvents();                            <span class="c">// bounce handling</span>
 }</pre>
-  <p>The implementation class is named in metadata and instantiated by <code>Type.forName()</code>. Moving from Salesforce email to Marketing Cloud Next is a <strong>metadata change</strong> — the dispatcher, guards, logging, retry and reporting are untouched.</p>
-  <p><strong>Newsletter:</strong> the current PDF lives in a designated library and is referenced by one metadata field. Business uploads a new file and updates that field — no deployment. If the PDF is large, a hosted link is recommended over an attachment for deliverability.</p>
+  <p>The implementation class is named in metadata and instantiated by <code>Type.forName()</code>. Moving from Salesforce email to Marketing Cloud Next is a <strong>metadata change</strong>: the dispatcher, guards, logging, retry and reporting are untouched.</p>
+  <p><strong>Newsletter:</strong> the current PDF lives in a designated library and is referenced by one metadata field. Business uploads a new file and updates that field, no deployment. If the PDF is large, a hosted link is recommended over an attachment for deliverability.</p>
 </section>
 
 <section id="settle">
@@ -571,49 +571,49 @@ flowchart TB
   H -- yes --> J["One locked transaction:<br/>Paid, reference, date, amount, intent reference<br/>close assessments, cancel unsent notices"]
   J --> K["Queue exactly one receipt"]
 </pre>
-    <figcaption>Fig. 2 — Settlement. The flow is the fast path; the batch is the guarantee.</figcaption>
+    <figcaption>Fig. 2. Settlement. The flow is the fast path; the batch is the guarantee.</figcaption>
   </figure>
-  <p>The requirement — "when the Payment Intent record is updated, tag it to the dues obligation, and we can do that with Flow" — is the primary path. Two caveats drive the fallbacks:</p>
+  <p>The requirement, "when the Payment Intent record is updated, tag it to the dues obligation, and we can do that with Flow", is the primary path. Two caveats drive the fallbacks:</p>
   <div class="call verify"><span class="tag">Verify V-03</span><p>Confirm that <code>PaymentIntent</code> supports record-triggered flows or Apex triggers in this org and release. Some managed and standard payment objects do not.</p></div>
-  <p>Even where it does, event-driven settlement can miss — a flow error, a mixed-DML failure, a deployment window. <strong>The 15-minute correlation batch is always on.</strong> It is the difference between "payment status is usually right" and the PRD's key result of <strong>100% data accuracy</strong>.</p>
+  <p>Even where it does, event-driven settlement can miss, a flow error, a mixed-DML failure, a deployment window. <strong>The 15-minute correlation batch is always on.</strong> It is the difference between "payment status is usually right" and the PRD's key result of <strong>100% data accuracy</strong>.</p>
   <p><strong>Concurrency:</strong> settlement re-queries the obligation <code>FOR UPDATE</code> inside the transaction. Two concurrent events serialise; the second sees Paid and no-ops. With receipt MessageKey uniqueness, a duplicate event <em>cannot</em> produce a duplicate state transition or a duplicate receipt.</p>
-  <p><strong>Partial payment</strong> never auto-marks Paid — status becomes Partially Paid, finance gets an exception, and reminders continue by default (switchable per market).</p>
+  <p><strong>Partial payment</strong> never auto-marks Paid, status becomes Partially Paid, finance gets an exception, and reminders continue by default (switchable per market).</p>
 
-  <h3>Nightly reconciliation — the safety net</h3>
+  <h3>Nightly reconciliation: the safety net</h3>
   <div class="tw"><table>
     <thead><tr><th>Check</th><th>Safe repair</th><th>Otherwise</th></tr></thead>
     <tbody>
       <tr><td>Approved obligation with no active link</td><td>Re-queue link generation</td><td>Dead-letter beyond the retry limit</td></tr>
       <tr><td>Payment link with no obligation reference</td><td>Re-link by request id</td><td>Exception if ambiguous</td></tr>
       <tr><td>Succeeded intent, obligation still unpaid</td><td>Run settlement</td><td>Finance exception on amount mismatch</td></tr>
-      <tr><td>Obligation paid, no receipt</td><td>Queue receipt</td><td>&mdash;</td></tr>
-      <tr><td>Calculation hash mismatch</td><td>&mdash;</td><td><strong>Always an exception</strong> — data changed outside the pipeline</td></tr>
+      <tr><td>Obligation paid, no receipt</td><td>Queue receipt</td><td>n/a</td></tr>
+      <tr><td>Calculation hash mismatch</td><td>n/a</td><td><strong>Always an exception</strong>: data changed outside the pipeline</td></tr>
       <tr><td>Communication stuck In Progress</td><td>Reset to Planned</td><td>Dead-letter beyond attempts</td></tr>
-      <tr><td>Bounced recipient</td><td>&mdash;</td><td>Manual follow-up task (PRD 4.3)</td></tr>
+      <tr><td>Bounced recipient</td><td>n/a</td><td>Manual follow-up task (PRD 4.3)</td></tr>
     </tbody>
   </table></div>
 </section>
 
 <section id="retention">
   <div class="sechead"><span class="num">13</span><h2>Retention and purge</h2></div>
-  <div class="call risk"><span class="tag">Conflict to resolve — Decision D-02</span><p>The requirement is to delete roster and assessment records after one year. But PRD &sect;4.2 requires payment and communication history for <strong>five years</strong>, and group invoices are issued "with an attached roster". If provider-level assessments are deleted at twelve months, the org can no longer reproduce <em>which providers</em> a three-year-old invoice covered — exactly the evidence needed in a billing dispute or audit.</p></div>
+  <div class="call risk"><span class="tag">Conflict to resolve: Decision D-02</span><p>The requirement is to delete roster and assessment records after one year. But PRD &sect;4.2 requires payment and communication history for <strong>five years</strong>, and group invoices are issued "with an attached roster". If provider-level assessments are deleted at twelve months, the org can no longer reproduce <em>which providers</em> a three-year-old invoice covered, exactly the evidence needed in a billing dispute or audit.</p></div>
   <h3>Resolution: archive, then purge</h3>
   <div class="pipe">
     <div class="row"><div class="n">1</div><div class="b"><strong>Qualify</strong><span>Cycle closed and older than the retention window</span></div></div>
     <div class="row"><div class="n">2</div><div class="b"><strong>Archive</strong><span>Serialise contributing assessments to a compressed file attached to the obligation</span></div></div>
     <div class="row"><div class="n">3</div><div class="b"><strong>Stamp</strong><span>Archived-on date and archive checksum on the obligation</span></div></div>
-    <div class="row"><div class="n">4</div><div class="b"><strong>Purge</strong><span>Batch-delete assessments, then roster rows — keep the file header</span></div></div>
+    <div class="row"><div class="n">4</div><div class="b"><strong>Purge</strong><span>Batch-delete assessments, then roster rows, keep the file header</span></div></div>
     <div class="row"><div class="n">5</div><div class="b"><strong>Retain</strong><span>Obligations and communications kept 5 years+</span></div></div>
   </div>
   <h4>Purge guards, all mandatory</h4>
   <ul>
-    <li>Purge flag must be true — <strong>default false</strong>. A destructive job is never on by default.</li>
+    <li>Purge flag must be true; it defaults to <strong>false</strong>. A destructive job is never on by default.</li>
     <li>Cycle closed <em>and</em> due date older than the retention window.</li>
     <li>Never delete anything attached to an obligation that is unpaid, partially paid or in dispute.</li>
     <li>Dry-run mode reports the counts it <em>would</em> delete, for one full cycle of review before the first live purge.</li>
     <li>Every run writes a log with counts and archive references.</li>
   </ul>
-  <p>At ~200K rows a year, roster staging is material against data storage — which is exactly why the one-year purge is right. The archives live in file storage, far cheaper, and preserve the audit trail.</p>
+  <p>At ~200K rows a year, roster staging is material against data storage, which is exactly why the one-year purge is right. The archives live in file storage, far cheaper, and preserve the audit trail.</p>
   <h3>Adjustments after publication</h3>
   <div class="tw"><table>
     <thead><tr><th>Scenario</th><th>Handling</th></tr></thead>
@@ -621,10 +621,10 @@ flowchart TB
       <tr><td>Provider leaves before the notice is sent</td><td>Assessment marked Removed; obligation recomputed (not yet frozen)</td></tr>
       <tr><td>Provider leaves after the notice, before payment</td><td>Approved adjustment &rarr; amount updated, previous link deactivated, new link generated, revised notice sent</td></tr>
       <tr><td>Provider leaves after payment</td><td>No refund (per PRD). Credit noted for the next cycle, flagged on the account</td></tr>
-      <tr><td>Provider added mid-cycle on a frozen obligation</td><td>Supplemental obligation or adjustment — per market metadata</td></tr>
+      <tr><td>Provider added mid-cycle on a frozen obligation</td><td>Supplemental obligation or adjustment, per market metadata</td></tr>
     </tbody>
   </table></div>
-  <p>Every adjustment is audited: who, when, why, old and new amount. A published amount is never edited silently — that is the whole point of the freeze.</p>
+  <p>Every adjustment is audited: who, when, why, old and new amount. A published amount is never edited silently, that is the whole point of the freeze.</p>
 </section>
 
 <section id="bulk">
@@ -634,9 +634,9 @@ flowchart TB
     <li><strong>Every service method takes a collection.</strong> No single-record public entry points except a thin wrapper for quick actions that delegates to the bulk method.</li>
     <li><strong>One trigger per object</strong>, handler pattern, with a metadata bypass so data loads and migrations disable triggers without a deployment.</li>
     <li><strong>The staging object stays trigger-free.</strong></li>
-    <li><strong>Selective queries only</strong> — filter on External Ids, lookups and created dates; avoid negations, leading wildcards and formula-field filters on large objects.</li>
-    <li><strong>Scopes are configuration</strong>, not constants: 2,000 for DML stages, 200 for resolution-heavy stages, 10&ndash;20 for callout stages.</li>
-    <li><strong>Stateful only for counters</strong> — never for record collections.</li>
+    <li><strong>Selective queries only</strong>: filter on External Ids, lookups and created dates; avoid negations, leading wildcards and formula-field filters on large objects.</li>
+    <li><strong>Scopes are configuration</strong>, not constants: 2,000 for DML stages, 200 for resolution-heavy stages, 10-20 for callout stages.</li>
+    <li><strong>Stateful only for counters</strong>, never for record collections.</li>
     <li><strong>Bulk API 2.0</strong> for the inbound load; never row-by-row synchronous insert.</li>
     <li><strong>Volume tests at 10&times; expected</strong>: 200 and 2,000-record chunks in unit tests, a 100K-row load in full sandbox before go-live.</li>
   </ol>
@@ -650,16 +650,16 @@ flowchart TB
       <tr><td>Aggregate</td><td>5 @ 2,000</td><td>~3</td><td>2</td><td>0</td><td>&lt; 2 min</td></tr>
       <tr><td><strong>Links</strong></td><td>1,000 @ 10</td><td>~2</td><td>1</td><td>10</td><td><strong>~50 min</strong></td></tr>
       <tr><td>Materialise</td><td>3 @ 2,000</td><td>~3</td><td>1</td><td>0</td><td>&lt; 1 min</td></tr>
-      <tr><td>Dispatch</td><td>throttled</td><td>~4</td><td>2</td><td>0&ndash;1</td><td>capped by channel</td></tr>
+      <tr><td>Dispatch</td><td>throttled</td><td>~4</td><td>2</td><td>0-1</td><td>capped by channel</td></tr>
     </tbody>
   </table></div>
-  <p>All comfortably inside platform limits, with link generation as the long pole — which is why it runs overnight, well ahead of the first notice date.</p>
+  <p>All comfortably inside platform limits, with link generation as the long pole, which is why it runs overnight, well ahead of the first notice date.</p>
   <h3>Security and compliance</h3>
   <ul>
-    <li><strong>PCI:</strong> no card number, CVV, expiry or bank account in any custom field, debug log or exception message. Settlement code allow-lists the fields it copies — it never serialises a whole payment record into a log.</li>
+    <li><strong>PCI:</strong> no card number, CVV, expiry or bank account in any custom field, debug log or exception message. Settlement code allow-lists the fields it copies, it never serialises a whole payment record into a log.</li>
     <li><strong>The payment link URL is a bearer secret.</strong> Field-level security restricts it to the dues operations permission set, and it is excluded from broadly shared report types and the guest profile.</li>
     <li><strong>Guest access:</strong> the Pay Now site is the managed data channel. Custom dues objects are not exposed to the guest user.</li>
-    <li><strong>Least privilege:</strong> four permission sets — Operations, Finance, Admin, Integration. No profile-level grants.</li>
+    <li><strong>Least privilege:</strong> four permission sets, Operations, Finance, Admin, Integration. No profile-level grants.</li>
     <li><strong>Named credentials</strong> for any external channel; no endpoints or keys in code or metadata text.</li>
     <li><strong>Audit:</strong> field history on amount, status and payment fields; Setup Audit Trail on metadata flag changes.</li>
   </ul>
@@ -669,16 +669,16 @@ flowchart TB
   <div class="sechead"><span class="num">15</span><h2>Email volume: the answer</h2></div>
   <div class="stat">
     <div class="big">5,000</div>
-    <div class="txt"><b>External email recipients per day — for the entire org</b><span>Not per user, not per feature, not per market. Shared with case emails, approvals and every other team's automation. Resets on GMT midnight.</span></div>
+    <div class="txt"><b>External email recipients per day, for the entire org</b><span>Not per user, not per feature, not per market. Shared with case emails, approvals and every other team's automation. Resets on GMT midnight.</span></div>
   </div>
   <div class="tw"><table>
     <thead><tr><th>Limit</th><th>Value</th><th>Applies to</th></tr></thead>
     <tbody>
       <tr><td>Daily external recipients, org-wide</td><td><strong>5,000/day</strong></td><td>The whole org</td></tr>
-      <tr><td>Scope of that cap (orgs created Spring '19+)</td><td>&mdash;</td><td>Apex <code>sendEmail</code>, <strong>email alerts</strong>, <strong>flow Send Email</strong>, simple email action, REST API</td></tr>
+      <tr><td>Scope of that cap (orgs created Spring '19+)</td><td>n/a</td><td>Apex <code>sendEmail</code>, <strong>email alerts</strong>, <strong>flow Send Email</strong>, simple email action, REST API</td></tr>
       <tr><td>Emails to internal users via target object id</td><td><span class="yes">Exempt</span></td><td>Internal notifications are free</td></tr>
-      <tr><td>Emails to contacts, leads, person accounts</td><td><span class="no">Count as external</span></td><td>Our providers — these count</td></tr>
-      <tr><td>Email alerts, pre-Spring-'19 orgs</td><td>1,000 per licence/day, org max 2M</td><td>Only if this org predates Spring '19 — <a href="#open">verify</a></td></tr>
+      <tr><td>Emails to contacts, leads, person accounts</td><td><span class="no">Count as external</span></td><td>Our providers, these count</td></tr>
+      <tr><td>Email alerts, pre-Spring-'19 orgs</td><td>1,000 per licence/day, org max 2M</td><td>Only if this org predates Spring '19, <a href="#open">verify</a></td></tr>
       <tr><td>Apex per transaction</td><td>10 <code>sendEmail()</code> invocations</td><td>Batch design constraint</td></tr>
       <tr><td>List email in the UI</td><td>500 select-all, 200 manual</td><td>Not a viable bulk channel</td></tr>
     </tbody>
@@ -686,22 +686,22 @@ flowchart TB
   <h3>Three consequences that shape the build</h3>
   <ol>
     <li><strong>The 5,000 is the org's budget, not ours.</strong> A dues blast consuming 4,800 recipients can break unrelated business processes for the rest of that GMT day.</li>
-    <li><strong>Over-cap sends fail rather than queue.</strong> There is no built-in retry — without throttling we lose notices and never learn which ones.</li>
+    <li><strong>Over-cap sends fail rather than queue.</strong> There is no built-in retry; without throttling we lose notices and never learn which ones.</li>
     <li><strong>Email alerts are not a way around it</strong> in a modern org; the same cap covers them. Neither is Email Relay, which changes the <em>route</em>, not the <em>allocation</em>.</li>
   </ol>
   <h3>Applied to this programme</h3>
   <div class="tw"><table>
     <thead><tr><th>Scenario</th><th>Send units</th><th>Verdict</th></tr></thead>
     <tbody>
-      <tr><td><strong>Today</strong> — Texas CIN, ~10K providers billed at account level</td><td>~2,000&ndash;4,000 per notice event</td><td class="mid">Fits in a day — but consumes 40&ndash;80% of the org's entire email budget. Must be throttled and spread.</td></tr>
-      <tr><td><strong>Peak day</strong> — initial notice plus a monthly cycle plus normal org traffic</td><td>Could exceed 5,000</td><td class="no">Would fail without throttling</td></tr>
-      <tr><td><strong>Future</strong> — 100,000 accounts</td><td>100,000 per notice event</td><td class="no"><strong>Impossible on core Salesforce.</strong> 20 days per notice event; five notices per cycle would need 100 days of sending.</td></tr>
+      <tr><td><strong>Today</strong>: Texas CIN, ~10K providers billed at account level</td><td>~2,000-4,000 per notice event</td><td class="mid">Fits in a day, but consumes 40-80% of the org's entire email budget. Must be throttled and spread.</td></tr>
+      <tr><td><strong>Peak day</strong>: initial notice plus a monthly cycle plus normal org traffic</td><td>Could exceed 5,000</td><td class="no">Would fail without throttling</td></tr>
+      <tr><td><strong>Future</strong>: 100,000 accounts</td><td>100,000 per notice event</td><td class="no"><strong>Impossible on core Salesforce.</strong> 20 days per notice event; five notices per cycle would need 100 days of sending.</td></tr>
     </tbody>
   </table></div>
-  <h3>What we build in MVP — inside the time constraint</h3>
+  <h3>What we build in MVP: inside the time constraint</h3>
   <ol>
     <li><strong>Throttle by configuration.</strong> Daily cap, recommended start <strong>1,500/day</strong>, leaving the rest of the org's budget intact.</li>
-    <li><strong>Spread the initial notice</strong> over a configurable window (e.g. 3 days). Oldest scheduled notices go first; the remainder rolls to tomorrow as Deferred — visible, never dropped.</li>
+    <li><strong>Spread the initial notice</strong> over a configurable window (e.g. 3 days). Oldest scheduled notices go first; the remainder rolls to tomorrow as Deferred, visible, never dropped.</li>
     <li><strong>Check remaining capacity before sending.</strong> <code>Messaging.reserveSingleEmailCapacity()</code> reserves headroom and fails fast; a lightweight read of the org limits endpoint gives the dispatcher an accurate figure at run start.</li>
     <li><strong>Never exceed 10 send invocations per transaction</strong>; batch recipients within each.</li>
     <li><strong>Send off-peak</strong> (early GMT) so a partial failure leaves the same day to recover.</li>
@@ -712,15 +712,15 @@ flowchart TB
     <thead><tr><th>Option</th><th>Capacity</th><th>Effort</th><th>Cost</th><th>Delivery events</th><th>Verdict</th></tr></thead>
     <tbody>
       <tr><td><strong>Salesforce email</strong></td><td>&le; 5,000/day org-wide</td><td>In this project</td><td>$0</td><td>Coarse bounce flag</td><td class="yes">Build now</td></tr>
-      <tr><td><strong>Marketing Cloud Next</strong> (Growth / Advanced) — native on core + Data Cloud, dedicated IPs since Feb 2026</td><td>High</td><td>Moderate — the architecture already anticipates it</td><td>~$1,500 / ~$3,250 per org per month list</td><td>Full</td><td class="yes">Recommended target</td></tr>
+      <tr><td><strong>Marketing Cloud Next</strong> (Growth / Advanced), native on core + Data Cloud, dedicated IPs since Feb 2026</td><td>High</td><td>Moderate, the architecture already anticipates it</td><td>~$1,500 / ~$3,250 per org per month list</td><td>Full</td><td class="yes">Recommended target</td></tr>
       <tr><td>Marketing Cloud Engagement (transactional API)</td><td>Very high</td><td>Higher</td><td>Licence</td><td>Full</td><td class="mid">If the org already owns it</td></tr>
-      <tr><td><strong>External ESP</strong> via named-credential callout — <em>callouts do not consume Salesforce email limits</em></td><td>Very high</td><td>Low&ndash;moderate</td><td>Low, usage-based</td><td>Full webhooks — best bounce data</td><td class="yes">Best-value fallback</td></tr>
+      <tr><td><strong>External ESP</strong> via named-credential callout, <em>callouts do not consume Salesforce email limits</em></td><td>Very high</td><td>Low-moderate</td><td>Low, usage-based</td><td>Full webhooks, best bounce data</td><td class="yes">Best-value fallback</td></tr>
       <tr><td>Account Engagement (Pardot)</td><td>Tiered, B2B marketing</td><td>Moderate</td><td>Licence</td><td>Partial</td><td class="mid">Not suited to transactional receipts</td></tr>
       <tr><td>Email Relay</td><td><strong>Does not raise the limit</strong></td><td>Low</td><td>$0</td><td>No</td><td class="no">Not a volume solution</td></tr>
     </tbody>
   </table></div>
-  <div class="call"><span class="tag">Recommendation</span><p>Build MVP on Salesforce email <strong>behind the channel interface</strong>; plan Marketing Cloud Next for the volume phase; keep the external-ESP adapter as the fast, low-cost fallback if Marketing Cloud funding slips. In all three cases the dispatcher, guards, throttle, logging, retry and reporting are the same code — only the implementation class named in metadata changes.</p></div>
-  <div class="call risk"><span class="tag">Direct answer</span><p><strong>No, Salesforce cannot accept 100K email notifications.</strong> Not with email alerts, not with Apex, not with Email Relay, not with a limit-increase request. The 5,000/day org cap is architectural. Plan the channel migration <em>before</em> the second market goes live — and note that even the ~10K case works today only because we throttle it.</p></div>
+  <div class="call"><span class="tag">Recommendation</span><p>Build MVP on Salesforce email <strong>behind the channel interface</strong>; plan Marketing Cloud Next for the volume phase; keep the external-ESP adapter as the fast, low-cost fallback if Marketing Cloud funding slips. In all three cases the dispatcher, guards, throttle, logging, retry and reporting are the same code, only the implementation class named in metadata changes.</p></div>
+  <div class="call risk"><span class="tag">Direct answer</span><p><strong>No, Salesforce cannot accept 100K email notifications.</strong> Not with email alerts, not with Apex, not with Email Relay, not with a limit-increase request. The 5,000/day org cap is architectural. Plan the channel migration <em>before</em> the second market goes live, and note that even the ~10K case works today only because we throttle it.</p></div>
 </section>
 
 <section id="paynow">
@@ -728,14 +728,14 @@ flowchart TB
   <div class="tw"><table>
     <thead><tr><th>Capability</th><th>Assessment</th></tr></thead>
     <tbody>
-      <tr><td>Hosted checkout on Experience Cloud</td><td class="yes">Removes Salesforce from PCI scope for card data — the biggest compliance win</td></tr>
+      <tr><td>Hosted checkout on Experience Cloud</td><td class="yes">Removes Salesforce from PCI scope for card data, the biggest compliance win</td></tr>
       <tr><td>Payment link with a predefined amount, shareable by email</td><td class="yes">Exactly the model this programme needs</td></tr>
-      <tr><td>Guest checkout, no login</td><td class="yes">Critical — providers will not create portal accounts to pay dues</td></tr>
+      <tr><td>Guest checkout, no login</td><td class="yes">Critical: providers will not create portal accounts to pay dues</td></tr>
       <tr><td>Standard objects: Payment Link, Payment Intent, Payment, Payment Method, Payment Gateway</td><td class="yes">Native reporting and correlation, API 58.0+</td></tr>
-      <tr><td>Flow action to generate links</td><td class="mid">Exists — but record-at-a-time; hence the batch design</td></tr>
+      <tr><td>Flow action to generate links</td><td class="mid">Exists, but record-at-a-time; hence the batch design</td></tr>
       <tr><td>Tokenisation</td><td class="yes">Only tokens and references stored in Salesforce</td></tr>
       <tr><td>Cards and digital wallets</td><td class="yes">Supported</td></tr>
-      <tr><td><strong>ACH</strong></td><td class="mid">Provider-dependent (US-based merchant required with Stripe). <strong>The PRD requires ACH — verify before commitment.</strong></td></tr>
+      <tr><td><strong>ACH</strong></td><td class="mid">Provider-dependent (US-based merchant required with Stripe). <strong>The PRD requires ACH, verify before commitment.</strong></td></tr>
       <tr><td>Bulk link generation</td><td class="mid">Not offered as a bulk API</td></tr>
       <tr><td>Prerequisite</td><td class="mid">An Experience Cloud site must be configured as the payments data channel</td></tr>
     </tbody>
@@ -747,14 +747,14 @@ flowchart TB
       <tr><td>Pay Now + record-triggered flow only</td><td>Zero code</td><td>Fails at 10K scale; no retry, throttle or dead-letter</td><td class="mid">Keep only for the manual one-off link button</td></tr>
       <tr><td>Third-party gateway app</td><td>Mature dunning, ACH, surcharging</td><td>New licence, new PCI review, reverses an approved decision</td><td class="mid">Fallback only if Pay Now cannot do ACH</td></tr>
       <tr><td>Direct custom gateway integration</td><td>Maximum control</td><td>Highest build and PCI burden; duplicates a licensed product</td><td class="no">Rejected</td></tr>
-      <tr><td>Invoice-only (status quo plus links)</td><td>Minimal build</td><td>Does not solve collections — the actual problem</td><td class="no">Rejected</td></tr>
+      <tr><td>Invoice-only (status quo plus links)</td><td>Minimal build</td><td>Does not solve collections: the actual problem</td><td class="no">Rejected</td></tr>
     </tbody>
   </table></div>
 </section>
 
 <section id="market">
-  <div class="sechead"><span class="num">17</span><h2>Adding a new market — the framework proof</h2></div>
-  <p><strong>Scenario:</strong> market #2 — monthly invoices, $250 per provider, one TIN priced at $195 by contract, a different reminder cadence, notifications initially off while data is validated.</p>
+  <div class="sechead"><span class="num">17</span><h2>Adding a new market: the framework proof</h2></div>
+  <p><strong>Scenario:</strong> market #2, monthly invoices, $250 per provider, one TIN priced at $195 by contract, a different reminder cadence, notifications initially off while data is validated.</p>
   <div class="tw"><table>
     <thead><tr><th>#</th><th>Change</th><th>Type</th><th>Who</th><th>Time</th></tr></thead>
     <tbody>
@@ -765,12 +765,12 @@ flowchart TB
       <tr><td>5</td><td>Cycle record for the period</td><td><strong>Data</strong></td><td>Business</td><td>5 min</td></tr>
       <tr><td>6</td><td>Email templates</td><td>Config</td><td>Marketing</td><td>varies</td></tr>
       <tr><td>7</td><td>Integration settings: payment method set, channel</td><td>Config</td><td>Admin</td><td>10 min</td></tr>
-      <tr><td>8</td><td>Source mapping — <em>only if</em> the roster feed has a different shape</td><td>Config</td><td>Admin</td><td>15 min</td></tr>
-      <tr><td><strong>9</strong></td><td><strong>Apex, Flow or object changes</strong></td><td>&mdash;</td><td>&mdash;</td><td class="yes"><strong>None</strong></td></tr>
+      <tr><td>8</td><td>Source mapping, <em>only if</em> the roster feed has a different shape</td><td>Config</td><td>Admin</td><td>15 min</td></tr>
+      <tr><td><strong>9</strong></td><td><strong>Apex, Flow or object changes</strong></td><td>n/a</td><td>n/a</td><td class="yes"><strong>None</strong></td></tr>
     </tbody>
   </table></div>
   <p>Then flip notifications on when validated. <strong>That is the test of whether this is a framework</strong>, and the design is built to pass it.</p>
-  <div class="call"><span class="tag">Where the boundary honestly sits</span><p>A genuinely new <em>concept</em> still needs code — instalment plans, proration arithmetic, a new payment channel, or a billing level that is neither account nor provider. Those are new capabilities, not new markets. The design isolates them behind interfaces (rate strategy, aggregation strategy, notification channel), so even these are additive rather than invasive.</p></div>
+  <div class="call"><span class="tag">Where the boundary honestly sits</span><p>A genuinely new <em>concept</em> still needs code: instalment plans, proration arithmetic, a new payment channel, or a billing level that is neither account nor provider. Those are new capabilities, not new markets. The design isolates them behind interfaces (rate strategy, aggregation strategy, notification channel), so even these are additive rather than invasive.</p></div>
 </section>
 
 <section id="reports">
@@ -779,15 +779,15 @@ flowchart TB
   <div class="tw"><table>
     <thead><tr><th>Report</th><th>Built on</th><th>Note</th></tr></thead>
     <tbody>
-      <tr><td>A/R aging</td><td>Obligation</td><td>Buckets from a days-overdue formula: 0&ndash;30 / 31&ndash;60 / 61&ndash;90 / 90+</td></tr>
+      <tr><td>A/R aging</td><td>Obligation</td><td>Buckets from a days-overdue formula: 0-30 / 31-60 / 61-90 / 90+</td></tr>
       <tr><td>Paid provider dues</td><td>Obligation + assessment</td><td>Grouped by market, cycle, account</td></tr>
       <tr><td>Unpaid provider dues</td><td>Obligation</td><td>Payment status unpaid</td></tr>
       <tr><td>Overdue provider dues</td><td>Obligation</td><td>Unpaid and past due date</td></tr>
       <tr><td><strong>New provider dues gap</strong></td><td>Generated object</td><td>See the design note below</td></tr>
     </tbody>
   </table></div>
-  <div class="call"><span class="tag">The gap report needs a real design</span><p>"Providers in Health Cloud with no dues assessment for the current cycle" is a <em>does-not-exist</em> query, which Salesforce reports handle poorly at scale. <strong>Recommendation:</strong> a nightly detection batch writes gap records, and the report runs on that object. This also gives a working queue with assignment and resolution state — which a report of absences cannot — and it is what actually triggers the manual dues-assignment task the PRD describes.</p></div>
-  <p><strong>Dashboard:</strong> total assessed, total collected, outstanding balance, collection rate, unpaid providers, overdue accounts, records needing manual intervention, status by account and by NPI, aging by days overdue — <em>plus operational tiles</em>: exception queue depth, link success rate, notices sent/failed/deferred today, unreconciled payments.</p>
+  <div class="call"><span class="tag">The gap report needs a real design</span><p>"Providers in Health Cloud with no dues assessment for the current cycle" is a <em>does-not-exist</em> query, which Salesforce reports handle poorly at scale. <strong>Recommendation:</strong> a nightly detection batch writes gap records, and the report runs on that object. This also gives a working queue with assignment and resolution state, which a report of absences cannot, and it is what actually triggers the manual dues-assignment task the PRD describes.</p></div>
+  <p><strong>Dashboard:</strong> total assessed, total collected, outstanding balance, collection rate, unpaid providers, overdue accounts, records needing manual intervention, status by account and by NPI, aging by days overdue, <em>plus operational tiles</em>: exception queue depth, link success rate, notices sent/failed/deferred today, unreconciled payments.</p>
   <h3>Test strategy</h3>
   <div class="tw"><table>
     <thead><tr><th>Level</th><th>Coverage</th></tr></thead>
@@ -796,7 +796,7 @@ flowchart TB
       <tr><td><strong>Idempotency</strong></td><td>Run every stage twice, assert identical results and no duplicate assessments, obligations, links or communications. <strong>The single most valuable test in the suite.</strong></td></tr>
       <tr><td>Accuracy</td><td>12 providers &rarr; exactly 12 &times; rate; rounding to the cent; calculation-hash verification; sum of assessments equals the obligation, always.</td></tr>
       <tr><td>Concurrency</td><td>Two settlement events for one obligation &rarr; one state transition, one receipt.</td></tr>
-      <tr><td>Mocking</td><td>Link provider and notification channel both have mock implementations. <strong>Tests never call the real gateway and never send real email</strong> — which is why both are interfaces.</td></tr>
+      <tr><td>Mocking</td><td>Link provider and notification channel both have mock implementations. <strong>Tests never call the real gateway and never send real email</strong>: which is why both are interfaces.</td></tr>
       <tr><td>Volume</td><td>Full-copy sandbox: 100K roster rows via Bulk API, whole pipeline timed against the limit budget.</td></tr>
       <tr><td>Negative</td><td>Partial file, control-total mismatch, malformed rows, gateway timeout, over-cap email, frozen-obligation change attempt, purge with an unpaid obligation.</td></tr>
     </tbody>
@@ -808,14 +808,14 @@ flowchart TB
   <div class="tw"><table>
     <thead><tr><th>Phase</th><th>Scope</th><th>Exit criteria</th></tr></thead>
     <tbody>
-      <tr><td><strong>0 — Verify</strong><br><span style="color:var(--muted);font-size:13px">week 1, parallel</span></td><td>Pay Now action contract, ACH, Payment Intent automation, org email regime, roster file id and completion signal</td><td>All answered; design deltas absorbed</td></tr>
-      <tr><td><strong>1 — Foundation</strong></td><td>Objects, keys, metadata layer, permission sets, run log, orchestrator skeleton, trigger framework</td><td>A configured market exists with no hard-coded functional path</td></tr>
-      <tr><td><strong>2 — Roster to obligation</strong></td><td>Ingest, latest-file selection, resolution, dedup, aggregation, approval gate, exception queue</td><td>100K-row load produces provably accurate obligations; idempotency suite green</td></tr>
-      <tr><td><strong>3 — Links</strong></td><td>Link provider interface, batch, retry, dead letter, manual link action, offline payment action</td><td>10K links inside the overnight window; duplicate-link test green</td></tr>
-      <tr><td><strong>4 — Notifications</strong></td><td>Schedule calculator, materializer, dispatcher, guards, throttle, templates, newsletter, flags</td><td>All five notice types on the PRD calendar; kill switch verified in a production drill</td></tr>
-      <tr><td><strong>5 — Settlement</strong></td><td>Flow, event and batch correlation, settlement service, receipts, reconciliation</td><td>Card, ACH and check all settle; duplicate-event test green</td></tr>
-      <tr><td><strong>6 — Reporting &amp; retention</strong></td><td>MVP reports, dashboard, gap detection, archive and purge</td><td>Reports signed off; purge dry-run reviewed for a full cycle before enabling</td></tr>
-      <tr><td><strong>7 — Hardening</strong></td><td>Volume test, security review, runbook, ops training</td><td>Go-live readiness</td></tr>
+      <tr><td><strong>0: Verify</strong><br><span style="color:var(--muted);font-size:13px">week 1, parallel</span></td><td>Pay Now action contract, ACH, Payment Intent automation, org email regime, roster file id and completion signal</td><td>All answered; design deltas absorbed</td></tr>
+      <tr><td><strong>1: Foundation</strong></td><td>Objects, keys, metadata layer, permission sets, run log, orchestrator skeleton, trigger framework</td><td>A configured market exists with no hard-coded functional path</td></tr>
+      <tr><td><strong>2: Roster to obligation</strong></td><td>Ingest, latest-file selection, resolution, dedup, aggregation, approval gate, exception queue</td><td>100K-row load produces provably accurate obligations; idempotency suite green</td></tr>
+      <tr><td><strong>3: Links</strong></td><td>Link provider interface, batch, retry, dead letter, manual link action, offline payment action</td><td>10K links inside the overnight window; duplicate-link test green</td></tr>
+      <tr><td><strong>4: Notifications</strong></td><td>Schedule calculator, materializer, dispatcher, guards, throttle, templates, newsletter, flags</td><td>All five notice types on the PRD calendar; kill switch verified in a production drill</td></tr>
+      <tr><td><strong>5: Settlement</strong></td><td>Flow, event and batch correlation, settlement service, receipts, reconciliation</td><td>Card, ACH and check all settle; duplicate-event test green</td></tr>
+      <tr><td><strong>6: Reporting &amp; retention</strong></td><td>MVP reports, dashboard, gap detection, archive and purge</td><td>Reports signed off; purge dry-run reviewed for a full cycle before enabling</td></tr>
+      <tr><td><strong>7: Hardening</strong></td><td>Volume test, security review, runbook, ops training</td><td>Go-live readiness</td></tr>
     </tbody>
   </table></div>
   <p><strong>Critical path:</strong> Phase 0 &rarr; 2 &rarr; 3. Notifications can be built in parallel with links, because the channel interface separates them.</p>
@@ -823,15 +823,15 @@ flowchart TB
 
 <section id="open">
   <div class="sechead"><span class="num">20</span><h2>Decisions, verifications and gaps</h2></div>
-  <h3>Verify in the target org — week 1</h3>
+  <h3>Verify in the target org: week 1</h3>
   <div class="tw"><table>
     <thead><tr><th>#</th><th>Item</th><th>Why it matters</th><th>If unfavourable</th></tr></thead>
     <tbody>
-      <tr><td>V-01</td><td>Exact API name and parameter contract of the Generate Payment Link action; does it accept a list?</td><td>Determines the link batch implementation</td><td>Swap the provider implementation — one class</td></tr>
+      <tr><td>V-01</td><td>Exact API name and parameter contract of the Generate Payment Link action; does it accept a list?</td><td>Determines the link batch implementation</td><td>Swap the provider implementation, one class</td></tr>
       <tr><td>V-02</td><td><strong>ACH availability</strong> on the configured payment provider</td><td>PRD functional requirement</td><td>Card + check at launch, ACH in phase 2, or reconsider gateway</td></tr>
       <tr><td>V-03</td><td>Does Payment Intent support record-triggered flows or triggers?</td><td>The preferred settlement mechanism</td><td>Platform event subscriber; the correlation batch runs regardless</td></tr>
       <tr><td>V-04</td><td>Org created before or after Spring '19? Read the org limits endpoint for current headroom</td><td>Decides whether email alerts share the 5,000 cap</td><td>Sets the throttle values</td></tr>
-      <tr><td>V-05</td><td>Can upstream supply a file id and a completion signal?</td><td>Latest-file selection correctness</td><td>Quiet-period fallback only — a documented, accepted risk</td></tr>
+      <tr><td>V-05</td><td>Can upstream supply a file id and a completion signal?</td><td>Latest-file selection correctness</td><td>Quiet-period fallback only, a documented, accepted risk</td></tr>
       <tr><td>V-06</td><td>Can the obligation hold a lookup to Payment Link / Payment Intent?</td><td>Reporting convenience</td><td>Store the reference as an indexed External Id text field</td></tr>
       <tr><td>V-07</td><td>UAT has production-like data</td><td>Volume and resolution testing</td><td>Generate synthetic data at 10&times; volume</td></tr>
     </tbody>
@@ -840,8 +840,8 @@ flowchart TB
   <div class="tw"><table>
     <thead><tr><th>#</th><th>Decision</th><th>Recommendation</th></tr></thead>
     <tbody>
-      <tr><td>D-01</td><td>Object naming — Annual Account Dues vs Dues Obligation</td><td><strong>Rename now</strong>; monthly invoices are already in the PRD</td></tr>
-      <tr><td>D-02</td><td>Assessment retention: 1 year vs the PRD's 5 years</td><td><strong>Archive then purge</strong> — satisfies both</td></tr>
+      <tr><td>D-01</td><td>Object naming: Annual Account Dues vs Dues Obligation</td><td><strong>Rename now</strong>; monthly invoices are already in the PRD</td></tr>
+      <tr><td>D-02</td><td>Assessment retention: 1 year vs the PRD's 5 years</td><td><strong>Archive then purge</strong>: satisfies both</td></tr>
       <tr><td>D-03</td><td>Reminder calendar: PRD dates vs the lifecycle diagram</td><td><strong>Implement the PRD dates</strong>; update the diagram</td></tr>
       <tr><td>D-04</td><td>One-time-use link vs one active link per obligation</td><td><strong>One active link</strong>, deactivated on payment</td></tr>
       <tr><td>D-05</td><td>Newsletter as attachment vs hosted link</td><td>Hosted link for deliverability; attachment if business insists</td></tr>
@@ -853,11 +853,11 @@ flowchart TB
   </table></div>
   <h3>Gaps between the PRD and the current diagrams</h3>
   <ol>
-    <li><strong>Monthly invoices</strong> appear in no diagram — covered here by the schedule calculation method and D-01.</li>
+    <li><strong>Monthly invoices</strong> appear in no diagram, covered here by the schedule calculation method and D-01.</li>
     <li><strong>Paper checks</strong> remain accepted but no diagram shows an offline payment path.</li>
     <li><strong>Newsletter PDF</strong> attachment is absent from the diagrams.</li>
     <li><strong>Bounce handling</strong> is required by the PRD and absent from the diagrams.</li>
-    <li><strong>Termination review task</strong> for named owners is shown only as a report — it should be an assigned Task.</li>
+    <li><strong>Termination review task</strong> for named owners is shown only as a report; it should be an assigned Task.</li>
     <li><strong>The reporting layer</strong> is absent from the architecture diagram.</li>
     <li><strong>Reminder dates</strong> differ between the PRD and the lifecycle diagram (D-03).</li>
     <li><strong>Retention conflict</strong> between the 1-year purge and the PRD's 5 years (D-02).</li>
