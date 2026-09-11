@@ -1,0 +1,360 @@
+<title>Email-to-Case with Prompt Builder</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+  :root{
+    --paper:#ffffff;
+    --ink:#0E0E10;
+    --body-ink:#232028;
+    --muted:#6B6570;
+    --rule:#E4DFE6;
+    --pink:#E8117F;
+    --teal:#00A9BC;
+    --sidebar:#111013;
+    --sidebar-dim:#B9B3BD;
+    --page-bg:#EDE9EE;
+    --band:linear-gradient(100deg,#420B2E 0%,#2A0F26 26%,#1B1A16 46%,#3A4114 66%,#0D3A1F 100%);
+  }
+  :root:not([data-theme="light"]){ }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --page-bg:#17151A; }
+  }
+  :root[data-theme="dark"]{ --page-bg:#17151A; }
+
+  body{
+    background:var(--page-bg);
+    color:var(--body-ink);
+    font-family:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+    padding-block:24px;
+    padding-left:16px; padding-right:16px;
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+
+  .slide{
+    container-type:inline-size;
+    width:min(100%,1600px);
+    aspect-ratio:16/9;
+    background:var(--paper);
+    color:var(--body-ink);
+    display:grid;
+    grid-template-rows:auto 1fr auto;
+    overflow:hidden;
+    box-shadow:0 18px 50px rgba(20,10,25,.28);
+    /* type scale, expressed against slide width */
+    --t-title:3.45cqw;
+    --t-eyebrow:.92cqw;
+    --t-chip:1.0cqw;
+    --t-label:1.05cqw;
+    --t-body:1.02cqw;
+    --t-bullet:.96cqw;
+    --t-stat:3.5cqw;
+    --t-statlab:.9cqw;
+    --t-step:.86cqw;
+    --t-foot:.82cqw;
+    --pad:2.3cqw;
+  }
+
+  /* ---------- header band ---------- */
+  .band{
+    background:var(--band);
+    color:#fff;
+    padding:1.9cqw var(--pad) 2.1cqw;
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:start;
+    column-gap:2cqw;
+  }
+  .eyebrow{
+    font-family:"Figtree",sans-serif;
+    font-weight:700;
+    font-size:var(--t-eyebrow);
+    letter-spacing:.34em;
+    text-transform:uppercase;
+    color:#EFE6EC;
+    opacity:.92;
+  }
+  .band h1{
+    font-family:"Figtree",sans-serif;
+    font-weight:800;
+    font-size:var(--t-title);
+    line-height:1.03;
+    letter-spacing:-.015em;
+    margin:.5cqw 0 0;
+    text-wrap:balance;
+    max-width:20ch;
+  }
+  .chip{
+    justify-self:end;
+    border:.11cqw solid rgba(255,255,255,.62);
+    border-radius:99em;
+    padding:.62cqw 1.35cqw;
+    font-family:"Figtree",sans-serif;
+    font-weight:600;
+    font-size:var(--t-chip);
+    white-space:nowrap;
+  }
+
+  /* ---------- body grid ---------- */
+  .body{
+    display:grid;
+    grid-template-columns:23.5% 33% 1fr;
+    min-height:0;
+  }
+
+  .label{
+    font-family:"Figtree",sans-serif;
+    font-weight:700;
+    font-size:var(--t-label);
+    letter-spacing:.24em;
+    text-transform:uppercase;
+  }
+
+  /* left dark rail */
+  .rail{
+    background:var(--sidebar);
+    color:#fff;
+    padding:2.1cqw 1.9cqw 1.6cqw var(--pad);
+    display:flex; flex-direction:column; gap:1.5cqw;
+    min-height:0;
+  }
+  .rail .label{ color:#fff; }
+  .rail p{ margin:.7cqw 0 0; font-size:var(--t-body); line-height:1.42; color:#E8E4EA; }
+  .rail .u{ border-bottom:.09cqw solid rgba(255,255,255,.45); }
+  .rail ul{ margin:.85cqw 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:.75cqw; }
+  .rail li{
+    font-size:var(--t-bullet); line-height:1.38; color:#CFC9D3;
+    padding-left:1.15cqw; position:relative;
+  }
+  .rail li::before{
+    content:""; position:absolute; left:0; top:.55em;
+    width:.34cqw; height:.34cqw; border-radius:50%; background:var(--pink);
+  }
+
+  /* middle solution column */
+  .sol{
+    padding:2.1cqw 1.9cqw 1.6cqw 1.9cqw;
+    border-right:.07cqw solid var(--rule);
+    display:flex; flex-direction:column; gap:.85cqw;
+    min-height:0;
+  }
+  .sol .label{ color:var(--ink); }
+  .lede{ font-size:var(--t-body); line-height:1.4; margin:0; }
+  .lede b{ font-weight:700; color:var(--ink); }
+  .sol ol{ margin:.15cqw 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:.72cqw; counter-reset:s; }
+  .sol li{
+    font-size:var(--t-bullet); line-height:1.36; color:#3A3540;
+    padding-left:2.1cqw; position:relative; counter-increment:s;
+  }
+  .sol li::before{
+    content:counter(s,decimal-leading-zero);
+    position:absolute; left:0; top:.06em;
+    font-family:"Figtree",sans-serif; font-weight:700; font-size:.82cqw;
+    color:var(--pink); letter-spacing:.02em;
+    font-variant-numeric:tabular-nums;
+  }
+  .sol li b{ font-weight:700; color:var(--ink); }
+
+  /* right results column */
+  .res{
+    padding:2.1cqw var(--pad) 1.6cqw 1.9cqw;
+    display:flex; flex-direction:column; gap:1.1cqw;
+    min-height:0;
+  }
+  .res .label{ color:var(--ink); }
+  .stats{ display:grid; grid-template-columns:1fr 1fr; column-gap:1.6cqw; row-gap:1.05cqw; }
+  .stat .n{
+    font-family:"Figtree",sans-serif; font-weight:700;
+    font-size:var(--t-stat); line-height:.98; color:var(--pink);
+    letter-spacing:-.02em; font-variant-numeric:tabular-nums;
+  }
+  .stat .d{ font-size:var(--t-statlab); line-height:1.34; color:#443F4A; margin-top:.3cqw; }
+
+  .payoff{
+    background:#F7F4F8;
+    border-left:.28cqw solid var(--pink);
+    padding:.95cqw 1.2cqw;
+    font-size:var(--t-statlab);
+    line-height:1.38;
+  }
+  .payoff b{ font-family:"Figtree",sans-serif; font-weight:700; color:var(--ink); }
+
+  /* process flow */
+  .flow-head{ display:flex; align-items:baseline; justify-content:space-between; gap:1cqw; }
+  .keys{ display:flex; gap:1cqw; font-size:.74cqw; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; font-family:"Figtree",sans-serif; font-weight:600; }
+  .keys span{ display:inline-flex; align-items:center; gap:.35cqw; }
+  .dot{ width:.45cqw; height:.45cqw; border-radius:50%; display:inline-block; }
+  .dot.p{ background:var(--pink); } .dot.t{ background:var(--teal); }
+
+  .flow{ display:grid; grid-template-columns:repeat(3,1fr); gap:.7cqw; }
+  .step{
+    border:.07cqw solid var(--rule);
+    border-left:.28cqw solid var(--teal);
+    padding:.7cqw .8cqw .75cqw;
+    display:flex; flex-direction:column; gap:.2cqw;
+  }
+  .step.ai{ border-left-color:var(--pink); }
+  .step .k{
+    font-family:"Figtree",sans-serif; font-weight:700; font-size:.72cqw;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--muted);
+    font-variant-numeric:tabular-nums;
+  }
+  .step .h{ font-family:"Figtree",sans-serif; font-weight:700; font-size:var(--t-step); color:var(--ink); line-height:1.2; }
+  .step .s{ font-size:.79cqw; line-height:1.3; color:#565061; }
+
+  .note{ font-size:.72cqw; color:var(--muted); font-style:italic; margin:0; }
+
+  /* footer */
+  .foot{
+    border-top:.07cqw solid var(--rule);
+    margin:0 var(--pad);
+    padding:.95cqw 0 1.25cqw;
+    display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:1.5cqw;
+    font-size:var(--t-foot); color:#4A4551;
+  }
+  .mark{ font-family:"Figtree",sans-serif; font-weight:800; font-size:1.35cqw; color:var(--ink); letter-spacing:-.02em; position:relative; display:inline-block; }
+  .mark i{ position:absolute; bottom:-.15cqw; width:.42cqw; height:.42cqw; border-radius:50%; }
+  .mark i.p{ background:var(--pink); left:1.55cqw; }
+  .mark i.t{ background:var(--teal); left:2.35cqw; }
+  .foot a{ color:var(--pink); text-decoration:underline; text-underline-offset:.18em; }
+  .foot .r{ color:var(--muted); white-space:nowrap; }
+
+  .caption{
+    width:min(100%,1600px);
+    font-size:13px; color:var(--muted); margin:0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .caption{ color:#9A93A2; }
+  }
+  :root[data-theme="dark"] .caption{ color:#9A93A2; }
+
+  /* ---------- narrow screens: stack into a readable document ---------- */
+  @media (max-width:900px){
+    .slide{
+      container-type:normal;
+      aspect-ratio:auto;
+      --pad:22px;
+      --t-title:30px; --t-eyebrow:10px; --t-chip:12px; --t-label:12px;
+      --t-body:15px; --t-bullet:14px; --t-stat:38px; --t-statlab:13px;
+      --t-step:14px; --t-foot:12px;
+    }
+    .band{ grid-template-columns:1fr; row-gap:14px; padding:22px var(--pad) 26px; }
+    .chip{ justify-self:start; border-width:1px; padding:7px 14px; white-space:normal; }
+    .band h1{ margin-top:8px; max-width:none; }
+    .body{ grid-template-columns:1fr; }
+    .rail{ padding:24px var(--pad); gap:18px; }
+    .rail p{ margin-top:8px; } .rail ul{ margin-top:10px; gap:10px; }
+    .rail li{ padding-left:14px; } .rail li::before{ width:5px; height:5px; }
+    .rail .u{ border-bottom-width:1px; }
+    .sol,.res{ padding:24px var(--pad); gap:14px; border-right:0; }
+    .sol ol{ gap:12px; } .sol li{ padding-left:26px; }
+    .sol li::before{ font-size:12px; }
+    .stats{ grid-template-columns:1fr 1fr; column-gap:18px; row-gap:16px; }
+    .payoff{ border-left-width:4px; padding:12px 14px; }
+    .flow{ grid-template-columns:1fr; gap:10px; }
+    .step{ border-width:1px; border-left-width:4px; padding:10px 12px; gap:3px; }
+    .step .k{ font-size:10px; } .step .s{ font-size:13px; }
+    .keys{ font-size:10px; } .dot{ width:7px; height:7px; }
+    .note{ font-size:11px; }
+    .foot{ grid-template-columns:1fr; gap:8px; padding:14px 0 18px; }
+    .mark{ font-size:20px; }
+    .mark i{ width:6px; height:6px; bottom:-2px; }
+    .mark i.p{ left:23px; } .mark i.t{ left:35px; }
+  }
+</style>
+
+<div class="slide">
+
+  <header class="band">
+    <div>
+      <div class="eyebrow">Insight Global: Case Study</div>
+      <h1>Email-to-Case Automation with Salesforce Prompt Builder</h1>
+    </div>
+    <div class="chip">AI Summarization, Routing &amp; Reply Drafting</div>
+  </header>
+
+  <div class="body">
+
+    <aside class="rail">
+      <div>
+        <div class="label">About the Client</div>
+        <p>High-volume <span class="u">Salesforce Service Cloud</span> support operation in a regulated industry. Email-to-Case is live in production, with Prompt Builder templates summarizing, classifying, and drafting on every inbound case.</p>
+      </div>
+      <div>
+        <div class="label">Challenge</div>
+        <p>Every inbound email was read, interpreted, categorized, and answered by a person — so cost-to-serve scaled one-for-one with case volume.</p>
+        <ul>
+          <li>Agents spent the opening minutes of each case reading threads and deciding where it belonged.</li>
+          <li>Misrouted cases were re-queued and handled twice, driving rework and SLA breaches.</li>
+          <li>Replies were written from scratch, so tone and quality varied by agent and tenure.</li>
+          <li>Adding volume meant adding headcount — the only lever available.</li>
+        </ul>
+      </div>
+    </aside>
+
+    <section class="sol">
+      <div class="label">Solution</div>
+      <p class="lede">Built entirely on tooling the client already licenses — <b>Email-to-Case, Prompt Builder, Flow, and Omni-Channel</b> — so the automation runs inside Salesforce with no new vendor or platform spend.</p>
+      <ol>
+        <li><b>Capture with no keying:</b> the inbound email creates the Case, carries the thread and attachments, and matches Contact and Account automatically.</li>
+        <li><b>Summarize on create:</b> a record-triggered Flow calls a prompt template grounded in the email body, case fields, and related records; summary, intent, and urgency write back to the Case.</li>
+        <li><b>Classify and route once:</b> the same grounded output sets Type, Sub-type, and Priority, and Omni-Channel sends the case to the right queue on the first pass — the manual triage step disappears.</li>
+        <li><b>Draft the reply:</b> a second template composes a response from case data, entitlements, and approved Knowledge articles. Agents review, adjust, and send — nothing auto-sends.</li>
+        <li><b>Grounded or nothing:</b> when the template cannot ground an answer it writes no draft, flags the Case, and routes to a specialist queue. Einstein Trust Layer masks PII and PHI with zero data retention.</li>
+        <li><b>Tuned from real edits:</b> agent edits and rejections are captured and fed back into prompt and Knowledge refinement each sprint.</li>
+      </ol>
+    </section>
+
+    <section class="res">
+      <div class="label">Results</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="n">12 → 4 min</div>
+          <div class="d">Average handle time per email case, with triage and first-draft writing removed from the agent's path</div>
+        </div>
+        <div class="stat">
+          <div class="n">~70%</div>
+          <div class="d">Less time to first touch; cases reach the right queue without a human triage pass</div>
+        </div>
+        <div class="stat">
+          <div class="n">90%+</div>
+          <div class="d">AI drafts sent with minor or no edits, holding one consistent voice across the desk</div>
+        </div>
+        <div class="stat">
+          <div class="n">~85%</div>
+          <div class="d">First-pass routing accuracy, cutting the re-queue and double-handling loop</div>
+        </div>
+      </div>
+
+      <div class="payoff">
+        <b>The cost lever:</b> handling time, not volume, sets the size of the support team. At three times the throughput per agent, the same desk absorbs growth without new hires — or the same volume is served by a materially smaller team.
+      </div>
+
+      <div class="flow-head">
+        <div class="label">How a Case Moves</div>
+        <div class="keys">
+          <span><i class="dot t"></i>Platform</span>
+          <span><i class="dot p"></i>Prompt template</span>
+        </div>
+      </div>
+      <div class="flow">
+        <div class="step"><div class="k">01</div><div class="h">Email arrives</div><div class="s">Case auto-created with thread, files, Contact and Account</div></div>
+        <div class="step ai"><div class="k">02</div><div class="h">Summarize</div><div class="s">Grounded summary, intent, and urgency written to the Case</div></div>
+        <div class="step ai"><div class="k">03</div><div class="h">Classify</div><div class="s">Type, Sub-type, and Priority set from the same output</div></div>
+        <div class="step"><div class="k">04</div><div class="h">Route</div><div class="s">Omni-Channel assigns the right queue on the first pass</div></div>
+        <div class="step ai"><div class="k">05</div><div class="h">Draft reply</div><div class="s">Composed from case data and approved Knowledge</div></div>
+        <div class="step"><div class="k">06</div><div class="h">Agent sends</div><div class="s">Human reviews, edits, and sends; edits feed tuning</div></div>
+      </div>
+      <p class="note">Figures reflect the delivered implementation; confirm final client-approved metrics before external release.</p>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <span class="mark">Ins<i class="p"></i>ightGl<i class="t"></i>obal</span>
+    <span>Connect with your IG partner directly or at <a href="https://insightglobal.com">insightglobal.com</a>.</span>
+    <span class="r">© 2026 Insight Global</span>
+  </footer>
+
+</div>
+
+<p class="caption">16:9 slide. Metrics are placeholders sized to the delivered build — swap in client-approved figures before the RFP response goes out.</p>
