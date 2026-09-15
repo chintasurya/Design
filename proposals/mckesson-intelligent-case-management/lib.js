@@ -12,7 +12,8 @@ const C = {
   amber: 'F59E0B',
   white: 'FFFFFF',
 };
-const F = 'Arial';
+const F  = 'Trenda IG Text';     // body, tables, bullets
+const FD = 'Trenda IG Display';  // titles, display numerals, kickers
 const M = { l: 0.55, r: 0.55, w: 12.23 };   // 13.333 wide slide
 const ASSET = { wordmark: 'assets/ig-wordmark.png', mark: 'assets/ig-mark.png' };
 
@@ -30,7 +31,7 @@ function header(s, { kicker, title, sub, titleSize = 26 }) {
   if (kicker) {
     s.addText(kicker.toUpperCase(), {
       x: M.l, y, w: M.w, h: 0.24, isTextBox: true, margin: 0,
-      fontFace: F, fontSize: 10, bold: true, color: C.cyan, charSpacing: 2.2, valign: 'middle',
+      fontFace: FD, fontSize: 10, bold: true, color: C.cyan, charSpacing: 2.2, valign: 'middle',
     });
     y += 0.30;
   }
@@ -41,7 +42,7 @@ function header(s, { kicker, title, sub, titleSize = 26 }) {
   const tH = lines * (titleSize * 1.26 / 72);
   s.addText(T, {
     x: M.l, y, w: M.w, h: tH, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: titleSize, bold: true, color: C.white, charSpacing: 0.4,
+    fontFace: FD, fontSize: titleSize, bold: true, color: C.white, charSpacing: 0.4,
     valign: 'middle', lineSpacing: titleSize * 1.16,
   });
   y += tH + 0.09;
@@ -70,7 +71,7 @@ function chip(s, { x, y, text, color = C.cyan, w = 0.34, h = 0.28, size = 10.5 }
   });
   s.addText(text, {
     x, y, w, h, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: size, bold: true, color, align: 'center', valign: 'middle',
+    fontFace: FD, fontSize: size, bold: true, color, align: 'center', valign: 'middle',
   });
 }
 
@@ -89,7 +90,7 @@ function pill(s, { x, y, w, h, text, color = C.cyan, size = 8.5 }) {
 function label(s, { x, y, w, text, color = C.mute, size = 9, h = 0.22, bold = true }) {
   s.addText(text.toUpperCase(), {
     x, y, w, h, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: size, bold, color, charSpacing: 1.4, valign: 'middle',
+    fontFace: FD, fontSize: size, bold, color, charSpacing: 1.4, valign: 'middle',
   });
 }
 
@@ -118,7 +119,7 @@ function stat(s, { x, y, w, h = 1.15, value, caption, color = C.cyan, valueSize 
   card(s, { x, y, w, h });
   s.addText(value, {
     x: x + 0.18, y: y + 0.12, w: w - 0.36, h: 0.52, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: valueSize, bold: true, color, valign: 'middle',
+    fontFace: FD, fontSize: valueSize, bold: true, color, valign: 'middle',
   });
   s.addText(caption, {
     x: x + 0.18, y: y + 0.64, w: w - 0.36, h: h - 0.76, isTextBox: true, margin: 0,
@@ -189,4 +190,53 @@ function td(text, opts = {}) {
   return { text, options: { fill: { color: C.panel }, margin: [4, 7, 4, 7], valign: 'middle', ...opts } };
 }
 
-module.exports = { C, F, M, ASSET, newSlide, header, card, chip, pill, label, body, bullets, stat, footnote, footer, brandDots, brandOrbs, arrow, tableOpts, th, td, resetPage: () => { PAGE = 0; } };
+module.exports = { C, F, FD, M, ASSET, newSlide, header, card, chip, pill, label, body, bullets, stat, footnote, footer, brandDots, brandOrbs, arrow, tableOpts, th, td, resetPage: () => { PAGE = 0; } };
+
+/* ---------------------------------------------------------------------------
+ * Chart defaults.
+ * Series colours are the validated categorical palette (dataviz reference,
+ * dark column), confirmed against this deck's 0A0D14 surface: all six checks
+ * pass. Brand cyan and pink stay on chrome (kickers, chips, rules) so series
+ * colour always carries data identity and never brand emphasis.
+ * ------------------------------------------------------------------------- */
+const SERIES = ['3987E5', 'D95926', '199E70', 'C98500', 'D55181'];
+
+function chartBase(extra = {}) {
+  return {
+    chartColors: SERIES,
+    showLegend: false,
+    showTitle: false,
+    catAxisLabelColor: '8A94A6', catAxisLabelFontFace: F, catAxisLabelFontSize: 9,
+    valAxisLabelColor: '8A94A6', valAxisLabelFontFace: F, valAxisLabelFontSize: 9,
+    catAxisLineShow: false, valAxisLineShow: false,
+    catGridLine: { style: 'none' },
+    valGridLine: { color: '252D3D', size: 1 },
+    chartArea: { fill: { color: '151A24' } },
+    plotArea: { fill: { color: '151A24' } },
+    dataLabelFontFace: F, dataLabelFontSize: 8, dataLabelColor: 'E6EAF2',
+    legendFontFace: F, legendFontSize: 9, legendColor: 'E6EAF2',
+    border: { pt: 1.5, color: '151A24' },  // 2px-equivalent surface gap between stacked segments
+    ...extra,
+  };
+}
+
+// Legend swatch + label, drawn by hand so it can sit where the layout wants it.
+function legendRow(s, { x, y, items, size = 8.5, gap = 0.14, swatch = 0.11 }) {
+  let cx = x;
+  items.forEach(it => {
+    s.addShape('roundRect', {
+      x: cx, y: y + 0.055, w: swatch, h: swatch, rectRadius: 0.02,
+      fill: { color: it.color }, line: { color: it.color, width: 0 },
+    });
+    const tw = it.label.length * size * 0.0079 + 0.06;
+    s.addText(it.label, {
+      x: cx + swatch + 0.07, y, w: tw, h: 0.22, isTextBox: true, margin: 0,
+      fontFace: F, fontSize: size, color: 'E6EAF2', valign: 'middle',
+    });
+    cx += swatch + 0.07 + tw + gap;
+  });
+}
+
+module.exports.SERIES = SERIES;
+module.exports.chartBase = chartBase;
+module.exports.legendRow = legendRow;

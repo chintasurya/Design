@@ -1,6 +1,6 @@
 const pptxgen = require('pptxgenjs');
 const L = require('./lib.js');
-const { C, F, M } = L;
+const { C, F, FD, M } = L;
 
 const pptx = new pptxgen();
 pptx.defineLayout({ name: 'IG', width: 13.333, height: 7.5 });
@@ -18,11 +18,11 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
 
   s.addText('MCKESSON EXTENDED CARE  |  SOLUTION PROPOSAL', {
     x: M.l, y: 2.86, w: 10, h: 0.26, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: 11, bold: true, color: C.cyan, charSpacing: 2.6, valign: 'middle',
+    fontFace: FD, fontSize: 11, bold: true, color: C.cyan, charSpacing: 2.6, valign: 'middle',
   });
   s.addText('INTELLIGENT CASE\nMANAGEMENT', {
     x: M.l, y: 3.22, w: 11, h: 1.62, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: 44, bold: true, color: C.white, charSpacing: 0.6,
+    fontFace: FD, fontSize: 44, bold: true, color: C.white, charSpacing: 0.6,
     lineSpacing: 50, valign: 'top',
   });
   s.addText('Salesforce native email case automation. Every inbound case classified, prioritised, routed, timed, summarised and drafted before an agent opens it.', {
@@ -602,7 +602,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     L.card(s, { x, y: top, w: lw, h: 1.74 });
     s.addText(l[0], {
       x: x + 0.24, y: top + 0.18, w: lw - 0.48, h: 0.46, isTextBox: true, margin: 0,
-      fontFace: F, fontSize: 24, bold: true, color: l[3], valign: 'middle',
+      fontFace: FD, fontSize: 24, bold: true, color: l[3], valign: 'middle',
     });
     L.label(s, { x: x + 0.24, y: top + 0.62, w: lw - 0.48, text: 'of SLA consumed', color: C.mute, size: 7.5, h: 0.18 });
     s.addText(l[1], {
@@ -1207,11 +1207,11 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
   L.brandDots(s, { x: M.l, y: 2.62 });
   s.addText('INTELLIGENT CASE MANAGEMENT', {
     x: M.l, y: 3.06, w: 10, h: 0.30, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: 11, bold: true, color: C.cyan, charSpacing: 2.4, valign: 'middle',
+    fontFace: FD, fontSize: 11, bold: true, color: C.cyan, charSpacing: 2.4, valign: 'middle',
   });
   s.addText('Agents spend their time on the\ncases that need judgement.', {
     x: M.l, y: 3.44, w: 10.5, h: 1.40, isTextBox: true, margin: 0,
-    fontFace: F, fontSize: 34, bold: true, color: C.white, lineSpacing: 42, valign: 'top',
+    fontFace: FD, fontSize: 34, bold: true, color: C.white, lineSpacing: 42, valign: 'top',
   });
   s.addText('Salesforce reads, classifies, prioritises, routes, times, summarises and drafts. Insight Global owns the operation, the quality and the outcome.', {
     x: M.l, y: 5.02, w: 8.6, h: 0.64, isTextBox: true, margin: 0,
