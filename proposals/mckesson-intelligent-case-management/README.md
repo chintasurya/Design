@@ -25,21 +25,30 @@ cheaper routes rather than making the expensive route slightly faster.
 Carries the quantified core: handling effort by queue, modelled phase by phase,
 and the case volume migrating between doors.
 
-### `McKesson_Intelligent_Case_Management.pptx` (23 slides)
+### `McKesson_Intelligent_Case_Management.pptx` (24 slides) — the one being presented
 
-The earlier, process-shaped treatment: a six stage pipeline from capture to
-continuous learning, with a slide per mechanism. More exhaustive on the
-Salesforce configuration detail, less pointed as an argument. Kept as the
-reference version.
+A six stage pipeline from capture to continuous learning, with a slide per
+mechanism. Exhaustive on the Salesforce configuration detail, which is why the
+team chose it.
+
+Slide 3, `The solution on one page`, is the executive summary: the whole design
+in one picture, with what it is worth, what it runs on and how it lands in three
+phases. If an executive sees one slide, it is that one.
+
+Every slide carries its talk track in the speaker notes, so the deck can be
+presented from PowerPoint Presenter View with nothing else open.
 
 ## Contents
 
 | File | What it is |
 | --- | --- |
+| `McKesson_Intelligent_Case_Management.pptx` | The six stage deck, with talk track in the speaker notes |
+| `McKesson_ICM_Talk_Track.docx` | The same talk track as a printable presenter handout |
 | `McKesson_Four_Doors.pptx` | The four doors deck |
-| `McKesson_Intelligent_Case_Management.pptx` | The six stage deck |
-| `deck2.js` | Generator for the four doors deck |
 | `deck.js` | Generator for the six stage deck |
+| `deck2.js` | Generator for the four doors deck |
+| `talktrack.js` | The talk track itself: one entry per slide |
+| `talktrack-doc.js` / `make_docx.py` | Render the talk track as the handout |
 | `lib.js` | Shared theme tokens, layout helpers and chart defaults |
 | `assets/` | Insight Global logos extracted from the source deck |
 | `fonts/` | The four Trenda IG faces the decks use |
@@ -48,9 +57,33 @@ reference version.
 
 ```
 npm install pptxgenjs
-node deck2.js     # four doors
-node deck.js      # six stage
+pip install python-docx
+
+node deck.js               # six stage deck, talk track baked into notes
+node deck2.js              # four doors deck
+node talktrack-doc.js && python3 make_docx.py    # presenter handout
 ```
+
+## The talk track
+
+`talktrack.js` is the single source of truth. `deck.js` writes each entry into
+that slide's speaker notes, and `make_docx.py` renders the same entries as the
+handout, so the two can never drift apart. Edit the talk track there and rebuild
+both, never in the .pptx or the .docx directly.
+
+Each entry carries:
+
+| Field | What it is |
+| --- | --- |
+| `title` | The slide's name, for the handout |
+| `secs` | Rough spoken length, for pacing a run through |
+| `purpose` | One line on why the slide exists |
+| `say` | What to actually say in the room |
+| `ask` | The question the slide usually attracts, and the answer |
+
+The full run is about 15 minutes of speaking before questions. Slide numbers in
+`talktrack.js` are positional: if a slide is added or removed from `deck.js`,
+the talk track array has to move with it.
 
 ## Typography
 

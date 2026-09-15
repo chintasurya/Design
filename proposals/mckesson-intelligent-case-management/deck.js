@@ -1,6 +1,20 @@
 const pptxgen = require('pptxgenjs');
 const L = require('./lib.js');
+const TT = require('./talktrack.js');
 const { C, F, FD, M } = L;
+
+
+// Speaker notes come from talktrack.js so the deck and the presenter handout
+// can never drift apart. Slide numbers are positional and must stay in sync.
+function talkNotes(s, n) {
+  const t = TT[n - 1];
+  s.addNotes(
+    `${t.n}. ${t.title}   (about ${t.secs} seconds)\n\n` +
+    `PURPOSE\n${t.purpose}\n\n` +
+    `SAY\n${t.say}` +
+    (t.ask ? `\n\nWATCH FOR\n${t.ask}` : '')
+  );
+}
 
 const pptx = new pptxgen();
 pptx.defineLayout({ name: 'IG', width: 13.333, height: 7.5 });
@@ -33,7 +47,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     x: M.l, y: 6.62, w: 7, h: 0.28, isTextBox: true, margin: 0,
     fontFace: F, fontSize: 10, color: C.mute, valign: 'middle',
   });
-  s.addNotes('Cover. This is a solution and business value proposal. Commercials are handled separately. The single message: the work of reading, classifying, prioritising, routing and drafting is moved into Salesforce, so agent time goes to judgement rather than administration.');
+  talkNotes(s, 1);
 }
 
 /* ============================== 02  AGENDA ============================== */
@@ -69,7 +83,116 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   });
   L.footer(s);
-  s.addNotes('Agenda. Sections 1 and 6 are the business case. Sections 2 to 5 are the solution. If time is short, run 3, 5, 6, 13, 17, 21 and 22.');
+  talkNotes(s, 2);
+}
+
+/* ============================== 03  EXECUTIVE ONE PAGE ============================== */
+{
+  const s = L.newSlide(pptx);
+  const top = L.header(s, {
+    kicker: 'Executive summary',
+    title: 'The solution on one page',
+    sub: 'Extended Care email moves inside a single governed workflow in McKesson Salesforce. Everything in the rest of this deck is detail underneath this picture.',
+  });
+
+  /* ---------- left: the design ---------- */
+  const lw = 7.62;
+  L.label(s, { x: M.l, y: top, w: lw, text: 'How it works', color: C.white, size: 10 });
+  let y = top + 0.30;
+
+  // inbound
+  s.addShape('roundRect', { x: M.l, y, w: lw, h: 0.46, rectRadius: 0.04, fill: { color: C.panel2 }, line: { color: C.line, width: 1 } });
+  s.addText([
+    { text: 'INBOUND   ', options: { bold: true, color: C.cyan, charSpacing: 1.2, fontSize: 8.5 } },
+    { text: 'Customer and vendor email arrives in the Extended Care mailboxes and becomes a Salesforce case', options: { color: C.txt, fontSize: 9 } },
+  ], { x: M.l + 0.22, y, w: lw - 0.44, h: 0.46, isTextBox: true, margin: 0, fontFace: F, valign: 'middle' });
+  s.addShape('downArrow', { x: M.l + lw / 2 - 0.10, y: y + 0.50, w: 0.20, h: 0.20, fill: { color: '3A4459' }, line: { color: '3A4459', width: 0 } });
+  y += 0.76;
+
+  // the engine
+  s.addShape('roundRect', { x: M.l, y, w: lw, h: 2.34, rectRadius: 0.04, fill: { color: C.panel }, line: { color: '2A5468', width: 1 } });
+  s.addText('ONE RECORD TRIGGERED FLOW', {
+    x: M.l + 0.22, y: y + 0.14, w: lw - 0.44, h: 0.26, isTextBox: true, margin: 0,
+    fontFace: FD, fontSize: 9.5, bold: true, color: C.cyan, charSpacing: 1.4, valign: 'middle',
+  });
+  const eng = [
+    ['Understand', 'Prompt Template', ['Reads the whole thread', 'Category and service family', 'Order and invoice entities', 'Sentiment, PHI flag, summary']],
+    ['Decide', 'Deterministic rules', ['Priority from impact and risk', 'Queue and required skill', 'Which SLA clock applies', 'When to escalate, and to whom']],
+    ['Assist', 'Prompt Template', ['Drafts the reply to send', 'Grounded in Knowledge', 'Pulls order and account data', 'Writes the case summary']],
+  ];
+  const ew = (lw - 0.44 - 2 * 0.16) / 3;
+  eng.forEach((e, i) => {
+    const x = M.l + 0.22 + i * (ew + 0.16);
+    s.addShape('roundRect', { x, y: y + 0.46, w: ew, h: 1.72, rectRadius: 0.04, fill: { color: C.panel2 }, line: { color: C.line, width: 1 } });
+    s.addText(e[0], {
+      x: x + 0.16, y: y + 0.56, w: ew - 0.32, h: 0.26, isTextBox: true, margin: 0,
+      fontFace: FD, fontSize: 12, bold: true, color: C.white, valign: 'middle',
+    });
+    L.label(s, { x: x + 0.16, y: y + 0.82, w: ew - 0.32, text: e[1], color: C.mute, size: 7, h: 0.18 });
+    L.bullets(s, { x: x + 0.16, y: y + 1.06, w: ew - 0.32, h: 1.02, items: e[2], size: 8, gap: 2 });
+  });
+  y += 2.34;
+  s.addShape('downArrow', { x: M.l + lw / 2 - 0.10, y: y + 0.05, w: 0.20, h: 0.20, fill: { color: '3A4459' }, line: { color: '3A4459', width: 0 } });
+  y += 0.30;
+
+  // outbound
+  s.addShape('roundRect', { x: M.l, y, w: lw, h: 0.52, rectRadius: 0.04, fill: { color: C.panel2 }, line: { color: C.line, width: 1 } });
+  s.addText([
+    { text: 'OUTBOUND   ', options: { bold: true, color: C.cyan, charSpacing: 1.2, fontSize: 8.5 } },
+    { text: 'The agent reviews the draft, corrects it and sends. Anything involving money, PHI or a judgement call always stops with a person.', options: { color: C.txt, fontSize: 9 } },
+  ], { x: M.l + 0.22, y, w: lw - 0.44, h: 0.52, isTextBox: true, margin: 0, fontFace: F, valign: 'middle', lineSpacing: 12 });
+  y += 0.68;
+
+  // foundation
+  s.addShape('roundRect', { x: M.l, y, w: lw, h: 0.56, rectRadius: 0.04, fill: { color: '121A2A' }, line: { color: C.line, width: 1 } });
+  s.addText([
+    { text: 'RUNNING UNDERNEATH   ', options: { bold: true, color: C.mute, charSpacing: 1.2, fontSize: 8 } },
+    { text: 'Omni Channel routing  ·  Entitlements and Milestones for SLA  ·  Salesforce Knowledge  ·  Einstein Trust Layer for PHI masking, zero retention and full audit', options: { color: C.txt, fontSize: 8.5 } },
+  ], { x: M.l + 0.22, y, w: lw - 0.44, h: 0.56, isTextBox: true, margin: 0, fontFace: F, valign: 'middle', lineSpacing: 11.5 });
+
+  /* ---------- right: worth, licensing, timing ---------- */
+  const rx = M.l + lw + 0.24, rw = M.w - lw - 0.24;
+  L.label(s, { x: rx, y: top, w: rw, text: 'What it is worth', color: C.white, size: 10 });
+  L.card(s, { x: rx, y: top + 0.30, w: rw, h: 1.72, line: '2A5468' });
+  [['~24%', 'Modelled reduction in average handling time'],
+   ['Under 60s', 'From arrival to a classified, routed, SLA timed case'],
+   ['100%', 'Of cases triaged and summarised, not a sample'],
+   ['Zero', 'New licences required for Phase 1'],
+  ].forEach((v, i) => {
+    const vy = top + 0.44 + i * 0.38;
+    s.addText(v[0], {
+      x: rx + 0.22, y: vy, w: 1.20, h: 0.34, isTextBox: true, margin: 0,
+      fontFace: FD, fontSize: 14, bold: true, color: C.cyan, valign: 'middle',
+    });
+    s.addText(v[1], {
+      x: rx + 1.46, y: vy, w: rw - 1.68, h: 0.36, isTextBox: true, margin: 0,
+      fontFace: F, fontSize: 8, color: C.mute, valign: 'middle', lineSpacing: 10.5,
+    });
+  });
+
+  L.label(s, { x: rx, y: top + 2.18, w: rw, text: 'What it runs on', color: C.white, size: 10 });
+  L.card(s, { x: rx, y: top + 2.48, w: rw, h: 0.98 });
+  s.addText([
+    { text: 'Phase 1 uses only what Service Cloud already includes.', options: { color: C.txt, bold: true } },
+    { text: ' Prompt Templates and Agentforce in Phases 2 and 3 need Einstein or Agentforce licensing, which we confirm with McKesson before that phase begins.', options: { color: C.mute } },
+  ], {
+    x: rx + 0.22, y: top + 2.62, w: rw - 0.44, h: 0.80, isTextBox: true, margin: 0,
+    fontFace: F, fontSize: 8.5, valign: 'top', lineSpacing: 11.5,
+  });
+
+  L.label(s, { x: rx, y: top + 3.62, w: rw, text: 'How it lands', color: C.white, size: 10 });
+  L.card(s, { x: rx, y: top + 3.92, w: rw, h: 1.06 });
+  [['Phase 1', 'Routing, SLA, escalation, reporting'],
+   ['Phase 2', 'Triage, summary and drafted replies'],
+   ['Phase 3', 'Selected replies sent automatically'],
+  ].forEach((p, i) => {
+    const py = top + 4.06 + i * 0.30;
+    s.addText(p[0], { x: rx + 0.22, y: py, w: 0.80, h: 0.26, isTextBox: true, margin: 0, fontFace: F, fontSize: 8.5, bold: true, color: C.cyan, valign: 'middle' });
+    s.addText(p[1], { x: rx + 1.06, y: py, w: rw - 1.28, h: 0.26, isTextBox: true, margin: 0, fontFace: F, fontSize: 8.5, color: C.mute, valign: 'middle' });
+  });
+
+  L.footer(s);
+  talkNotes(s, 3);
 }
 
 /* ============================== 03  CASE FOR CHANGE ============================== */
@@ -135,7 +258,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
 
   L.footnote(s, 'Volume, handling time and case mix taken from the Extended Care operations sample in the current proposal. Step level timings are Insight Global estimates, validated during the baseline period.');
   L.footer(s);
-  s.addNotes('Anchor the business case in their own numbers. The point of the six steps is that five of them are administration. Only step six needs an expert.');
+  talkNotes(s, 4);
 }
 
 /* ============================== 04  BEFORE / AFTER ============================== */
@@ -181,7 +304,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   });
   L.footer(s);
-  s.addNotes('Do not read this line by line. Land the shape of it: every row moves work from the agent to the platform, and the right hand column is all standard Salesforce behaviour.');
+  talkNotes(s, 5);
 }
 
 /* ============================== 05  SOLUTION AT A GLANCE ============================== */
@@ -218,7 +341,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     L.pill(s, { x: x + 0.24, y: y + 1.38, w: cw - 0.48, h: 0.44, text: st[3], color: C.cyan, size: 8 });
   });
   L.footer(s);
-  s.addNotes('The six stage frame is used consistently for the rest of the deck. Stages 1, 3, 4 and 6 need no new licensing. Stages 2 and 5 are where Prompt Templates and Agentforce come in.');
+  talkNotes(s, 6);
 }
 
 /* ============================== 06  ARCHITECTURE ============================== */
@@ -271,7 +394,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
 
   L.footnote(s, 'Stages 01, 03 and 05 use capability included in Service Cloud. The Prompt Template components in stages 02 and 04 require Einstein or Agentforce licensing, confirmed with McKesson before Phase 2.');
   L.footer(s);
-  s.addNotes('The key architectural point: one Flow is the spine. Prompt Templates are called by the Flow, they do not own the process. That is what keeps policy deterministic and auditable.');
+  talkNotes(s, 7);
 }
 
 /* ============================== 07  CAPTURE & UNDERSTAND ============================== */
@@ -345,7 +468,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   });
   L.footer(s);
-  s.addNotes('The eight returned values are the whole point. Everything downstream, routing, SLA, drafting and reporting, keys off these fields. Stress that the model recommends and the Flow decides.');
+  talkNotes(s, 8);
 }
 
 /* ============================== 08  CLASSIFICATION ============================== */
@@ -386,7 +509,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
 
   L.footnote(s, 'Duplicate and no action cases are excluded from operational SLA calculation under a disposition code agreed with McKesson, so they do not distort performance either way.');
   L.footer(s);
-  s.addNotes('This corrects the earlier draft that used story and defect. Those are engineering words. Agents and McKesson reviewers both read these six categories without translation.');
+  talkNotes(s, 9);
 }
 
 /* ============================== 09  PRIORITY ============================== */
@@ -453,7 +576,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   });
   L.footer(s);
-  s.addNotes('The controls matter more than the four levels. Without them, priority drifts and the SLA numbers stop meaning anything.');
+  talkNotes(s, 10);
 }
 
 /* ============================== 10  ROUTING ============================== */
@@ -517,7 +640,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
   });
   L.footnote(s, 'Queue names, skill definitions and capacity weightings are confirmed with McKesson during discovery and configured before the readiness gate.');
   L.footer(s);
-  s.addNotes('Routing is included in Service Cloud. No AI licensing needed for this stage. The value is that skill and capacity are respected, which is what protects the credits queue.');
+  talkNotes(s, 11);
 }
 
 /* ============================== 11  SLA ============================== */
@@ -578,7 +701,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   L.footnote(s, 'Targets shown are design proposals for discussion. Final thresholds, pause conditions and measurement definitions are agreed jointly and configured in the Entitlement Process before go live.');
   L.footer(s);
-  s.addNotes('Entitlements and Milestones are standard Service Cloud. The design decision worth flagging: the resolution clock keeps running during internal McKesson dependencies, because pausing it would hide the real customer experience.');
+  talkNotes(s, 12);
 }
 
 /* ============================== 12  ESCALATION ============================== */
@@ -640,7 +763,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     fontFace: F, fontSize: 9, color: C.txt, valign: 'top', lineSpacing: 13,
   });
   L.footer(s);
-  s.addNotes('Milestone time triggers do this natively. Each trigger can fire a task, an email alert, a field update or a Slack or Chatter post. No custom code.');
+  talkNotes(s, 13);
 }
 
 /* ============================== 13  DRAFT & SUMMARISE ============================== */
@@ -691,7 +814,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     { text: 'In Phase 2 no generated response reaches a customer without an agent approving it. Every draft, the prompt that produced it and the agent edit that followed are retained in the case audit trail.', options: { color: C.txt, fontSize: 9 } },
   ], { x: M.l + 0.22, y: y2, w: M.w - 0.44, h: 0.50, isTextBox: true, margin: 0, fontFace: F, valign: 'middle' });
   L.footer(s);
-  s.addNotes('If you only land one slide, land this one. The draft plus summary combination is where the 25 percent handling time reduction comes from, and the third column is what makes it safe to say yes to.');
+  talkNotes(s, 14);
 }
 
 /* ============================== 14  KNOWLEDGE ============================== */
@@ -743,7 +866,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
   });
   L.footnote(s, 'Knowledge base development and standardised response content are already committed in the current proposal. This design makes that content the grounding source for automation rather than a reference library alongside it.');
   L.footer(s);
-  s.addNotes('This answers the obvious objection, that generated answers might be wrong. They are grounded in McKesson approved articles, and the gap capture step means the base gets better rather than drifting.');
+  talkNotes(s, 15);
 }
 
 /* ============================== 15  LIFECYCLE ============================== */
@@ -785,7 +908,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     { text: 'The resolution clock is not paused simply because another internal team is involved. Pausing it would hide the real customer experience. Instead four times are measured on every case: end to end closure time, controllable Insight Global processing time, dependency time awaiting a McKesson team, and customer wait time.', options: { color: C.txt, fontSize: 9 } },
   ], { x: M.l + 0.22, y: y2, w: M.w - 0.44, h: 0.56, isTextBox: true, margin: 0, fontFace: F, valign: 'middle', lineSpacing: 12 });
   L.footer(s);
-  s.addNotes('Expect a conversation on the Pending Internal Team row. The four way time split is the answer: McKesson can see what is ours and what is theirs, without either of us gaming the headline number.');
+  talkNotes(s, 16);
 }
 
 /* ============================== 16  TRUST & GUARDRAILS ============================== */
@@ -832,7 +955,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
   });
   L.footnote(s, 'Einstein Trust Layer controls apply to Prompt Builder and Agentforce features and require the corresponding licensing. Phase 1 uses no generative capability and therefore introduces no new data handling surface.');
   L.footer(s);
-  s.addNotes('Security will ask about this. The three answers that matter: it runs in McKesson tenancy, PHI is masked before it leaves the org, and nothing is retained or trained on.');
+  talkNotes(s, 17);
 }
 
 /* ============================== 17  ROADMAP ============================== */
@@ -901,7 +1024,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   });
   L.footer(s);
-  s.addNotes('The commercial point without talking commercials: Phase 1 is real value at zero licensing risk. That is what lets McKesson start without resolving the Agentforce question first.');
+  talkNotes(s, 18);
 }
 
 /* ============================== 18  DASHBOARDS ============================== */
@@ -954,7 +1077,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     { text: 'Shift and end of day reports are generated from trusted case fields, not written by each agent. That removes manual reporting effort from the floor and makes every number traceable to the record it came from.', options: { color: C.txt, fontSize: 9 } },
   ], { x: M.l + 0.22, y: y2, w: M.w - 0.44, h: 0.56, isTextBox: true, margin: 0, fontFace: F, valign: 'middle', lineSpacing: 12 });
   L.footer(s);
-  s.addNotes('Note the automation coverage metrics on the left. Draft acceptance rate is how we prove the AI is actually helping, and it is a coaching signal, never an agent target.');
+  talkNotes(s, 19);
 }
 
 /* ============================== 19  CONTINUOUS IMPROVEMENT ============================== */
@@ -1023,7 +1146,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     });
   });
   L.footer(s);
-  s.addNotes('The distinction worth making: today improvement depends on someone remembering. Here the signal is captured automatically at the point of work.');
+  talkNotes(s, 20);
 }
 
 /* ============================== 20  WHERE THE MINUTES COME FROM ============================== */
@@ -1081,7 +1204,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
   });
   L.footnote(s, 'Step level timings are Insight Global estimates decomposing the 8:15 blended handling time in the current operations sample. They are a design model, not a committed target, and are validated during the baseline period.');
   L.footer(s);
-  s.addNotes('Be honest that these are modelled. The credibility comes from showing the decomposition rather than asserting a headline percentage. If challenged, the classify and assign row is the one to defend hardest, because it is deterministic.');
+  talkNotes(s, 21);
 }
 
 /* ============================== 21  IMPACT ============================== */
@@ -1139,7 +1262,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
   });
   L.footnote(s, 'All figures are modelled design targets derived from the current operations sample. They are validated during the baseline period and only then proposed as commitments.');
   L.footer(s);
-  s.addNotes('This is the slide the sponsor remembers. Handling time is the efficiency story, sub 60 second triage is the response time story. Both are stated as modelled, which is what makes them credible.');
+  talkNotes(s, 22);
 }
 
 /* ============================== 22  WHAT WE NEED ============================== */
@@ -1196,7 +1319,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     { text: 'A joint design workshop on the case taxonomy, priority rules and SLA definitions, run alongside a technical discovery session on the McKesson Salesforce configuration and current Einstein entitlement.', options: { color: C.txt, fontSize: 9 } },
   ], { x: M.l + 0.22, y: y2, w: M.w - 0.44, h: 0.56, isTextBox: true, margin: 0, fontFace: F, valign: 'middle', lineSpacing: 12 });
   L.footer(s);
-  s.addNotes('Close on the ask. The licensing box is deliberately amber: it is the only open question, and Phase 1 does not wait on it.');
+  talkNotes(s, 23);
 }
 
 /* ============================== 23  CLOSE ============================== */
@@ -1221,7 +1344,7 @@ pptx.title = 'Intelligent Case Management for McKesson Extended Care';
     x: M.l, y: 6.52, w: 6, h: 0.32, isTextBox: true, margin: 0,
     fontFace: F, fontSize: 13, bold: true, color: C.txt, valign: 'middle',
   });
-  s.addNotes('Close. The one line to leave in the room: agents spend their time on the cases that need judgement.');
+  talkNotes(s, 24);
 }
 
 /* ============================== WRITE ============================== */
