@@ -1,2 +1,3 @@
 _dev/
 _render_*.png
+__pycache__/

@@ -1,5 +1,6 @@
 // Render deck slides to exact 1600x900 PNGs via the Chrome DevTools Protocol.
-// Usage: node tools/shot.mjs [outDir]
+// Usage: node tools/shot.mjs [outDir] [scale]
+//   scale 2 renders at 3200x1800 (for PowerPoint / print).
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -10,6 +11,7 @@ const OUT = resolve(process.argv[2] || `${DIR}/export`);
 const CHROME = process.env.CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const PORT = 9333;
 const W = 1600, H = 900;
+const SCALE = Number(process.argv[3]) || 1;
 
 mkdirSync(OUT, { recursive: true });
 
@@ -59,7 +61,7 @@ const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatte
 
 await cdp.send('Page.enable', {}, sessionId);
 await cdp.send('Emulation.setDeviceMetricsOverride',
-  { width: W, height: H, deviceScaleFactor: 1, mobile: false }, sessionId);
+  { width: W, height: H, deviceScaleFactor: SCALE, mobile: false }, sessionId);
 
 for (const i of [1, 2, 3]) {
   const loaded = cdp.once('Page.loadEventFired');
