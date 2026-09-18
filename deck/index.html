@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ShieldForge Deck</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/deck.css">
+<style>
+/* ---- Brand wordmarks (Trenda IG Display + brand dots) ---- */
+.wm{font-family:'Trenda Display',sans-serif;font-weight:500;color:#000;letter-spacing:-.005em;
+    display:inline-flex;align-items:baseline;white-space:nowrap;line-height:1}
+.wm .dot{display:inline-block;border-radius:50%;position:relative;flex:none}
+.wm .dot.cy{background:#00D3F5}
+.wm .dot.ye{background:#FFC800}
+.wm .dot.g{background:#FFC800}
+.wm .dot.g::after{content:"";position:absolute;left:0;top:118%;width:100%;height:100%;
+    border-radius:50%;background:#FF0064}
+/* dot sizing is x-height based */
+.wm{--dot:.505em}
+.wm .dot{width:var(--dot);height:var(--dot);margin:0 .022em;transform:translateY(0)}
+.lockup{display:flex;flex-direction:column;align-items:flex-start}
+.lockup .l1{font-size:var(--wm,56px)}
+.lockup .l2{font-size:calc(var(--wm,56px) * .40);margin-top:calc(var(--wm,56px) * .075)}
+</style>
+</head>
+<body>
+
+<template id="tpl-logo">
+  <div class="lockup">
+    <span class="wm l1">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span>
+    <span class="wm l2">by lnsi<i class="dot g"></i>htGl<i class="dot cy"></i>bal</span>
+  </div>
+</template>
+
+<template id="tpl-script">
+  <div class="script">
+    <div class="l1">Govern</div>
+    <div class="l2">with Confidence</div>
+    <svg class="swoosh" viewBox="0 0 240 16" fill="none">
+      <path d="M3 11C40 4 92 2 140 4c30 1.2 62 4 95 9" stroke="#22C1F0" stroke-width="3.4" stroke-linecap="round"/>
+    </svg>
+  </div>
+</template>
+
+<template id="tpl-footer">
+  <div class="footer">
+    <div class="hair"></div>
+    <div class="inner">
+      <svg width="20" height="24" viewBox="0 0 20 24" fill="none">
+        <rect x="2.5" y="10" width="15" height="11.5" rx="2.6" fill="#0C1520"/>
+        <path d="M6.2 10V6.9a3.8 3.8 0 0 1 7.6 0V10" stroke="#0C1520" stroke-width="2.1" stroke-linecap="round"/>
+      </svg>
+      <div class="txt"><b>ShieldForge does not capture, store, or retain customer business data.</b><span class="sep">|</span>Customer data remains within Salesforce.</div>
+      <div class="pg"></div>
+    </div>
+  </div>
+</template>
+
+<div class="deck">
+
+<!-- ================= SLIDE 01 ================= -->
+<div class="stage"><section class="slide" id="s1">
+  <div class="bg">
+    <div class="blob cy" style="left:560px;top:-30px;width:640px;height:520px"></div>
+    <div class="blob cy" style="left:1150px;top:60px;width:420px;height:360px;opacity:.55"></div>
+    <div class="blob ye" style="left:1300px;top:-120px;width:520px;height:420px"></div>
+    <div class="blob pc" style="left:1380px;top:280px;width:420px;height:420px;opacity:.75"></div>
+    <div class="blob pk" style="left:980px;top:640px;width:620px;height:420px"></div>
+    <div class="blob pk" style="left:300px;top:720px;width:520px;height:340px;opacity:.6"></div>
+    <div class="blob ye" style="left:-120px;top:600px;width:420px;height:380px;opacity:.35"></div>
+  </div>
+
+  <div class="logo" data-logo style="--wm:58px"></div>
+  <div data-script></div>
+
+  <div class="copy" style="top:170px">
+    <h1 style="font-size:68px;line-height:.97;letter-spacing:-1.7px">One platform for<br>Salesforce<br><span class="cy">governance</span></h1>
+  </div>
+  <div class="copy sub" style="top:434px;width:600px">Understand user access, assess security risks<br>and simplify governance within your Salesforce org.</div>
+
+  <div class="copy checks" style="top:518px;gap:18px">
+    <div class="check">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none"><circle cx="15" cy="15" r="13.4" stroke="#22C1F0" stroke-width="2.3"/><path d="M9 15.4l4.1 4.1L21.2 11" stroke="#22C1F0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Approved by Salesforce Security Review</span>
+    </div>
+    <div class="check">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none"><circle cx="15" cy="15" r="13.4" stroke="#22C1F0" stroke-width="2.3"/><path d="M9 15.4l4.1 4.1L21.2 11" stroke="#22C1F0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Live on AppExchange</span>
+    </div>
+  </div>
+
+  <div class="rule" style="position:absolute;left:58px;top:602px;width:540px"></div>
+
+  <div class="copy feats" style="top:638px;gap:18px">
+    <div class="feat" style="align-items:center">
+      <div class="ficon sm cy"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.1" stroke="#fff" stroke-width="1.9"/><path d="M3.4 19c0-3.1 2.5-5.3 5.6-5.3s5.6 2.2 5.6 5.3" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="17" cy="9.4" r="2.4" stroke="#fff" stroke-width="1.7"/><path d="M15.6 14.2c2.8-.5 5 1.5 5 4.3" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+      <div class="ftitle">Access intelligence</div>
+    </div>
+    <div class="feat" style="align-items:center">
+      <div class="ficon sm ye"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 2.6h7.6L19 8v13.4H6z" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M13.4 2.6V8H19" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M9 12.6h7M9 16.2h5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+      <div class="ftitle">Audit and compliance readiness</div>
+    </div>
+    <div class="feat" style="align-items:center">
+      <div class="ficon sm pk"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5.8" rx="7.6" ry="3.1" stroke="#fff" stroke-width="1.9"/><path d="M4.4 5.8v12.4c0 1.7 3.4 3.1 7.6 3.1s7.6-1.4 7.6-3.1V5.8" stroke="#fff" stroke-width="1.9"/><path d="M4.4 12c0 1.7 3.4 3.1 7.6 3.1s7.6-1.4 7.6-3.1" stroke="#fff" stroke-width="1.9"/></svg></div>
+      <div class="ftitle">Release and storage insights</div>
+    </div>
+  </div>
+
+  <!-- ---- Mockups ---- -->
+  <div class="mock dark" style="left:660px;top:140px;width:878px;height:418px">
+    <div class="chrome">
+      <div class="brand"><span class="wm" style="font-size:20px;color:#fff">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="nav">
+        <div class="navitem on"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3.6 10.4L12 3.4l8.4 7v9.2H3.6z" stroke="currentColor" stroke-width="2"/></svg>Dashboard</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3l7.4 2.8v6c0 4.4-3 8-7.4 9.4-4.4-1.4-7.4-5-7.4-9.4v-6z" stroke="currentColor" stroke-width="1.9"/></svg>Org Security</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="12" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M11.6 12H21m-3 0v3.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Permission Set</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Profile</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.4" stroke="currentColor" stroke-width="1.9"/><path d="M15.8 15.8L21 21" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Audit</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3.6v10m0 0l-3.6-3.6M12 13.6l3.6-3.6M4.4 18.4h15.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>Compliance</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="5" y="10.4" width="14" height="9.6" rx="2" stroke="currentColor" stroke-width="1.9"/><path d="M8.4 10.4V7.6a3.6 3.6 0 0 1 7.2 0v2.8" stroke="currentColor" stroke-width="1.9"/></svg>Release Radar</div>
+      </div>
+      <div class="dots"><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="hero">
+      <div class="eyebrow">Security posture overview</div>
+      <h2>YOUR ORG AT A <span class="cy">GLANCE</span></h2>
+      <div class="pdesc" style="max-width:520px">Live permission intelligence across every profile and permission set &mdash; dangerous access, exposure, and governance health in one view.</div>
+      <div class="posture" style="right:22px;top:20px;text-align:right">
+        <div class="lbl">Org Health Check</div>
+        <div style="font-family:'Trenda Display';font-weight:900;font-size:46px;color:var(--yellow);letter-spacing:-1.8px;margin-top:4px;line-height:1">67<small style="font-size:22px;color:#9FB0C0">/100</small></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:5px">
+          <span class="grade c" style="width:20px;height:20px;font-size:11px">D</span>
+          <span style="font-family:'Trenda Text';font-weight:700;font-size:12px;color:var(--yellow);letter-spacing:.6px">FAIR</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+      <div class="tile"><div class="ic" style="background:#0E2233"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3l7.4 2.8v6c0 4.4-3 8-7.4 9.4-4.4-1.4-7.4-5-7.4-9.4v-6z" stroke="#fff" stroke-width="2"/></svg></div><div><div class="t">Org Security</div><div class="d">Analyze permission grants</div></div><div class="arw" style="color:var(--cyan)">&rarr;</div></div>
+      <div class="tile"><div class="ic" style="background:var(--pink)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="10" cy="8" r="3.4" stroke="#fff" stroke-width="2"/><path d="M4 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M17 5.6l3 1.6-3 1.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="t">User 360</div><div class="d">Complete user insights</div></div><div class="arw" style="color:var(--pink)">&rarr;</div></div>
+      <div class="tile"><div class="ic" style="background:var(--yellow)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 20s-7.6-4.6-7.6-9.4A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 7.6 2.6C19.6 15.4 12 20 12 20z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div><div><div class="t">Health Check</div><div class="d">Org security baseline</div></div><div class="arw" style="color:var(--yellow)">&rarr;</div></div>
+      <div class="tile"><div class="ic" style="background:var(--cyan)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.4" fill="#fff"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a9.6 9.6 0 0 0 0 14M19 5a9.6 9.6 0 0 1 0 14" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div><div><div class="t">Release Radar</div><div class="d">Monitor release updates</div></div><div class="arw" style="color:var(--pink)">&rarr;</div></div>
+    </div>
+
+    <div class="tiles" style="grid-template-columns:repeat(4,1fr);padding-top:12px">
+      <div class="stat"><div class="ic" style="width:32px;height:32px;border-radius:9px;background:var(--cyan);display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="12" r="3.4" stroke="#fff" stroke-width="2"/><path d="M11.4 12H21m-3.4 0v3.4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div><div class="n">98</div><div class="l">Permission Sets</div></div></div>
+      <div class="stat"><div class="ic" style="width:32px;height:32px;border-radius:9px;background:#0E2233;display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#fff" stroke-width="2"/><path d="M5.4 20c0-3.3 2.9-5.6 6.6-5.6s6.6 2.3 6.6 5.6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div><div class="n">49</div><div class="l">Profiles</div></div></div>
+      <div class="stat"><div class="ic" style="width:32px;height:32px;border-radius:9px;background:var(--yellow);display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8.4" r="3" stroke="#fff" stroke-width="2"/><path d="M3.6 19.4c0-3 2.4-5.2 5.4-5.2s5.4 2.2 5.4 5.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="17" cy="9.6" r="2.3" stroke="#fff" stroke-width="1.8"/><path d="M15.8 14.2c2.6-.4 4.6 1.5 4.6 4.1" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="n">18</div><div class="l">Active Users</div></div></div>
+      <div class="stat" style="border-color:rgba(237,15,126,.28);background:linear-gradient(180deg,#fff,#FFF2F8)"><div class="ic" style="width:32px;height:32px;border-radius:9px;background:var(--pink);display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 4.4l8.4 15H3.6z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v3.6M12 16.4v.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div><div class="n">7</div><div class="l">High-Risk Permissions</div></div></div>
+    </div>
+  </div>
+
+  <!-- Permission Set Comparison card -->
+  <div class="mock light" style="left:592px;top:496px;width:516px;height:326px">
+    <div class="chrome" style="padding:12px 16px 8px">
+      <div class="brand"><span class="wm" style="font-size:17px;color:#0C1520">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="dots"><i></i><i></i><i></i></div>
+    </div>
+    <div style="padding:6px 18px 0">
+      <div class="ph" style="font-size:19px;letter-spacing:-.4px">Permission Set Comparison</div>
+      <div class="pdesc" style="font-size:11.5px;margin-top:5px">Pick two permission sets to see only the rows where they differ.</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:end;margin-top:12px">
+        <div>
+          <div class="sel-lbl"><i style="background:var(--cyan)"></i>Effective Access</div>
+          <div class="sel">Authenticated Payer<span class="car">&#9660;</span></div>
+        </div>
+        <div style="font-family:'Trenda Display';font-weight:700;font-size:12px;color:var(--grey-2);padding-bottom:10px">VS</div>
+        <div>
+          <div class="sel-lbl"><i style="background:var(--pink)"></i>Effective Access</div>
+          <div class="sel">Buyer<span class="car">&#9660;</span></div>
+        </div>
+      </div>
+      <table class="cmp" style="margin-top:12px">
+        <tr><th>Object</th><th>Create</th><th>Read</th><th>Edit</th><th>Delete</th><th>Create</th><th>Read</th><th>Edit</th><th>Delete</th></tr>
+        <tr><td>Account</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td data-tick="pk"></td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+        <tr><td>Contact</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td class="dash">&ndash;</td><td data-tick="pk"></td><td class="dash">&ndash;</td><td class="dash">&ndash;</td></tr>
+        <tr><td>ContactPointAddress</td><td class="dash">&ndash;</td><td data-tick="cy"></td><td class="dash">&ndash;</td><td data-tick="cy"></td><td data-tick="pk"></td><td data-tick="pk"></td><td data-tick="pk"></td><td data-tick="pk"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Compliance card -->
+  <div class="mock light" style="left:1108px;top:528px;width:434px;height:288px">
+    <div class="chrome" style="padding:12px 16px 8px">
+      <div class="brand"><span class="wm" style="font-size:17px;color:#0C1520">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="dots"><i></i><i></i><i></i></div>
+    </div>
+    <div style="padding:10px 20px 0">
+      <div class="ph" style="font-size:20px;letter-spacing:-.4px">Compliance</div>
+      <div class="pdesc" style="font-size:11.5px;margin-top:6px">Align Salesforce access with your regulatory and internal controls.</div>
+      <div class="fw" style="margin-top:18px">
+        <div class="fwc"><div class="ic" style="background:var(--cyan)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6.4 3.4h7L18 8v12.6H6.4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M13.4 3.4V8H18" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div><div class="nm">SOX</div></div>
+        <div class="fwc"><div class="ic" style="background:var(--yellow)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5.4c-2.4 0-2.4 3.4-2.4 3.4S6.2 8.8 6.2 11.2s3.4 2 3.4 2-1.4 3.2.8 4.3 3-2 3-2 1.4 2.8 3.2 1.6.4-3.9.4-3.9 3.2-.2 3-2.4-3.6-1.6-3.6-1.6.2-3.4-2.2-3.4z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></div><div class="nm">HIPAA</div></div>
+        <div class="fwc"><div class="ic" style="background:var(--pink)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3.4" y="6" width="17.2" height="12" rx="2.4" stroke="#fff" stroke-width="2"/><path d="M3.4 10.4h17.2" stroke="#fff" stroke-width="2"/></svg></div><div class="nm">PCI-DSS</div></div>
+        <div class="fwc"><div class="ic" style="background:var(--cyan)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.4" stroke="#fff" stroke-width="2"/><circle cx="12" cy="5.6" r="1" fill="#fff"/><circle cx="12" cy="18.4" r="1" fill="#fff"/><circle cx="5.6" cy="12" r="1" fill="#fff"/><circle cx="18.4" cy="12" r="1" fill="#fff"/><circle cx="7.6" cy="7.6" r="1" fill="#fff"/><circle cx="16.4" cy="16.4" r="1" fill="#fff"/><circle cx="16.4" cy="7.6" r="1" fill="#fff"/><circle cx="7.6" cy="16.4" r="1" fill="#fff"/></svg></div><div class="nm">GDPR</div></div>
+        <div class="fwc"><div class="ic" style="background:#0E2233"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3.4l7.2 2.7v5.8c0 4.3-2.9 7.8-7.2 9.1-4.3-1.3-7.2-4.8-7.2-9.1V6.1z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div><div class="nm">NIST</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-note">Illustrative demo view</div>
+  <div data-footer data-pg="01"></div>
+</section></div>
+
+<!-- ================= SLIDE 02 ================= -->
+<div class="stage"><section class="slide" id="s2">
+  <div class="bg">
+    <div class="blob cy" style="left:600px;top:60px;width:560px;height:480px"></div>
+    <div class="blob cy" style="left:1180px;top:-40px;width:360px;height:320px;opacity:.5"></div>
+    <div class="blob ye" style="left:820px;top:-160px;width:520px;height:360px;opacity:.55"></div>
+    <div class="blob ye" style="left:1420px;top:-90px;width:380px;height:340px"></div>
+    <div class="blob pc" style="left:1400px;top:300px;width:400px;height:420px;opacity:.7"></div>
+    <div class="blob pk" style="left:1180px;top:600px;width:560px;height:420px"></div>
+    <div class="blob pk" style="left:520px;top:700px;width:560px;height:380px;opacity:.75"></div>
+    <div class="blob ye" style="left:-140px;top:560px;width:420px;height:380px;opacity:.3"></div>
+  </div>
+
+  <div class="logo" data-logo style="--wm:58px"></div>
+  <div data-script></div>
+
+  <div class="copy" style="top:188px;width:700px">
+    <h1 style="font-size:72px;line-height:.97;letter-spacing:-1.9px">Audit readiness.<br><span class="cy">Security visibility.</span></h1>
+  </div>
+  <div class="copy sub" style="top:344px;width:600px">Security posture, compliance findings and<br>audit evidence in one workspace.</div>
+
+  <div class="copy feats" style="top:450px;gap:30px;width:620px">
+    <div class="feat">
+      <div class="ficon cy"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6 2.8h7.4L19 8.4v12.8H6z" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M13.4 2.8v5.6H19" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M9 13h7M9 16.6h5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+      <div><div class="ftitle">SOX and compliance</div><div class="fdesc">Map findings to SOX, HIPAA, PCI-DSS, GDPR and NIST.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon ye"><svg width="27" height="27" viewBox="0 0 24 24" fill="none"><circle cx="8.6" cy="8.2" r="3" stroke="#fff" stroke-width="1.9"/><path d="M3.2 19.2c0-3 2.4-5.2 5.4-5.2s5.4 2.2 5.4 5.2" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="16.8" cy="9.4" r="2.4" stroke="#fff" stroke-width="1.7"/><path d="M15.4 14.2c2.8-.5 5.2 1.6 5.2 4.4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+      <div><div class="ftitle">Segregation of duties</div><div class="fdesc">Identify conflicting permissions and review affected users.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon pk"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2.8l7.6 2.9v6.2c0 4.5-3.1 8.2-7.6 9.6-4.5-1.4-7.6-5.1-7.6-9.6V5.7z" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 8.8v4.4M12 15.9v.2" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+      <div><div class="ftitle">Org Security and Health Check</div><div class="fdesc">See posture scores, privileged access and prioritized risks.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon nv"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5.8" rx="7.4" ry="3" stroke="#fff" stroke-width="1.9"/><path d="M4.6 5.8v12.4c0 1.6 3.3 3 7.4 3s7.4-1.4 7.4-3V5.8" stroke="#fff" stroke-width="1.9"/><path d="M4.6 12c0 1.6 3.3 3 7.4 3s7.4-1.4 7.4-3" stroke="#fff" stroke-width="1.9"/></svg></div>
+      <div><div class="ftitle">Audit evidence</div><div class="fdesc">Trace access grants and document reviews with attributable logs.</div></div>
+    </div>
+  </div>
+
+  <!-- Health Check window -->
+  <div class="mock dark" style="left:700px;top:118px;width:782px;height:346px">
+    <div class="chrome">
+      <div class="brand"><span class="wm" style="font-size:19px;color:#fff">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="nav">
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3.6 10.4L12 3.4l8.4 7v9.2H3.6z" stroke="currentColor" stroke-width="2"/></svg>Dashboard</div>
+        <div class="navitem on"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3.6 10.4L12 3.4l8.4 7v9.2H3.6z" stroke="currentColor" stroke-width="2"/></svg>Org Security</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="12" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M11.6 12H21m-3 0v3.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Permissions</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Profile</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.4" stroke="currentColor" stroke-width="1.9"/><path d="M15.8 15.8L21 21" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Audit</div>
+        <div class="navitem"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3.6v10m0 0l-3.6-3.6M12 13.6l3.6-3.6M4.4 18.4h15.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>Compliance</div>
+      </div>
+      <div class="dots"><i></i><i></i><i></i></div>
+    </div>
+
+    <div style="padding:8px 22px 0;position:relative">
+      <div class="ph" style="font-size:33px">Health <span class="cy">Check</span></div>
+      <div class="pdesc" style="max-width:500px">One auditor-grade verdict on this org's security posture &mdash; privileged-access risk, data exposure, org hardening, and Segregation of Duties, all synthesized into a single grade.</div>
+      <div class="posture">
+        <div class="lbl">Overall Posture</div>
+        <div class="row"><div class="bigGrade">D</div><div class="bigScore">67 <small>/ 100</small></div></div>
+        <div class="when">Assessed Jun 23, 2026 4:50 AM</div>
+      </div>
+    </div>
+
+    <div class="scores" style="margin-top:16px">
+      <div class="score c1"><div class="nm">SOX</div><div class="row"><span class="grade c">C</span><span class="v">73</span><span class="of">/100</span></div><div class="bar ye"><i style="width:73%"></i></div><div class="foot"><span class="risk">At Risk</span><span class="gaps">12 gaps</span></div></div>
+      <div class="score c2"><div class="nm">HIPAA</div><div class="row"><span class="grade c">C</span><span class="v">79</span><span class="of">/100</span></div><div class="bar ye"><i style="width:79%"></i></div><div class="foot"><span class="risk">At Risk</span><span class="gaps">6 gaps</span></div></div>
+      <div class="score c3"><div class="nm">PCI-DSS</div><div class="row"><span class="grade b">B</span><span class="v">87</span><span class="of">/100</span></div><div class="bar cy"><i style="width:87%"></i></div><div class="foot"><span class="risk">At Risk</span><span class="gaps">4 gaps</span></div></div>
+      <div class="score c4"><div class="nm">GDPR</div><div class="row"><span class="grade b">B</span><span class="v">89</span><span class="of">/100</span></div><div class="bar cy"><i style="width:89%"></i></div><div class="foot"><span class="risk">At Risk</span><span class="gaps">1 gap</span></div></div>
+      <div class="score c5"><div class="nm">NIST</div><div class="row"><span class="grade c">C</span><span class="v">73</span><span class="of">/100</span></div><div class="bar ye"><i style="width:73%"></i></div><div class="foot"><span class="risk">At Risk</span><span class="gaps">12 gaps</span></div></div>
+    </div>
+  </div>
+
+  <!-- Segregation of Duties card -->
+  <div class="mock light" style="left:724px;top:456px;width:758px;height:354px">
+    <div class="chrome" style="padding:11px 18px 4px">
+      <div class="brand"><span class="wm" style="font-size:18px;color:#0C1520">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="nav">
+        <div class="navitem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3.6 10.4L12 3.4l8.4 7v9.2H3.6z" stroke="currentColor" stroke-width="2"/></svg>Dashboard</div>
+        <div class="navitem on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3.6 10.4L12 3.4l8.4 7v9.2H3.6z" stroke="currentColor" stroke-width="2"/></svg>Org Security</div>
+        <div class="navitem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="12" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M11.6 12H21m-3 0v3.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Permissions</div>
+        <div class="navitem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Profile</div>
+        <div class="navitem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.4" stroke="currentColor" stroke-width="1.9"/><path d="M15.8 15.8L21 21" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Audit</div>
+        <div class="navitem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 3.6v10m0 0l-3.6-3.6M12 13.6l3.6-3.6M4.4 18.4h15.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>Compliance</div>
+      </div>
+      <div class="dots"><i></i><i></i><i></i></div>
+    </div>
+
+    <div style="padding:6px 22px 0;display:flex;align-items:flex-start;gap:18px">
+      <div style="flex:1">
+        <div class="ph" style="font-size:25px;letter-spacing:-.7px">Segregation of <span class="cy">Duties</span></div>
+        <div class="pdesc" style="font-size:11.5px;margin-top:5px;max-width:520px;line-height:1.38">Users who hold both halves of a conflicting permission pair &mdash; the violation SOX auditors require you to detect, document, and remediate.</div>
+      </div>
+      <div style="display:flex;gap:9px;padding-top:2px;flex:none">
+        <div class="kpi" style="min-width:82px;padding:9px 11px"><div class="n">6</div><div class="l">Active Rules</div></div>
+        <div class="kpi" style="min-width:82px;padding:9px 11px"><div class="n">15</div><div class="l">Users Evaluated</div></div>
+        <div class="kpi" style="min-width:82px;padding:9px 11px"><div class="n">10</div><div class="l">Violations</div></div>
+        <div class="kpi" style="min-width:82px;padding:9px 11px"><div class="n">2</div><div class="l">Users in Violation</div></div>
+      </div>
+    </div>
+
+    <div style="padding:8px 22px 0">
+      <div class="tabs"><div class="tab on">All</div><div class="tab">High Risk</div></div>
+    </div>
+
+    <div style="padding:4px 90px 0 22px">
+      <table class="t">
+        <tr><th style="width:130px">User</th><th style="width:200px">Rule</th><th>Conflicting Permissions</th><th style="width:70px;text-align:right">Risk</th></tr>
+        <tr><td>Demo User A</td><td>Developer with production data control</td><td>PermissionsAuthorApex +<br>PermissionsModifyAllData</td><td style="text-align:right"><span class="hi">High</span></td></tr>
+        <tr><td>Demo User B</td><td>Manage users and permissions</td><td>UserManagement +<br>ManageProfiles</td><td style="text-align:right"><span class="hi">High</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Floating doc glyph -->
+  <div class="docglyph" style="right:50px;bottom:138px;width:110px;height:126px">
+    <svg width="26" height="30" viewBox="0 0 24 28" fill="none" style="margin-bottom:4px">
+      <path d="M4 1.6h10L20 7.4v19H4z" stroke="#ED0F7E" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M14 1.6v5.8h6" stroke="#ED0F7E" stroke-width="2" stroke-linejoin="round"/>
+    </svg>
+    <div class="ln" style="width:100%"></div>
+    <div class="ln" style="width:100%"></div>
+    <div class="ln" style="width:62%"></div>
+  </div>
+  <svg class="spark" style="right:74px;bottom:256px;width:42px;height:42px" viewBox="0 0 48 48" fill="none">
+    <path d="M24 6v11M38 12l-7 7M42 27H32" stroke="#FFC629" stroke-width="4.4" stroke-linecap="round"/>
+  </svg>
+
+  <div class="demo-note" style="bottom:56px">Illustrative demo view</div>
+  <div data-footer data-pg="02"></div>
+</section></div>
+
+<!-- ================= SLIDE 03 ================= -->
+<div class="stage"><section class="slide" id="s3">
+  <div class="bg">
+    <div class="blob cy" style="left:620px;top:40px;width:560px;height:480px"></div>
+    <div class="blob cy" style="left:1160px;top:-60px;width:380px;height:340px;opacity:.5"></div>
+    <div class="blob ye" style="left:1400px;top:-110px;width:420px;height:360px"></div>
+    <div class="blob pc" style="left:1400px;top:260px;width:420px;height:440px;opacity:.72"></div>
+    <div class="blob pk" style="left:1120px;top:620px;width:600px;height:420px"></div>
+    <div class="blob pk" style="left:380px;top:700px;width:600px;height:400px;opacity:.8"></div>
+    <div class="blob ye" style="left:-150px;top:520px;width:440px;height:400px;opacity:.32"></div>
+  </div>
+
+  <div class="logo" data-logo style="--wm:58px"></div>
+  <div data-script></div>
+
+  <div class="copy" style="top:158px;width:680px">
+    <h1 style="font-size:58px;line-height:1.02;letter-spacing:-1.4px">Clearer access.<br><span class="cy">Simpler administration.</span></h1>
+  </div>
+  <div class="copy sub" style="top:296px;width:640px;font-size:22px">Practical tools for admins, architects and support teams.</div>
+
+  <div class="copy feats feats-tight" style="top:350px;gap:32px;width:576px">
+    <div class="feat">
+      <div class="ficon sm cy"><svg width="25" height="25" viewBox="0 0 24 24" fill="none"><circle cx="8.6" cy="8.2" r="3" stroke="#fff" stroke-width="1.9"/><path d="M3.2 19.2c0-3 2.4-5.2 5.4-5.2s5.4 2.2 5.4 5.2" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="16.8" cy="9.4" r="2.4" stroke="#fff" stroke-width="1.7"/><path d="M15.4 14.2c2.8-.5 5.2 1.6 5.2 4.4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+      <div><div class="ftitle">User 360 and effective access</div><div class="fdesc">See who can do what, why, and how users differ.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon sm ye"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2.8l7.6 2.9v6.2c0 4.5-3.1 8.2-7.6 9.6-4.5-1.4-7.6-5.1-7.6-9.6V5.7z" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"/><path d="M8.8 11.9l2.3 2.3 4.1-4.5" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="ftitle">Permission intelligence</div><div class="fdesc">Analyze and compare permissions. Find and merge duplicates.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon sm pk"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3.6 8.4h14.2m0 0l-3.8-3.8m3.8 3.8l-3.8 3.8M20.4 15.6H6.2m0 0l3.8-3.8m-3.8 3.8l3.8 3.8" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="ftitle">Profile migration</div><div class="fdesc">Move to permission sets through reviewable steps.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon sm nv"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.3" fill="#fff"/><path d="M7.9 7.9a5.8 5.8 0 0 0 0 8.2M16.1 7.9a5.8 5.8 0 0 1 0 8.2M5.1 5.1a9.7 9.7 0 0 0 0 13.8M18.9 5.1a9.7 9.7 0 0 1 0 13.8" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+      <div><div class="ftitle">Release Radar and CAB reports</div><div class="fdesc">Assess release impact and prepare deployment evidence.</div></div>
+    </div>
+    <div class="feat">
+      <div class="ficon sm nv"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5.8" rx="7.4" ry="3" stroke="#fff" stroke-width="1.9"/><path d="M4.6 5.8v12.4c0 1.6 3.3 3 7.4 3s7.4-1.4 7.4-3V5.8" stroke="#fff" stroke-width="1.9"/><path d="M4.6 12c0 1.6 3.3 3 7.4 3s7.4-1.4 7.4-3" stroke="#fff" stroke-width="1.9"/></svg></div>
+      <div><div class="ftitle">Storage, FinOps and Dev Tools</div><div class="fdesc">Find archive candidates and query, import or export in context.</div></div>
+    </div>
+  </div>
+
+  <div class="explore" style="top:796px;font-size:27px">Explore ShieldForge on AppExchange
+    <svg viewBox="0 0 300 12" width="300" height="12" fill="none"><path d="M3 8.4C53 3.4 160 2.2 297 5.2" stroke="#22C1F0" stroke-width="2.8" stroke-linecap="round"/></svg>
+  </div>
+
+  <!-- User 360 window -->
+  <div class="mock dark" style="left:712px;top:106px;width:836px;height:362px">
+    <div class="chrome" style="padding:11px 16px 6px">
+      <div class="brand" style="margin-right:10px"><span class="wm" style="font-size:16px;color:#fff">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="nav" style="gap:2px">
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M3.6 10.4L12 3.4l8.4 7v9.2H3.6z" stroke="currentColor" stroke-width="2"/></svg>Dashboard</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 3l7.4 2.8v6c0 4.4-3 8-7.4 9.4-4.4-1.4-7.4-5-7.4-9.4v-6z" stroke="currentColor" stroke-width="1.9"/></svg>Org Security</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="12" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M11.6 12H21m-3 0v3.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Permission Set</div>
+        <div class="navitem on" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.9"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Profile</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.4" stroke="currentColor" stroke-width="1.9"/><path d="M15.8 15.8L21 21" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Audit</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 3.6v10m0 0l-3.6-3.6M12 13.6l3.6-3.6M4.4 18.4h15.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>Compliance</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="5" y="10.4" width="14" height="9.6" rx="2" stroke="currentColor" stroke-width="1.9"/><path d="M8.4 10.4V7.6a3.6 3.6 0 0 1 7.2 0v2.8" stroke="currentColor" stroke-width="1.9"/></svg>FinOps</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.3" fill="currentColor"/><path d="M7.9 7.9a5.8 5.8 0 0 0 0 8.2M16.1 7.9a5.8 5.8 0 0 1 0 8.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Release Radar</div>
+        <div class="navitem" style="font-size:9.5px;padding:4px 5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M9.6 3.4l-1 2.4a7 7 0 0 0-1.7 1l-2.5-.6-2.4 4.2 1.9 1.7a7 7 0 0 0 0 2l-1.9 1.7 2.4 4.2 2.5-.6a7 7 0 0 0 1.7 1l1 2.4h4.8l1-2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Dev Tools</div>
+      </div>
+      <div class="dots" style="gap:5px"><i style="width:8px;height:8px"></i><i style="width:8px;height:8px"></i><i style="width:8px;height:8px"></i></div>
+    </div>
+
+    <div style="padding:2px 18px 0">
+      <div class="ph" style="font-size:26px">User <span class="cy">360</span></div>
+      <div class="pdesc" style="max-width:540px;margin-top:4px;font-size:12.5px">The complete picture of a user &mdash; every layer of identity, access, sharing, and integration that governs what they can do and see, in one hands-on view.</div>
+      <div style="display:flex;gap:11px;align-items:center;margin-top:9px">
+        <div class="search" style="width:280px;padding:7px 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.4" stroke="#9AA6B2" stroke-width="2"/><path d="M15.8 15.8L21 21" stroke="#9AA6B2" stroke-width="2" stroke-linecap="round"/></svg>Search by name, username, or email</div>
+        <div class="btn-dark" style="padding:7px 14px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="#fff" stroke-width="2"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Demo User</div>
+        <div class="btn-ghost" style="padding:7px 14px">Go to user page &nbsp;&rarr;</div>
+      </div>
+    </div>
+
+    <div class="idbar" style="margin-top:9px;padding:9px 18px">
+      <div class="hex" style="width:44px;height:44px;font-size:14px">DU</div>
+      <div>
+        <div class="idname">Demo User <span class="badge">Active</span></div>
+        <div class="idmail">demo.user@insightglobal.com</div>
+        <div class="idmeta">
+          <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#93A5B6" stroke-width="2"/><path d="M5.4 20c0-3.3 2.9-5.6 6.6-5.6s6.6 2.3 6.6 5.6" stroke="#93A5B6" stroke-width="2" stroke-linecap="round"/></svg>Standard</span>
+          <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.4" stroke="#93A5B6" stroke-width="2"/><path d="M6 18L18 6" stroke="#93A5B6" stroke-width="2"/></svg>No role</span>
+          <span>Last login 6/23/2026</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mstrip" style="margin-top:9px">
+      <div class="mcell cy"><div class="n">4</div><div class="l">Permission Sets</div></div>
+      <div class="mcell ye"><div class="n">0</div><div class="l">Permission Set Groups</div></div>
+      <div class="mcell pk"><div class="n">217</div><div class="l">System Permissions</div></div>
+      <div class="mcell nv"><div class="n">7</div><div class="l">High-Risk</div></div>
+    </div>
+    <div class="mstrip" style="margin-top:7px">
+      <div class="mcell ye"><div class="n">0</div><div class="l">Feature Licenses</div></div>
+      <div class="mcell cy"><div class="n">1</div><div class="l">Public Groups</div></div>
+      <div class="mcell nv"><div class="n">2</div><div class="l">Queues</div></div>
+      <div class="mcell pk"><div class="n">2</div><div class="l">Connected Apps</div></div>
+    </div>
+  </div>
+
+  <!-- Profile Migration card -->
+  <div class="mock light" style="left:632px;top:456px;width:474px;height:350px">
+    <div class="chrome" style="padding:10px 14px 3px">
+      <div class="brand" style="margin-right:12px"><span class="wm" style="font-size:15px;color:#0C1520">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="nav" style="gap:1px">
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Dashboard</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Org Security</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Permission Set</div>
+        <div class="navitem on" style="font-size:9.5px;padding:5px 6px">Profile</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Audit</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Compliance</div>
+      </div>
+      <div class="dots" style="gap:4px"><i style="width:7px;height:7px"></i><i style="width:7px;height:7px"></i><i style="width:7px;height:7px"></i></div>
+    </div>
+    <div style="padding:6px 18px 0">
+      <div class="ph" style="font-size:20px;letter-spacing:-.5px">Profile <span class="cy">Migration</span></div>
+      <div class="pdesc" style="font-size:9.5px;margin-top:4px;max-width:440px;line-height:1.36">Move a profile onto a least-privilege permission set in reviewable steps &mdash; first its object, field and system permissions, then record types, apps and tabs, then the validation rule and flow references that point at the profile. The source profile is never modified, so every step is reversible.</div>
+
+      <div style="margin-top:8px">
+        <div class="cap" style="font-size:9.5px;letter-spacing:.2px;text-transform:none;color:var(--ink-2);font-weight:700">Select Profile</div>
+        <div class="sel" style="margin-top:5px;padding:7px 12px">New Customer Community User (1 active user)<span class="car">&#9660;</span></div>
+      </div>
+
+      <div style="border:1px solid #E6EAF0;border-radius:11px;padding:10px 12px;margin-top:8px;background:#fff">
+        <div class="step"><div class="stepn">1</div><div class="steph">Object, field &amp; system permissions</div></div>
+        <div class="cap" style="margin-top:12px">Conversion preview &mdash; New Customer Community User</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:7px">
+          <div><div style="font-family:'Trenda Display';font-weight:900;font-size:19px;letter-spacing:-.7px;color:var(--ink)">24</div><div style="font-family:'Trenda Text';font-size:9.5px;color:var(--grey-2);margin-top:3px">OBJECT PERMISSIONS</div></div>
+          <div><div style="font-family:'Trenda Display';font-weight:900;font-size:19px;letter-spacing:-.7px;color:var(--ink)">689</div><div style="font-family:'Trenda Text';font-size:9.5px;color:var(--grey-2);margin-top:3px">FIELD PERMISSIONS</div></div>
+          <div><div style="font-family:'Trenda Display';font-weight:900;font-size:19px;letter-spacing:-.7px;color:var(--ink)">17</div><div style="font-family:'Trenda Text';font-size:9.5px;color:var(--grey-2);margin-top:3px">SYSTEM PERMISSIONS</div></div>
+        </div>
+        <div style="font-family:'Trenda Text';font-size:9.5px;color:var(--grey);margin-top:8px">System permissions that will be copied:</div>
+        <div class="permchips" style="margin-top:6px">
+          <span class="permchip">Access Activities</span><span class="permchip">Create Topics</span>
+          <span class="permchip">Email Administration</span><span class="permchip">Manage Email Templates</span>
+          <span class="permchip">Run Flows</span><span class="permchip">Select Files from Salesforce</span>
+          <span class="permchip">Show Company Name as Site Role</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Release Radar card -->
+  <div class="mock light" style="left:1108px;top:456px;width:426px;height:364px">
+    <div class="chrome" style="padding:10px 14px 3px">
+      <div class="brand" style="margin-right:10px"><span class="wm" style="font-size:15px;color:#0C1520">ShieldF<i class="dot cy"></i>r<i class="dot g"></i>e</span></div>
+      <div class="nav" style="gap:1px">
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Dashboard</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Org Security</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Permission Set</div>
+        <div class="navitem" style="font-size:9.5px;padding:5px 6px">Profile</div>
+        <div class="navitem on" style="font-size:9.5px;padding:5px 6px">Release Radar</div>
+      </div>
+      <div class="dots" style="gap:4px"><i style="width:7px;height:7px"></i><i style="width:7px;height:7px"></i><i style="width:7px;height:7px"></i></div>
+    </div>
+    <div style="padding:6px 18px 0">
+      <div class="ph" style="font-size:20px;letter-spacing:-.5px">Release <span class="cy">Radar</span></div>
+      <div class="pdesc" style="font-size:9px;margin-top:4px;line-height:1.36">Your org's live Salesforce Release Updates &mdash; ShieldForge scans your org and shows what is actually affected with the artifacts found in this org and the remediation steps to fix them before enforcement date.</div>
+
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px">
+        <div class="kpi" style="min-width:0;padding:6px 8px"><div class="n" style="font-size:17px">89</div><div class="l" style="font-size:7.5px">Live Updates</div></div>
+        <div class="kpi" style="min-width:0;padding:6px 8px"><div class="n" style="font-size:17px;color:var(--pink)">15</div><div class="l" style="font-size:7.5px">Affecting Your Org</div></div>
+        <div class="kpi" style="min-width:0;padding:6px 8px"><div class="n" style="font-size:17px;color:#A97D00">23</div><div class="l" style="font-size:7.5px">Action Needed</div></div>
+        <div class="kpi" style="min-width:0;padding:6px 8px"><div class="n" style="font-size:17px;color:var(--pink)">4</div><div class="l" style="font-size:7.5px">Overdue</div></div>
+        <div class="kpi" style="min-width:0;padding:6px 8px"><div class="n" style="font-size:17px;color:#12A05B">36</div><div class="l" style="font-size:7.5px">Already Enabled</div></div>
+      </div>
+
+      <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap">
+        <span class="chip grey">All (89)</span><span class="chip grey">Affects my org (15)</span>
+        <span class="chip grey">Action needed (23)</span><span class="chip grey">Due soon (11)</span>
+        <span class="chip grey">Connected Apps (4)</span>
+      </div>
+
+      <div class="rritem" style="margin-top:6px;padding:9px 11px">
+        <div style="display:flex;gap:6px">
+          <span class="chip pk">Action needed</span><span class="chip grey">SECURITY</span><span class="chip cy">FLOW</span>
+        </div>
+        <div class="rrtitle" style="margin-top:5px;font-size:13px">Restrict User Access to Run Flows</div>
+        <div class="rrsub" style="color:var(--grey)">Winter &rsquo;26 &nbsp;<span style="color:var(--pink);font-weight:700">Auto-enforces 2025-09-01</span></div>
+        <div class="rrbody" style="margin-top:5px;line-height:1.36;font-size:9.5px">With this update enabled, Salesforce restricts a user's ability to run a flow. A user must be granted the correct profile or permission set to run the flow.</div>
+        <div class="rrfoot" style="margin-top:6px">
+          <div class="rrneed"><span style="width:8px;height:8px;border-radius:50%;background:var(--yellow);display:block"></span>Needs review</div>
+          <div class="btn-view">View details</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FinOps floating card -->
+  <div class="finops" style="left:1268px;top:676px;width:312px;padding:14px 16px">
+    <div class="hd">
+      <span style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5.8" rx="7.4" ry="3" stroke="#fff" stroke-width="2"/><path d="M4.6 5.8v12.4c0 1.6 3.3 3 7.4 3s7.4-1.4 7.4-3V5.8" stroke="#fff" stroke-width="2"/><path d="M4.6 12c0 1.6 3.3 3 7.4 3s7.4-1.4 7.4-3" stroke="#fff" stroke-width="2"/></svg>
+      </span>
+      <span class="t">Storage &amp; FinOps</span>
+    </div>
+    <div class="card">
+      <div style="flex:1">
+        <div class="t">Archive candidates</div>
+        <div class="d">Find and review archive<br>candidates in context.</div>
+      </div>
+      <span style="color:#fff;font-size:13px">&rsaquo;</span>
+    </div>
+  </div>
+
+  <div class="demo-note" style="bottom:48px">Illustrative demo view</div>
+  <div data-footer data-pg="03"></div>
+</section></div>
+
+</div><!-- /deck -->
+
+<script>
+(function(){
+  var tplLogo   = document.getElementById('tpl-logo');
+  var tplScript = document.getElementById('tpl-script');
+  var tplFooter = document.getElementById('tpl-footer');
+
+  document.querySelectorAll('[data-logo]').forEach(function(n){
+    n.appendChild(tplLogo.content.cloneNode(true));
+  });
+  document.querySelectorAll('[data-script]').forEach(function(n){
+    n.appendChild(tplScript.content.cloneNode(true));
+  });
+  document.querySelectorAll('[data-footer]').forEach(function(n){
+    n.appendChild(tplFooter.content.cloneNode(true));
+    n.querySelector('.pg').textContent = n.getAttribute('data-pg');
+  });
+
+  // comparison ticks
+  var TICK = {
+    cy:'<svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.2" fill="#22C1F0"/><path d="M6 10.2l2.7 2.7L14 7.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    pk:'<svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.2" fill="#ED0F7E"/><path d="M6 10.2l2.7 2.7L14 7.6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+  document.querySelectorAll('[data-tick]').forEach(function(td){
+    td.innerHTML = TICK[td.getAttribute('data-tick')];
+  });
+
+  var q = new URLSearchParams(location.search);
+
+  // ?print=1 lays all three slides out at 1:1 for PDF export
+  if (q.get('print')) {
+    var d = document.querySelector('.deck');
+    d.style.padding = '0'; d.style.gap = '0';
+    document.body.style.background = '#fff';
+    document.querySelectorAll('.stage').forEach(function(st){
+      st.style.transform = 'none'; st.style.width = '1600px'; st.style.height = '900px';
+    });
+    document.querySelectorAll('.slide').forEach(function(sl){
+      sl.style.boxShadow = 'none'; sl.style.borderRadius = '0';
+    });
+  }
+
+  // ?solo=N renders a single slide at 1:1 (used for image export)
+  var solo = q.get('solo');
+  if (solo) {
+    var stages = document.querySelectorAll('.stage');
+    stages.forEach(function(st, i){ if (i != (solo-1)) st.remove(); });
+    var deck = document.querySelector('.deck');
+    deck.style.padding = '0'; deck.style.gap = '0';
+    document.body.style.background = '#fff';
+    document.documentElement.style.cssText += ';width:1600px;height:900px;overflow:hidden;margin:0';
+    document.body.style.cssText += ';width:1600px;height:900px;overflow:hidden;margin:0';
+    var only = document.querySelector('.stage');
+    only.style.transform = 'none'; only.style.width='1600px'; only.style.height='900px';
+    document.querySelector('.slide').style.boxShadow='none';
+    document.querySelector('.slide').style.borderRadius='0';
+  }
+
+  // fit-to-viewport scaling
+  function fit(){
+    if (solo || q.get('print')) return;
+    var s = Math.min(1, (window.innerWidth - 48) / 1600);
+    document.querySelectorAll('.stage').forEach(function(st){
+      st.style.transform = 'scale(' + s + ')';
+      st.style.height = (900 * s) + 'px';
+      st.style.width  = (1600 * s) + 'px';
+    });
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  // dev probe: ?probe=1 writes layout metrics into <pre id="__probe">
+  if (q.get('probe')) {
+    var st = document.querySelector('.stage'), sl = document.querySelector('.slide');
+    var pre = document.createElement('pre');
+    pre.id = '__probe';
+    pre.textContent = JSON.stringify({
+      stages: document.querySelectorAll('.stage').length,
+      stage: st.getBoundingClientRect().toJSON(),
+      slide: sl.getBoundingClientRect().toJSON(),
+      bodyScrollH: document.body.scrollHeight,
+      innerW: window.innerWidth, innerH: window.innerHeight
+    });
+    document.body.appendChild(pre);
+  }
+})();
+</script>
+</body>
+</html>
