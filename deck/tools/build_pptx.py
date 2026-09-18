@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
 """Package rendered slide PNGs into a 16:9 PowerPoint deck.
 
-A .pptx is a ZIP of OOXML parts. Each slide here holds one full-bleed picture,
-so the deck looks identical on any machine with no font install required.
+A .pptx is a ZIP of OOXML parts. Each slide holds one full-bleed picture of the
+artwork, so it looks identical on any machine.
 
-Usage: python3 tools/build_pptx.py <pngDir> <out.pptx>
+With --text, the slide copy is added back as native PowerPoint text boxes laid
+out from measurements taken in the browser, and the picture is the artwork with
+that copy hidden. The result is editable in PowerPoint, but needs the Trenda IG
+fonts installed to render as designed.
+
+Usage:
+  python3 tools/build_pptx.py <pngDir> <out.pptx>
+  python3 tools/build_pptx.py <bgPngDir> <out.pptx> --text measure.json
 """
-import sys, zipfile, datetime, pathlib, struct
+import sys, json, zipfile, datetime, pathlib, struct
+
+# The HTML deck is authored on a 1600x900 canvas; both axes map at 7620 EMU/px.
+EMU_PER_PX = 7620
+# 1600px across 13.333in means one CSS px is 0.6pt. OOXML wants hundredths.
+HPT_PER_PX = 60
 
 # 16:9 widescreen: 13.333in x 7.5in, in EMU (1in = 914400 EMU)
 CX, CY = 12192000, 6858000
@@ -71,7 +83,7 @@ def presentation_rels(n):
 <Relationship Id="rId{n + 5}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>
 </Relationships>'''
 
-def slide(name, descr):
+def slide(name, descr, shapes=''):
     """One full-bleed picture, locked so a stray click can't nudge the artwork."""
     return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sld xmlns:a="{NS_A}" xmlns:r="{NS_R}" xmlns:p="{NS_P}">
@@ -91,6 +103,7 @@ def slide(name, descr):
 <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
 </p:spPr>
 </p:pic>
+{shapes}
 </p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
 </p:sld>'''
 
@@ -213,6 +226,99 @@ def app_props(titles):
 <TitlesOfParts><vt:vector size="{n}" baseType="lpstr">{parts}</vt:vector></TitlesOfParts>
 </Properties>'''
 
+
+# ---------------------------------------------------------------- text boxes
+
+# Each Trenda weight ships as its own Windows family name, which is how a
+# non-bold weight like Black reaches PowerPoint at all.
+FACES = {
+    ('display', 300): 'Trenda IG Display Light',
+    ('display', 400): 'Trenda IG Display',
+    ('display', 500): 'Trenda IG Display',
+    ('display', 600): 'Trenda IG Display Semibold',
+    ('display', 700): 'Trenda IG Display Bold',
+    ('display', 800): 'Trenda IG Display Heavy',
+    ('display', 900): 'Trenda IG Display Black',
+    ('text', 300): 'Trenda IG Text Light',
+    ('text', 400): 'Trenda IG Text',
+    ('text', 500): 'Trenda IG Text',
+    ('text', 600): 'Trenda IG Text Semibold',
+    ('text', 700): 'Trenda IG Text Bold',
+}
+
+def face(run):
+    fam, w = run['family'], run['weight']
+    if (fam, w) in FACES:
+        return FACES[(fam, w)]
+    if fam in ('display', 'text'):                       # nearest weight we ship
+        have = sorted(k[1] for k in FACES if k[0] == fam)
+        return FACES[(fam, min(have, key=lambda h: abs(h - w)))]
+    return fam
+
+def esc(t):
+    return t.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+def run_xml(r):
+    # The footer's "|" divider is spaced by CSS margin in HTML; in PowerPoint
+    # that has to be real whitespace.
+    text = '  |  ' if r['text'].strip() == '|' else r['text']
+    sz = max(100, round(r['sizePx'] * HPT_PER_PX))
+    spc = round(r['spacingPx'] * HPT_PER_PX)
+    typeface = face(r)
+    # DrawingML keeps whitespace in <a:t> verbatim; unlike w:t it takes no
+    # xml:space attribute, and the schema rejects one.
+    return (
+        f'<a:r><a:rPr lang="en-US" sz="{sz}" b="0" i="{1 if r["italic"] else 0}"'
+        f' spc="{spc}" dirty="0">'
+        f'<a:solidFill><a:srgbClr val="{r["color"]}"/></a:solidFill>'
+        f'<a:latin typeface="{typeface}"/><a:cs typeface="{typeface}"/>'
+        f'</a:rPr><a:t>{esc(text)}</a:t></a:r>'
+    )
+
+def textbox(block, shape_id, name):
+    """A block measured in the browser, rebuilt as an editable PowerPoint shape.
+
+    The box keeps the measured rectangle and centres its text vertically, which
+    survives the small ascent/descent differences between the two layout engines
+    far better than anchoring to the top would.
+    """
+    x = round(block['x'] * EMU_PER_PX)
+    y = round(block['y'] * EMU_PER_PX)
+    # Trenda measures fractionally wider in PowerPoint than in the browser, so
+    # give each box headroom rather than let a line wrap that should not.
+    slack = min(block['w'] * 0.12, max(0.0, 1592 - block['x'] - block['w']))
+    cx = round((block['w'] + slack) * EMU_PER_PX)
+    cy = round(block['h'] * EMU_PER_PX)
+    lnspc = round(block['lineHeightPx'] * HPT_PER_PX)
+
+    paras = []
+    for runs in block['paragraphs']:
+        body = ''.join(run_xml(r) for r in runs)
+        paras.append(
+            f'<a:p><a:pPr algn="{block["align"]}">'
+            f'<a:lnSpc><a:spcPts val="{lnspc}"/></a:lnSpc></a:pPr>{body}</a:p>'
+        )
+
+    return (
+        f'<p:sp><p:nvSpPr><p:cNvPr id="{shape_id}" name="{name}"/>'
+        f'<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+        f'<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'
+        f'<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0"'
+        f' anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/>'
+        f'{"".join(paras)}</p:txBody></p:sp>'
+    )
+
+def shapes_for(blocks, slide_no):
+    """Text boxes for one slide, named after their opening words."""
+    out, sid = [], 3
+    for b in [b for b in blocks if b['slide'] == slide_no]:
+        first = b['paragraphs'][0][0]['text'].strip()
+        label = (first[:28] + '...') if len(first) > 28 else first
+        out.append(textbox(b, sid, esc(label) or f'Text {sid}'))
+        sid += 1
+    return ''.join(out)
+
 SLIDES = [
     ('One platform for Salesforce governance',
      'Slide 1 of 3. Headline: One platform for Salesforce governance. Understand user '
@@ -238,6 +344,9 @@ SLIDES = [
 def main():
     png_dir = pathlib.Path(sys.argv[1])
     out = pathlib.Path(sys.argv[2])
+    blocks = []
+    if '--text' in sys.argv:
+        blocks = json.loads(pathlib.Path(sys.argv[sys.argv.index('--text') + 1]).read_text())
     pngs = sorted(png_dir.glob('shieldforge-slide-*.png'))
     if len(pngs) != len(SLIDES):
         sys.exit(f'expected {len(SLIDES)} slide PNGs in {png_dir}, found {len(pngs)}')
@@ -269,11 +378,13 @@ def main():
         z.writestr('ppt/slideLayouts/slideLayout1.xml', SLIDE_LAYOUT)
         z.writestr('ppt/slideLayouts/_rels/slideLayout1.xml.rels', SLIDE_LAYOUT_RELS)
         for i, (png, (title, descr)) in enumerate(zip(pngs, SLIDES), start=1):
-            z.writestr(f'ppt/slides/slide{i}.xml', slide(title, descr))
+            z.writestr(f'ppt/slides/slide{i}.xml',
+                       slide(title, descr, shapes_for(blocks, i)))
             z.writestr(f'ppt/slides/_rels/slide{i}.xml.rels', slide_rels(i))
             z.write(png, f'ppt/media/slide{i}.png')
 
-    print(f'  wrote {out} ({out.stat().st_size // 1024} KB, {n} slides)')
+    kind = f'{len(blocks)} text boxes' if blocks else 'flattened'
+    print(f'  wrote {out} ({out.stat().st_size // 1024} KB, {n} slides, {kind})')
 
 if __name__ == '__main__':
     main()

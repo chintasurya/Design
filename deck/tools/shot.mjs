@@ -1,6 +1,7 @@
 // Render deck slides to exact 1600x900 PNGs via the Chrome DevTools Protocol.
-// Usage: node tools/shot.mjs [outDir] [scale]
+// Usage: node tools/shot.mjs [outDir] [scale] [extraQuery] [namePrefix]
 //   scale 2 renders at 3200x1800 (for PowerPoint / print).
+//   extraQuery e.g. "&bg=1" renders the artwork with the editable copy hidden.
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -12,6 +13,8 @@ const CHROME = process.env.CHROME || '/opt/pw-browsers/chromium-1194/chrome-linu
 const PORT = 9333;
 const W = 1600, H = 900;
 const SCALE = Number(process.argv[3]) || 1;
+const EXTRA = process.argv[4] || '';
+const PREFIX = process.argv[5] || 'shieldforge-slide-0';
 
 mkdirSync(OUT, { recursive: true });
 
@@ -65,7 +68,7 @@ await cdp.send('Emulation.setDeviceMetricsOverride',
 
 for (const i of [1, 2, 3]) {
   const loaded = cdp.once('Page.loadEventFired');
-  await cdp.send('Page.navigate', { url: `file://${DIR}/index.html?solo=${i}` }, sessionId);
+  await cdp.send('Page.navigate', { url: `file://${DIR}/index.html?solo=${i}${EXTRA}` }, sessionId);
   await loaded;
   await cdp.send('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true }, sessionId);
   await sleep(350);
@@ -73,7 +76,7 @@ for (const i of [1, 2, 3]) {
     format: 'png', captureBeyondViewport: true,
     clip: { x: 0, y: 0, width: W, height: H, scale: 1 }
   }, sessionId);
-  const file = `${OUT}/shieldforge-slide-0${i}.png`;
+  const file = `${OUT}/${PREFIX}${i}.png`;
   writeFileSync(file, Buffer.from(data, 'base64'));
   console.log(`  wrote ${file}`);
 }

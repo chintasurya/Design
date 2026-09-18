@@ -590,6 +590,81 @@
     });
   }
 
+  // Text that becomes native, editable PowerPoint text boxes. ?bg=1 hides it so
+  // the export can use the artwork alone as a slide background; ?measure=1 dumps
+  // its geometry and styling so the PPTX builder can place it back exactly.
+  var EDITABLE = '.copy > h1, .copy.sub, .check span, .ftitle, .fdesc,' +
+                 ' .footer .txt, .footer .pg, .demo-note';
+
+  if (q.get('bg')) {
+    document.querySelectorAll(EDITABLE).forEach(function(n){ n.style.visibility = 'hidden'; });
+  }
+
+  if (q.get('measure')) {
+    var px = function(v){ return parseFloat(v) || 0; };
+    var families = { 'Trenda Display': 'display', 'Trenda Text': 'text' };
+    var faceOf = function(cs){
+      var fam = cs.fontFamily.split(',')[0].replace(/["']/g, '').trim();
+      return { family: families[fam] || fam, weight: parseInt(cs.fontWeight, 10) || 400 };
+    };
+    var rgb = function(v){
+      var m = v.match(/\d+/g) || [0,0,0];
+      return m.slice(0,3).map(function(n){
+        return ('0' + parseInt(n,10).toString(16)).slice(-2).toUpperCase();
+      }).join('');
+    };
+    // Split an element into paragraphs (on <br>) of styled runs.
+    var runsOf = function(el){
+      var paras = [[]], cur = paras[0];
+      (function walk(node){
+        node.childNodes.forEach(function(c){
+          if (c.nodeType === 3) {
+            var t = c.textContent.replace(/\s+/g, ' ');
+            if (!t.trim()) return;
+            var cs = getComputedStyle(c.parentElement), f = faceOf(cs);
+            cur.push({ text: t, color: rgb(cs.color), family: f.family, weight: f.weight,
+                       sizePx: px(cs.fontSize), spacingPx: px(cs.letterSpacing),
+                       italic: cs.fontStyle === 'italic' });
+          } else if (c.nodeType === 1) {
+            if (c.tagName === 'BR') { cur = []; paras.push(cur); }
+            else if (c.tagName !== 'SVG') walk(c);
+          }
+        });
+      })(el);
+      return paras.filter(function(p){ return p.length; });
+    };
+
+    var out = [];
+    document.querySelectorAll('.slide').forEach(function(slide, i){
+      var sr = slide.getBoundingClientRect();
+      slide.querySelectorAll(EDITABLE).forEach(function(el){
+        var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+        var runs = runsOf(el);
+        if (!runs.length) return;
+        // With `line-height: normal` the real line box comes from the font's own
+        // metrics, and guessing a ratio lands the text off by a pixel once
+        // PowerPoint applies exact line spacing. Every such block here is a
+        // single line, so its own height is the measurement to use.
+        var normal = cs.lineHeight === 'normal';
+        var lh = normal ? r.height : px(cs.lineHeight);
+        var lines = normal ? 1 : Math.max(1, Math.round(r.height / lh));
+        var boxH = lines * lh;
+        out.push({
+          slide: i + 1,
+          x: r.left - sr.left, y: r.top - sr.top + (r.height - boxH) / 2,
+          w: r.width, h: boxH,
+          lineHeightPx: lh,
+          align: cs.textAlign === 'right' ? 'r' : cs.textAlign === 'center' ? 'ctr' : 'l',
+          paragraphs: runs
+        });
+      });
+    });
+    var pre = document.createElement('pre');
+    pre.id = '__measure';
+    pre.textContent = JSON.stringify(out);
+    document.body.appendChild(pre);
+  }
+
   // ?solo=N renders a single slide at 1:1 (used for image export)
   var solo = q.get('solo');
   if (solo) {
