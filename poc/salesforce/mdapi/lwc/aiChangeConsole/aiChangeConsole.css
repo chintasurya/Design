@@ -44,3 +44,43 @@
     list-style: disc;
     padding-left: 1.1rem;
 }
+
+/* Once analysis finishes the steps collapse to one line, so the verdict and
+   the findings stay above the fold instead of being pushed off screen. */
+.summaryline {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    background: #f3faf5;
+    border-left: 3px solid #2e844a;
+}
+.summaryline_failed { background: #fef1f1; border-left-color: #ba0517; }
+.summaryline__toggle {
+    margin-left: auto;
+    cursor: pointer;
+    font-size: 0.75rem;
+    text-decoration: underline;
+}
+
+.askline {
+    font-size: 0.88rem;
+    color: #3e3e3c;
+    font-style: italic;
+    padding: 0.35rem 0 0.6rem 0;
+    border-bottom: 1px solid #ecebea;
+    margin-bottom: 0.75rem;
+}
+
+/* The findings table scrolls inside the card rather than growing the page. */
+.findings {
+    max-height: 22rem;
+    overflow-y: auto;
+    border: 1px solid #ecebea;
+    border-radius: 0.25rem;
+}
+
+.verdict { padding: 0.75rem; }
+.step { padding: 0.35rem 0.6rem; }

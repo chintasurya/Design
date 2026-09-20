@@ -135,6 +135,22 @@ answer "the Network Service profile can read it".
 The last two are unreachable from Apex without the Tooling API. The search says
 so in its notes rather than omitting them silently.
 
+### Two platform traps worth knowing
+
+**`FlowDefinitionView` rejects `queryMore()`.** A SOQL for-loop always opens a
+cursor and pages in batches of 200, so `for (FlowDefinitionView f : [...])`
+fails at runtime no matter what `LIMIT` you set. It has to be a list assignment
+capped at a single batch:
+
+```apex
+List<FlowDefinitionView> flows = [SELECT ... FROM FlowDefinitionView LIMIT 200];
+for (FlowDefinitionView f : flows) { ... }
+```
+
+**The profile name must match exactly.** If step 2 reports "Profile not found",
+the search silently widens to the whole org. Check the exact spelling in Setup,
+Profiles, and set `Pod_Profile_Name__c` on `AI_Poc_Config__mdt.Default`.
+
 ### Jira and Confluence
 
 Not read sources. They are write targets for this POC: a ticket raised on

@@ -37,10 +37,11 @@ public with sharing class AINetworkServicesScope {
         }
         s.profileFound = true;
 
-        for (ObjectPermissions op : [
-                SELECT SobjectType, PermissionsCreate, PermissionsEdit
-                FROM ObjectPermissions
-                WHERE ParentId = :owned[0].Id AND PermissionsRead = true]) {
+        List<ObjectPermissions> perms = [
+            SELECT SobjectType, PermissionsCreate, PermissionsEdit
+            FROM ObjectPermissions
+            WHERE ParentId = :owned[0].Id AND PermissionsRead = true];
+        for (ObjectPermissions op : perms) {
             s.readable.add(op.SobjectType);
             if (op.PermissionsCreate || op.PermissionsEdit) {
                 s.writable.add(op.SobjectType);

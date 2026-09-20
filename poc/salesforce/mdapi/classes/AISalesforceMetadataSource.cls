@@ -180,9 +180,10 @@ public with sharing class AISalesforceMetadataSource {
     // ------------------------------------------------------------ automation
 
     private static void addTriggers(Result r, Set<String> terms, Set<String> objects) {
-        for (ApexTrigger t : [
-                SELECT Name, TableEnumOrId, Status
-                FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 300]) {
+        List<ApexTrigger> triggers = [
+            SELECT Name, TableEnumOrId, Status
+            FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 200];
+        for (ApexTrigger t : triggers) {
             if (!objects.contains(t.TableEnumOrId) && !matches(t.Name, terms)) {
                 continue;
             }
@@ -197,10 +198,13 @@ public with sharing class AISalesforceMetadataSource {
 
     private static void addFlows(Result r, Set<String> terms, AINetworkServicesScope scope) {
         Integer n = 0;
-        for (FlowDefinitionView f : [
-                SELECT ApiName, Label, ProcessType, TriggerType,
-                       TriggerObjectOrEventLabel, VersionNumber
-                FROM FlowDefinitionView WHERE IsActive = true LIMIT 400]) {
+        // FlowDefinitionView does not support queryMore(), so this must be a
+        // list assignment capped at one batch, never a SOQL for-loop.
+        List<FlowDefinitionView> flows = [
+            SELECT ApiName, Label, ProcessType, TriggerType,
+                   TriggerObjectOrEventLabel, VersionNumber
+            FROM FlowDefinitionView WHERE IsActive = true LIMIT 200];
+        for (FlowDefinitionView f : flows) {
             if (n >= MAX_AUTOMATION) {
                 r.notes.add('Flow list truncated at ' + MAX_AUTOMATION);
                 break;
@@ -223,9 +227,10 @@ public with sharing class AISalesforceMetadataSource {
 
     private static void addApexClasses(Result r, Set<String> terms) {
         Integer n = 0;
-        for (ApexClass c : [
-                SELECT Name, ApiVersion, LengthWithoutComments
-                FROM ApexClass WHERE NamespacePrefix = null ORDER BY Name LIMIT 600]) {
+        List<ApexClass> classes = [
+            SELECT Name, ApiVersion, LengthWithoutComments
+            FROM ApexClass WHERE NamespacePrefix = null ORDER BY Name LIMIT 500];
+        for (ApexClass c : classes) {
             if (n >= MAX_AUTOMATION) {
                 r.notes.add('Apex class list truncated at ' + MAX_AUTOMATION);
                 break;

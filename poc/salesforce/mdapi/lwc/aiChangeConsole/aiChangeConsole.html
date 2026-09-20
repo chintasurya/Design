@@ -53,12 +53,17 @@
                 </div>
             </template>
 
-            <!-- live pipeline -->
-            <template if:true={showSteps}>
-                <ul class="slds-var-m-bottom_medium">
+            <!-- what was asked -->
+            <template if:true={submittedText}>
+                <p class="askline">&ldquo;{submittedText}&rdquo;</p>
+            </template>
+
+            <!-- live pipeline, collapses to one line once finished -->
+            <template if:true={showStepList}>
+                <ul class="slds-var-m-bottom_small">
                     <template for:each={steps} for:item="s">
                         <li key={s.key} class={s.css}>
-                            <lightning-icon icon-name={s.icon} size="x-small"
+                            <lightning-icon icon-name={s.icon} size="xx-small"
                                 class="slds-var-m-right_x-small step__icon"></lightning-icon>
                             <span class="step__label">{s.label}</span>
                             <template if:true={s.elapsed}>
@@ -70,6 +75,23 @@
                         </li>
                     </template>
                 </ul>
+            </template>
+
+            <template if:true={showStepSummary}>
+                <div class={stepsSummaryClass}>
+                    <lightning-icon icon-name={stepsSummaryIcon} size="xx-small"
+                        class="slds-var-m-right_x-small"></lightning-icon>
+                    <span>{stepsSummary}</span>
+                    <a class="summaryline__toggle"
+                       onclick={toggleSteps}>{toggleLabel}</a>
+                </div>
+            </template>
+
+            <template if:true={stepsExpanded}>
+                <div class="slds-var-m-bottom_small">
+                    <a class="summaryline__toggle"
+                       onclick={toggleSteps}>{toggleLabel}</a>
+                </div>
             </template>
 
             <!-- verdict -->
@@ -110,9 +132,11 @@
                     <span class="slds-text-body_small
                                  slds-text-color_weak">{snapshotLine}</span>
                 </div>
-                <lightning-datatable key-field="Id" data={findings}
-                    columns={findingColumns} hide-checkbox-column
-                    wrap-text-max-lines="3"></lightning-datatable>
+                <div class="findings">
+                    <lightning-datatable key-field="Id" data={findings}
+                        columns={findingColumns} hide-checkbox-column
+                        wrap-text-max-lines="2"></lightning-datatable>
+                </div>
             </template>
 
             <!-- generated change -->

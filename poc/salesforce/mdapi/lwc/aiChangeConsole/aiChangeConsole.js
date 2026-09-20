@@ -38,9 +38,12 @@ export default class AiChangeConsole extends LightningElement {
     @track view;
     @track steps = [];
     requestText = '';
+    submittedText = '';
     requestType = 'Update Existing';
     model = 'Codex';
     busy = false;
+    stepsExpanded = false;
+    totalMs = 0;
 
     findingColumns = FINDING_COLUMNS;
     testColumns = TEST_COLUMNS;
@@ -69,6 +72,51 @@ export default class AiChangeConsole extends LightningElement {
 
     get showSteps() {
         return this.steps.length > 0;
+    }
+
+    get stepsDone() {
+        return (
+            this.steps.length > 0 &&
+            this.steps.every((s) => s.state === 'done' || s.state === 'failed')
+        );
+    }
+
+    get showStepList() {
+        return this.steps.length > 0 && (!this.stepsDone || this.stepsExpanded);
+    }
+
+    get showStepSummary() {
+        return this.stepsDone && !this.stepsExpanded;
+    }
+
+    get stepsFailed() {
+        return this.steps.some((s) => s.state === 'failed');
+    }
+
+    get stepsSummary() {
+        const done = this.steps.filter((s) => s.state === 'done').length;
+        const secs = (this.totalMs / 1000).toFixed(1);
+        return this.stepsFailed
+            ? `Analysis stopped after ${done} of ${this.steps.length} steps`
+            : `Analysed in ${secs}s · ${done} steps`;
+    }
+
+    get stepsSummaryIcon() {
+        return this.stepsFailed ? 'utility:error' : 'utility:check';
+    }
+
+    get stepsSummaryClass() {
+        return this.stepsFailed
+            ? 'summaryline summaryline_failed'
+            : 'summaryline summaryline_done';
+    }
+
+    get toggleLabel() {
+        return this.stepsExpanded ? 'Hide steps' : 'Show steps';
+    }
+
+    toggleSteps() {
+        this.stepsExpanded = !this.stepsExpanded;
     }
 
     get status() {
@@ -172,6 +220,9 @@ export default class AiChangeConsole extends LightningElement {
         this.view = null;
         this.steps = [];
         this.requestText = '';
+        this.submittedText = '';
+        this.stepsExpanded = false;
+        this.totalMs = 0;
     }
 
     /**
@@ -181,6 +232,10 @@ export default class AiChangeConsole extends LightningElement {
     async handleSubmit() {
         this.busy = true;
         this.view = null;
+        this.submittedText = this.requestText.trim();
+        this.stepsExpanded = false;
+        this.totalMs = 0;
+        const started = Date.now();
         this.steps = PIPELINE.map((s) => ({
             key: s.key,
             label: s.running,
@@ -214,6 +269,7 @@ export default class AiChangeConsole extends LightningElement {
             }
             this.toast('Analysis stopped', this.messageOf(error), 'error');
         } finally {
+            this.totalMs = Date.now() - started;
             this.busy = false;
         }
     }
