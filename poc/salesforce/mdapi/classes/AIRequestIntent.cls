@@ -138,10 +138,20 @@ public with sharing class AIRequestIntent {
         String body = stripObjectClause(text);
 
         if (body.contains(',')) {
-            String candidate = clean(stripLeadIn(body.substringBefore(',')));
+            String candidate =
+                stripTypeNouns(clean(stripLeadIn(body.substringBefore(','))));
             if (isUsableName(candidate)) {
                 return candidate;
             }
+        }
+
+        // Short, direct phrasing: "create effective from date field" leaves
+        // "effective from date" once the verb and the component noun are gone.
+        // This has to be tried before the word-before-a-type-noun rule below,
+        // which would take only "date" and miss the field that already exists.
+        String residue = stripTypeNouns(clean(stripLeadIn(body)));
+        if (isUsableName(residue) && wordCount(residue) <= 5) {
+            return residue;
         }
 
         m = Pattern.compile(
@@ -154,8 +164,46 @@ public with sharing class AIRequestIntent {
             }
         }
 
-        String residue = clean(stripLeadIn(body));
         return isUsableName(residue) ? residue : null;
+    }
+
+    private static Integer wordCount(String value) {
+        return String.isBlank(value) ? 0 : value.trim().split('\\s+').size();
+    }
+
+    /**
+     * Drop a trailing or leading component noun from a name.
+     *
+     * "create effective from date field in healthcarefacility object" left the
+     * name as "effective from date field". That normalises to
+     * effectivefromdatefield, which does not equal effectivefromdate, so the
+     * duplicate check missed a field the near-match logic was listing on the
+     * same screen.
+     */
+    private static String stripTypeNouns(String value) {
+        if (String.isBlank(value)) {
+            return value;
+        }
+        String out = value.trim();
+        Pattern trailing = Pattern.compile(
+            '(?i)\\s+(field|fields|object|objects|flow|trigger|class|component|'
+            + 'record|records|rule|type)$');
+        Pattern leading = Pattern.compile(
+            '(?i)^(field|object|flow|trigger|class|component|record|rule|type)\\s+');
+        for (Integer i = 0; i < 3; i++) {
+            Matcher t = trailing.matcher(out);
+            if (t.find()) {
+                out = out.substring(0, t.start()).trim();
+                continue;
+            }
+            Matcher l = leading.matcher(out);
+            if (l.find()) {
+                out = out.substring(l.end()).trim();
+                continue;
+            }
+            break;
+        }
+        return out;
     }
 
     private static String extractObject(String text) {
