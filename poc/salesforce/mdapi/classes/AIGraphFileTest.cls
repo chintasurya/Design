@@ -271,6 +271,77 @@ private class AIGraphFileTest {
     }
 
     @IsTest
+    static void behaviourRequestsAreReadAsBehaviour() {
+        AIRequestIntent i = AIRequestIntent.parse(
+            'when Account record gets created i want to create '
+            + 'HealthcareProvider and HealthcareFacility record');
+
+        System.assertEquals('Behaviour', i.requestShape,
+            'A trigger clause makes this a behaviour, not a component request.');
+        System.assertEquals('Account', i.triggerObject);
+        System.assertEquals('Created', i.triggerEvent);
+        System.assert(i.affectedObjects.contains('HealthcareProvider'),
+            'Objects written by the behaviour must be captured: '
+            + i.affectedObjects);
+        System.assert(i.affectedObjects.contains('HealthcareFacility'));
+        System.assertEquals(null, i.targetName,
+            'A behaviour has no single component name to duplicate-check.');
+    }
+
+    @IsTest
+    static void existingAutomationBlocksAFalseClearance() {
+        // Reported verbatim: this returned Safe to Create while a Flow on
+        // Account already created both records.
+        AIRequestIntent i = AIRequestIntent.parse(
+            'when Account record gets created i want to create '
+            + 'HealthcareProvider and HealthcareFacility record');
+        List<AIContextSlice.Finding> findings = new List<AIContextSlice.Finding>{
+            AIContextSlice.build('flow:Acct_Create_Provider', 'Flow',
+                'Account Create Provider', 'FLOW_UPDATES_SOBJECT -> sobj:Account',
+                'One Hop', 'High', 'Salesforce', 'METADATA Flow v3')
+        };
+
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(i, findings);
+
+        System.assertNotEquals(AIReuseAnalyzer.SAFE_TO_CREATE, v.outcome,
+            'Automation exists on the trigger object, so this can never be '
+            + 'cleared as safe.');
+        System.assertEquals(true, v.blocksCreation);
+        System.assert(v.detail.contains('Tooling API'),
+            'It must say why it cannot be certain: ' + v.detail);
+    }
+
+    @IsTest
+    static void automationNamingTheTargetIsFlaggedHarder() {
+        AIRequestIntent i = AIRequestIntent.parse(
+            'when Account record gets created i want to create '
+            + 'HealthcareProvider record');
+        List<AIContextSlice.Finding> findings = new List<AIContextSlice.Finding>{
+            AIContextSlice.build('flow:Create_HealthcareProvider', 'Flow',
+                'Create HealthcareProvider on Account',
+                'FLOW_UPDATES_SOBJECT -> sobj:Account', 'One Hop', 'High',
+                'Salesforce', 'METADATA Flow v2')
+        };
+
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(i, findings);
+
+        System.assertEquals(AIReuseAnalyzer.LIKELY_HANDLED, v.outcome,
+            'Automation naming the target object is the strongest signal '
+            + 'the behaviour already exists.');
+        System.assert(v.detail.contains('duplicate records'), v.detail);
+    }
+
+    @IsTest
+    static void noAutomationStillClears() {
+        AIRequestIntent i = AIRequestIntent.parse(
+            'when Widget__c record gets created i want to create Gadget__c record');
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(
+            i, new List<AIContextSlice.Finding>());
+        System.assertEquals(AIReuseAnalyzer.SAFE_TO_CREATE, v.outcome,
+            'With nothing firing on the object there is nothing to duplicate.');
+    }
+
+    @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphFile);

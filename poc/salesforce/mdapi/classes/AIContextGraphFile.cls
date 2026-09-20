@@ -67,20 +67,79 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
         }
 
         Integer hops = intent.action == 'Create' ? 1 : 3;
-        for (AIGraphMemory.Hit h : graph.blastRadius(seedIds, hops, MAX_NODES)) {
+        List<AIGraphMemory.Hit> hits = graph.blastRadius(seedIds, hops, MAX_NODES);
+        Integer beforeFilter = hits.size();
+
+        for (AIGraphMemory.Hit h : relevant(hits, intent)) {
             slice.findings.add(AIContextSlice.build(
                 h.node.id, h.node.nodeType, h.node.name, h.path,
                 impactOf(h.hops), h.node.riskTier, h.node.sourceSystem,
                 h.node.provenance));
         }
+        Integer dropped = beforeFilter - slice.findings.size();
 
         slice.summary = 'Read: ' + intent.summary
             + ' · traversed ' + hops + ' hop' + (hops == 1 ? '' : 's')
             + ' from ' + seedBasis
             + ' across ' + graph.nodeCount + ' nodes and ' + graph.edgeCount
-            + ' edges · ' + slice.findings.size() + ' reached · '
-            + graph.heapNote();
+            + ' edges · ' + slice.findings.size() + ' relevant'
+            + (dropped > 0 ? ' (' + dropped + ' unrelated hidden)' : '')
+            + ' · ' + graph.heapNote();
         return slice;
+    }
+
+    /**
+     * Keep what bears on the question, drop the rest.
+     *
+     * Asking whether one field exists returned 54 components, because an
+     * object drags in every field it has. The answer to "does this field
+     * exist" is the matching field plus the automation that would need
+     * regression, not a directory of the object.
+     */
+    private static List<AIGraphMemory.Hit> relevant(List<AIGraphMemory.Hit> hits,
+                                                    AIRequestIntent intent) {
+        List<AIGraphMemory.Hit> keep = new List<AIGraphMemory.Hit>();
+        Set<String> wanted = new Set<String>();
+        if (String.isNotBlank(intent.targetName)) {
+            for (String w : intent.targetName.toUpperCase().split('[^A-Z0-9]+')) {
+                if (w.length() > 2) {
+                    wanted.add(w);
+                }
+            }
+        }
+
+        for (AIGraphMemory.Hit h : hits) {
+            String nodeType = h.node.nodeType;
+
+            // Automation and the anchor object always matter.
+            if (nodeType != 'Field' && nodeType != 'RecordType') {
+                keep.add(h);
+                continue;
+            }
+            // A behaviour request is about what runs, not about columns.
+            if (intent.requestShape == 'Behaviour') {
+                continue;
+            }
+            // Otherwise a field earns its place by relating to what was asked.
+            if (wanted.isEmpty()) {
+                keep.add(h);
+                continue;
+            }
+            Set<String> words = new Set<String>();
+            for (String w : ((h.node.apiName == null ? '' : h.node.apiName) + ' '
+                    + (h.node.name == null ? '' : h.node.name))
+                    .replaceAll('([a-z0-9])([A-Z])', '$1 $2')
+                    .toUpperCase().split('[^A-Z0-9]+')) {
+                words.add(w);
+            }
+            for (String w : wanted) {
+                if (words.contains(w)) {
+                    keep.add(h);
+                    break;
+                }
+            }
+        }
+        return keep;
     }
 
     private static String impactOf(Integer hops) {

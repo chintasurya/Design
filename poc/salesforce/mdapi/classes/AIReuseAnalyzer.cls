@@ -12,6 +12,12 @@ public with sharing class AIReuseAnalyzer {
     public static final String SAFE_TO_CREATE = 'Safe to Create';
     public static final String IMPACT_ASSESSED = 'Impact Assessed';
     public static final String NEEDS_CLARITY = 'Needs Clarification';
+    public static final String LIKELY_HANDLED = 'Likely Already Handled';
+    public static final String NEEDS_REVIEW = 'Needs Review';
+
+    private static final Set<String> AUTOMATION = new Set<String>{
+        'Flow', 'ApexTrigger', 'ApexClass', 'ValidationRule'
+    };
 
     public class Verdict {
         @AuraEnabled public String outcome;
@@ -25,6 +31,10 @@ public with sharing class AIReuseAnalyzer {
     public static Verdict assess(AIRequestIntent intent,
                                  List<AIContextSlice.Finding> findings) {
         Verdict v = new Verdict();
+
+        if (intent.requestShape == 'Behaviour') {
+            return behaviour(v, intent, findings);
+        }
 
         if (intent.action == 'Create') {
             List<AIContextSlice.Finding> exact = exactMatches(intent, findings);
@@ -120,6 +130,94 @@ public with sharing class AIReuseAnalyzer {
         v.recommendation = 'Approve to send this bounded context to the model. '
                          + 'Only these ' + findings.size()
                          + ' components go into the prompt, not the whole org.';
+        return v;
+    }
+
+    /**
+     * Behaviour requests cannot be answered by a name lookup.
+     *
+     * "When an Account is created, create a HealthcareProvider" is not asking
+     * whether a component called something exists; it is asking whether the
+     * org already does this. So the question becomes: what automation fires on
+     * the trigger object, and does any of it touch the objects the request
+     * wants written?
+     *
+     * Crucially this never returns Safe to Create while automation exists on
+     * the trigger object. Flow internals are unreadable without the Tooling
+     * API, so the honest answer is "these already run, check them", not a
+     * clearance the evidence does not support.
+     */
+    private static Verdict behaviour(Verdict v, AIRequestIntent intent,
+                                     List<AIContextSlice.Finding> findings) {
+        List<AIContextSlice.Finding> automation = new List<AIContextSlice.Finding>();
+        List<AIContextSlice.Finding> overlapping = new List<AIContextSlice.Finding>();
+
+        Set<String> affectedLower = new Set<String>();
+        for (String o : intent.affectedObjects) {
+            affectedLower.add(o.toLowerCase().replaceAll('[^a-z0-9]', ''));
+        }
+
+        for (AIContextSlice.Finding f : findings) {
+            if (!AUTOMATION.contains(f.nodeType)) {
+                continue;
+            }
+            automation.add(f);
+            String haystack = ((f.nodeName == null ? '' : f.nodeName) + ' '
+                            + (f.relationshipPath == null ? '' : f.relationshipPath))
+                            .toLowerCase().replaceAll('[^a-z0-9]', '');
+            for (String affected : affectedLower) {
+                if (affected.length() > 4 && haystack.contains(affected)) {
+                    overlapping.add(f);
+                    break;
+                }
+            }
+        }
+
+        String what = intent.affectedObjects.isEmpty()
+            ? 'the objects named'
+            : String.join(intent.affectedObjects, ' and ');
+
+        if (!overlapping.isEmpty()) {
+            v.outcome = LIKELY_HANDLED;
+            v.blocksCreation = true;
+            v.headline = overlapping.size() + ' existing automation component'
+                + (overlapping.size() == 1 ? '' : 's') + ' on ' + intent.triggerObject
+                + ' already reference ' + what + '.';
+            v.detail = 'This behaviour may already be implemented. Building it '
+                + 'again would run the logic twice and create duplicate records.';
+            v.recommendation = 'Open these and confirm before building anything new. '
+                + 'If one of them is the right place, reword the request as a '
+                + 'change to it.';
+            for (AIContextSlice.Finding f : overlapping) {
+                v.evidence.add(f.nodeId + ' · ' + f.provenance);
+            }
+            return v;
+        }
+
+        if (!automation.isEmpty()) {
+            v.outcome = NEEDS_REVIEW;
+            v.blocksCreation = true;
+            v.headline = automation.size() + ' automation component'
+                + (automation.size() == 1 ? '' : 's') + ' already fire on '
+                + intent.triggerObject + '.';
+            v.detail = 'None of them names ' + what + ', but Flow and Apex '
+                + 'internals cannot be read without the Tooling API, so this '
+                + 'cannot be cleared from the graph alone. One of these may '
+                + 'already do it.';
+            v.recommendation = 'Review these before building. Adding another '
+                + 'component that fires on the same event risks duplicate '
+                + 'records and ordering problems.';
+            for (AIContextSlice.Finding f : automation) {
+                v.evidence.add(f.nodeId + ' · ' + f.provenance);
+            }
+            return v;
+        }
+
+        v.outcome = SAFE_TO_CREATE;
+        v.headline = 'No automation currently fires on ' + intent.triggerObject + '.';
+        v.detail = 'Nothing in the graph runs on this event, so there is nothing '
+            + 'to duplicate.';
+        v.recommendation = 'Approve to generate the change.';
         return v;
     }
 

@@ -13,6 +13,21 @@ public with sharing class AIRequestIntent {
     public String targetName;
     public String targetObject;
     public String targetDataType;
+
+    /**
+     * Component requests name a thing to build: "create a field called X".
+     * Behaviour requests describe what should happen: "when an Account is
+     * created, also create a HealthcareProvider".
+     *
+     * They need completely different analysis. Treating the second as the
+     * first is how "when Account gets created I want to create
+     * HealthcareProvider" came back Safe to Create while a Flow already did
+     * exactly that.
+     */
+    public String requestShape = 'Component';   // Component | Behaviour
+    public String triggerObject;                // Account
+    public String triggerEvent;                 // Created | Updated | Deleted
+    public List<String> affectedObjects = new List<String>();
     public Set<String> terms = new Set<String>();
     public String summary;
 
@@ -66,6 +81,7 @@ public with sharing class AIRequestIntent {
         i.targetName = extractName(text);
         i.targetObject = extractObject(text);
         i.targetDataType = extractDataType(text);
+        detectBehaviour(i, text);
         i.summary = describe(i);
         return i;
     }
@@ -222,7 +238,64 @@ public with sharing class AIRequestIntent {
         return false;
     }
 
+    private static final Map<String, String> EVENTS = new Map<String, String>{
+        'CREATED' => 'Created', 'CREATE' => 'Created', 'INSERTED' => 'Created',
+        'UPDATED' => 'Updated', 'UPDATE' => 'Updated', 'EDITED' => 'Updated',
+        'DELETED' => 'Deleted', 'DELETE' => 'Deleted'
+    };
+
+    /**
+     * "when X is created ... create Y and Z" is a behaviour, not a component.
+     * The give-away is a trigger clause: when / whenever / if / on ... plus a
+     * lifecycle verb.
+     */
+    private static void detectBehaviour(AIRequestIntent i, String text) {
+        Matcher m = Pattern.compile(
+            '(?i)\\b(?:when|whenever|if|on)\\s+(?:an?\\s+|the\\s+)?' +
+            '([A-Za-z0-9_]{3,60})\\s+(?:record\\s+)?' +
+            '(?:is|gets|are|get|was|has\\s+been)?\\s*' +
+            '(created|create|inserted|updated|update|edited|deleted|delete)\\b'
+        ).matcher(text);
+        if (!m.find()) {
+            return;
+        }
+        i.requestShape = 'Behaviour';
+        i.triggerObject = m.group(1);
+        i.triggerEvent = EVENTS.get(m.group(2).toUpperCase());
+
+        // Objects named after the trigger clause are what the behaviour writes.
+        String tail = text.substring(m.end());
+        Matcher objects = Pattern.compile(
+            '(?i)\\b([A-Z][A-Za-z0-9_]{3,60}(?:__c)?)\\b').matcher(tail);
+        Set<String> seen = new Set<String>();
+        while (objects.find()) {
+            String candidate = objects.group(1);
+            String key = candidate.toLowerCase();
+            if (NEVER_A_NAME.contains(key) || ACTIONS.containsKey(candidate.toUpperCase())
+                    || key == i.triggerObject.toLowerCase() || !seen.add(key)) {
+                continue;
+            }
+            i.affectedObjects.add(candidate);
+        }
+        // A behaviour has no single component name to duplicate-check.
+        i.targetName = null;
+        i.targetObject = i.triggerObject;
+        i.targetType = 'Unknown';
+    }
+
     private static String describe(AIRequestIntent i) {
+        if (i.requestShape == 'Behaviour') {
+            String line = 'When a ' + i.triggerObject + ' is '
+                + (i.triggerEvent == null ? 'changed' : i.triggerEvent.toLowerCase());
+            if (!i.affectedObjects.isEmpty()) {
+                line += ', act on ' + String.join(i.affectedObjects, ' and ');
+            }
+            return line;
+        }
+        return describeComponent(i);
+    }
+
+    private static String describeComponent(AIRequestIntent i) {
         List<String> parts = new List<String>{ i.action };
         parts.add(i.targetType == 'Unknown' ? 'component' : 'a ' + label(i.targetType));
         if (String.isNotBlank(i.targetName)) {
