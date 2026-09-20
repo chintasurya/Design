@@ -198,6 +198,63 @@ Node **properties and provenance** are stored. Raw artifact bodies are not. The
 graph carries `artifactPath` and `artifactHash`, and the model fetches source on
 demand for the two or three components in the change plan.
 
+## Current state versus the design
+
+What is deployed, measured against the eight layers, as of the first graph build.
+
+| Layer | Designed | Built | Gap |
+|---|---|---|---|
+| 1 Source Systems | 6 systems | **Salesforce only** | Jira and Confluence absent, so no cross-source edges |
+| 2 Source Connectors | Python, per-source auth, `SourceArtifact` + SHA-256 | Apex `describe()` and SOQL | No artifact abstraction, no content hashing |
+| 3 Ingestors | Parsers for ADF, HTML, Flow XML, Apex | `describe()` plus a string scan of class bodies | No real parsing |
+| 4 Domain Model | `NetworkServicesContext`, extensible core | **skipped** | Metadata goes straight to graph nodes |
+| 5 Graph Storage | Vendor-neutral JSON in GCS and Git | `Graph_Node__c` / `Graph_Edge__c` | Different host, same role |
+| 6 Graph Exporter | 19 node types, 16 edge types | 7 node types, **6 edge types** emitted of 11 declared | See below |
+| 7 Semantica ContextGraph | In-memory Python, 5 analysis functions | `AIGraphQuery` BFS in Apex | Blast radius only |
+| 8 Adapter API + Codex | Adapter plus prompt plus model | `AIContextGraphStored` plus `AIReuseAnalyzer` | **No model call at all** |
+| Return path | Jira ticket, Tooling API deploy, test run | none | Phase 2 |
+
+### What genuinely changed
+
+The move from live search to a persisted graph is not cosmetic. Relationships
+are now resolved once at build time and stored as typed edges, so traversal
+answers reachability at depth. A test class two hops from an object is found
+by walking `APEX_REFERENCES_SOBJECT` then `TEST_COVERS_COMPONENT`, with no name
+in common between the two ends. Search could never do that.
+
+### Edge types emitted, and the five that are not
+
+Produced: `SOBJECT_HAS_FIELD`, `SOBJECT_HAS_RECORDTYPE`,
+`SOBJECT_RELATES_TO_SOBJECT`, `TRIGGER_FIRES_ON_SOBJECT`,
+`FLOW_UPDATES_SOBJECT`, `APEX_REFERENCES_SOBJECT`.
+
+Declared but never written:
+
+| Edge | Why not | What it needs |
+|---|---|---|
+| `TEST_COVERS_COMPONENT` | Test classes are nodes but orphaned | `ApexCodeCoverage` via Tooling API |
+| `COMPONENT_DEPENDS_ON_COMPONENT` | The real dependency edge | `MetadataComponentDependency` via Tooling API |
+| `REQUIREMENT_IMPLEMENTED_BY` | No Jira nodes exist | Jira connector |
+| `RULE_CONSTRAINS_SOBJECT` | No Confluence nodes exist | Confluence connector |
+| `REQUIREMENT_SPECIFIED_BY_DOC` | Neither source exists | Both connectors |
+
+`TEST_COVERS_COMPONENT` is the notable one: coverage gap analysis is a stated
+capability and cannot run without it.
+
+### Two weaker derivations
+
+`APEX_REFERENCES_SOBJECT` is a string match on `ApexClass.Body`, so it will
+match an object name inside a comment. `FLOW_UPDATES_SOBJECT` only covers
+record-triggered flows, because `FlowDefinitionView` reports no target for
+screen or scheduled flows. Both are fixed by the same thing: Tooling API
+access through a Named Credential pointing at the org itself.
+
+### Semantica
+
+Not used. The runtime is Apex. What is preserved is the boundary:
+`AIContextGraphService` and `AIContextSlice` are the neutral contract, so
+moving the runtime to Semantica changes one class and nothing above it.
+
 ## Technology decisions
 
 Reviewed against the platform recommendation from engineering leadership.
