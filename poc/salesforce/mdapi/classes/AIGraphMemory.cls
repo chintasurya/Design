@@ -75,7 +75,56 @@ public with sharing class AIGraphMemory {
 
     // -------------------------------------------------------------- seeding
 
-    /** Nodes whose api name or label contains any term. The traversal starts here. */
+    /**
+     * The object the request names, if the graph holds it. This is the
+     * strongest possible seed and beats any keyword.
+     */
+    public List<AIGraphDocument.GraphNode> anchorObject(String objectName) {
+        List<AIGraphDocument.GraphNode> out = new List<AIGraphDocument.GraphNode>();
+        if (String.isBlank(objectName)) {
+            return out;
+        }
+        String wanted = flatten(objectName);
+        for (AIGraphDocument.GraphNode n : nodesById.values()) {
+            if (n.nodeType != 'SObject') {
+                continue;
+            }
+            if (flatten(n.apiName) == wanted || flatten(n.name) == wanted) {
+                out.add(n);
+                return out;
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Split a name into whole words, including camel case boundaries, so that
+     * matching can respect word edges.
+     *
+     * "ACC Update Date On Chat Transcript" -> ACC UPDATE DATE ON CHAT TRANSCRIPT
+     * "HealthcareFacility"                 -> HEALTHCARE FACILITY HEALTHCAREFACILITY
+     */
+    @TestVisible
+    private static Set<String> wordsOf(String value) {
+        Set<String> words = new Set<String>();
+        if (String.isBlank(value)) {
+            return words;
+        }
+        String spaced = value.replaceAll('([a-z0-9])([A-Z])', '$1 $2');
+        for (String w : spaced.toUpperCase().split('[^A-Z0-9]+')) {
+            if (w.length() > 1) {
+                words.add(w);
+            }
+        }
+        words.add(flatten(value));
+        return words;
+    }
+
+    private static String flatten(String value) {
+        return value == null ? '' : value.toUpperCase().replaceAll('[^A-Z0-9]', '');
+    }
+
+    /** Nodes with a whole word matching a term. The traversal starts here. */
     public List<AIGraphDocument.GraphNode> seeds(Set<String> terms,
                                                  String preferredType,
                                                  Integer maxSeeds) {
@@ -88,11 +137,14 @@ public with sharing class AIGraphMemory {
         }
 
         for (AIGraphDocument.GraphNode n : nodesById.values()) {
-            String haystack = ((n.apiName == null ? '' : n.apiName) + ' '
-                            + (n.name == null ? '' : n.name)).toUpperCase();
+            // Whole words, not substrings. A plain contains() made the term
+            // "DATE" match every flow whose name held the word "Update",
+            // because UPDATE contains DATE.
+            Set<String> words = wordsOf(n.apiName);
+            words.addAll(wordsOf(n.name));
             Boolean hit = false;
             for (String t : terms) {
-                if (haystack.contains(t)) {
+                if (words.contains(t)) {
                     hit = true;
                     break;
                 }

@@ -23,20 +23,31 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
         }
         slice.snapshotId = graph.snapshotId;
 
-        Set<String> terms = new Set<String>(intent.terms);
-        if (String.isNotBlank(intent.targetObject)) {
-            terms.add(intent.targetObject.toUpperCase());
-        }
-        if (String.isNotBlank(intent.targetName)) {
-            terms.addAll(AISalesforceMetadataSource.extractTerms(intent.targetName));
-        }
-
+        // The named object is the anchor. Keywords only seed when no object
+        // was named or the graph does not hold it, because a generic word like
+        // "date" otherwise drags in unrelated automation from across the org.
         List<AIGraphDocument.GraphNode> seeds =
-            graph.seeds(terms, intent.targetType, MAX_SEEDS);
+            graph.anchorObject(intent.targetObject);
+        String seedBasis = 'object ' + intent.targetObject;
+
+        if (seeds.isEmpty()) {
+            Set<String> terms = new Set<String>(intent.terms);
+            if (String.isNotBlank(intent.targetName)) {
+                terms.addAll(
+                    AISalesforceMetadataSource.extractTerms(intent.targetName));
+            }
+            // A declared data type describes the field, it does not name a
+            // component, so it must not pull in matches of its own.
+            if (String.isNotBlank(intent.targetDataType)) {
+                terms.remove(intent.targetDataType.toUpperCase());
+            }
+            seeds = graph.seeds(terms, intent.targetType, MAX_SEEDS);
+            seedBasis = 'keywords ' + String.join(new List<String>(terms), ', ');
+        }
         if (seeds.isEmpty()) {
             slice.summary = 'Read: ' + intent.summary
-                + ' · nothing in the graph matched those terms ('
-                + graph.nodeCount + ' nodes searched)';
+                + ' · nothing matched in the graph (' + graph.nodeCount
+                + ' nodes searched, tried ' + seedBasis + ')';
             return slice;
         }
 
@@ -55,7 +66,7 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
 
         slice.summary = 'Read: ' + intent.summary
             + ' · traversed ' + hops + ' hop' + (hops == 1 ? '' : 's')
-            + ' from ' + seeds.size() + ' seed' + (seeds.size() == 1 ? '' : 's')
+            + ' from ' + seedBasis
             + ' across ' + graph.nodeCount + ' nodes and ' + graph.edgeCount
             + ' edges · ' + slice.findings.size() + ' reached';
         return slice;

@@ -193,6 +193,70 @@ private class AIGraphFileTest {
     }
 
     @IsTest
+    static void updateDoesNotMatchTheTermDate() {
+        // Reported verbatim: asking for a Date field on HealthcareFacility
+        // returned six ACC flows, five of which matched only because the word
+        // "Update" contains the substring "date".
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.addNode('sobj:HealthcareFacility', 'SObject', 'Healthcare Facility',
+            'HealthcareFacility', '{}', 'High', 'SCHEMA', 'Salesforce');
+        d.addNode('flow:ACC_Master_Update_a_Case_Flow', 'Flow',
+            'ACC Master Update a Case Flow', 'ACC_Master_Update_a_Case_Flow',
+            '{}', 'High', 'METADATA', 'Salesforce');
+        d.addNode('flow:ACC_Update_Date_On_Chat', 'Flow',
+            'ACC Update Date On Chat Transcript', 'ACC_Update_Date_On_Chat',
+            '{}', 'High', 'METADATA', 'Salesforce');
+        d.addEdge('sobj:HealthcareFacility', 'SOBJECT_HAS_FIELD',
+            'sobj:HealthcareFacility', 'self');
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+        Set<String> hits = new Set<String>();
+        for (AIGraphDocument.GraphNode n :
+                g.seeds(new Set<String>{'DATE'}, null, 10)) {
+            hits.add(n.id);
+        }
+
+        System.assert(!hits.contains('flow:ACC_Master_Update_a_Case_Flow'),
+            '"Update" must not match the term "DATE".');
+        System.assert(hits.contains('flow:ACC_Update_Date_On_Chat'),
+            'A genuine Date word should still match.');
+    }
+
+    @IsTest
+    static void camelCaseNamesSplitIntoWords() {
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.addNode('sobj:HealthcareFacility', 'SObject', 'Healthcare Facility',
+            'HealthcareFacility', '{}', 'High', 'SCHEMA', 'Salesforce');
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+
+        System.assertEquals(1, g.seeds(new Set<String>{'FACILITY'}, null, 5).size(),
+            'A camel case api name must be searchable by its parts.');
+        System.assertEquals(1,
+            g.seeds(new Set<String>{'HEALTHCAREFACILITY'}, null, 5).size(),
+            'The unbroken form must still match.');
+    }
+
+    @IsTest
+    static void theNamedObjectAnchorsTheSearch() {
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.addNode('sobj:HealthcareFacility', 'SObject', 'Healthcare Facility',
+            'HealthcareFacility', '{}', 'High', 'SCHEMA', 'Salesforce');
+        d.addNode('flow:ACC_Update_Something', 'Flow', 'ACC Update Something',
+            'ACC_Update_Something', '{}', 'High', 'METADATA', 'Salesforce');
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+
+        List<AIGraphDocument.GraphNode> anchor =
+            g.anchorObject('healthcarefacility');
+        System.assertEquals(1, anchor.size(),
+            'A lowercase object name must still anchor.');
+        System.assertEquals('sobj:HealthcareFacility', anchor[0].id);
+        System.assertEquals(0, g.anchorObject('NoSuchObject__c').size());
+    }
+
+    @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphFile);
