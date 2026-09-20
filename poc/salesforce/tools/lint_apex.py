@@ -15,6 +15,10 @@ yourself to ignore:
   3. Reserved words as local variables  "any", "list", "limit" and friends.
   4. Custom exception class names       Must end "Exception", must not reuse
                                         the name of a System exception.
+  5. Unqualified inner enum values      Apex rejects Phase.EDGES inside the
+                                        class declaring "enum Phase" with
+                                        "Static field cannot be referenced
+                                        from a non static context".
 
 Checks 2 and 3 exist because the same class of bug reached a real org three
 times: a parameter called "system", a field called "override_", and a local
@@ -105,6 +109,18 @@ def check(path):
             name = parts[-1]
             if name.lower() in RESERVED:
                 out.append((n, name, 'parameter name is reserved in Apex'))
+
+    for m in re.finditer(r'\benum\s+(\w+)\s*\{', src):
+        enum_name = m.group(1)
+        cls = os.path.splitext(os.path.basename(path))[0]
+        for use in re.finditer(r'(?<![\w.])%s\s*\.\s*[A-Z_]{2,}' % enum_name, src):
+            before = src[max(0, use.start() - len(cls) - 1):use.start()]
+            if before.endswith(cls + '.'):
+                continue
+            n = src[:use.start()].count('\n') + 1
+            out.append((n, enum_name,
+                        'inner enum used unqualified; write %s.%s.X or use '
+                        'String constants' % (cls, enum_name)))
 
     for m in EXC_CLASS.finditer(src):
         n = src[:m.start()].count('\n') + 1
