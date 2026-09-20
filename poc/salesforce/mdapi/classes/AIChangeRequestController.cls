@@ -75,11 +75,21 @@ public with sharing class AIChangeRequestController {
         }
     }
 
-    /** Kick off the graph build. Returns the batch job id. */
+    /** Clear the graph and rebuild it, so a scope change cannot leave stale nodes. */
     @AuraEnabled
     public static String buildGraph() {
         try {
-            return String.valueOf(AIGraphBuilder.run());
+            return String.valueOf(AIGraphPurge.run(true));
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    /** Profiles in the org, so the pod profile can be picked rather than guessed. */
+    @AuraEnabled(cacheable=false)
+    public static List<Map<String, Object>> listProfiles() {
+        try {
+            return AINetworkServicesScope.candidates();
         } catch (Exception e) {
             throw asAura(e);
         }
@@ -94,8 +104,13 @@ public with sharing class AIChangeRequestController {
                 FROM AsyncApexJob
                 WHERE ApexClass.Name = 'AIGraphBuilder'
                 ORDER BY CreatedDate DESC LIMIT 1];
+            AINetworkServicesScope scope = AINetworkServicesScope.resolve(
+                AIServiceFactory.config().Pod_Profile_Name__c);
             return new Map<String, Object>{
                 'built' => built,
+                'scopeNote' => scope.note,
+                'profileFound' => scope.profileFound,
+                'ownedObjects' => scope.owned.size(),
                 'nodes' => built ? AIGraphQuery.nodeCount() : 0,
                 'edges' => built ? AIGraphQuery.edgeCount() : 0,
                 'jobStatus' => jobs.isEmpty() ? null : jobs[0].Status,

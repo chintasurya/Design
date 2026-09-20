@@ -37,6 +37,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>AIGraphPurge</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>AIGraphQuery</apexClass>
         <enabled>true</enabled>
     </classAccesses>

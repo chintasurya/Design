@@ -11,6 +11,7 @@ import rejectRequest from '@salesforce/apex/AIChangeRequestController.rejectRequ
 import getView from '@salesforce/apex/AIChangeRequestController.getView';
 import buildGraph from '@salesforce/apex/AIChangeRequestController.buildGraph';
 import graphStatus from '@salesforce/apex/AIChangeRequestController.graphStatus';
+import listProfiles from '@salesforce/apex/AIChangeRequestController.listProfiles';
 
 const FINDING_COLUMNS = [
     { label: 'Type', fieldName: 'Node_Type__c', initialWidth: 120 },
@@ -58,6 +59,43 @@ export default class AiChangeConsole extends LightningElement {
         clearInterval(this.pollId);
     }
 
+    @track profiles = [];
+    showProfiles = false;
+
+    get scopeWarning() {
+        if (!this.graph.scopeNote) {
+            return null;
+        }
+        return this.graph.profileFound ? null : this.graph.scopeNote;
+    }
+
+    get scopeNote() {
+        return this.graph.scopeNote;
+    }
+
+    get profileToggleLabel() {
+        return this.showProfiles ? 'Hide profiles' : 'Show profiles in this org';
+    }
+
+    async toggleProfiles() {
+        this.showProfiles = !this.showProfiles;
+        if (this.showProfiles && this.profiles.length === 0) {
+            try {
+                const rows = await listProfiles();
+                this.profiles = rows
+                    .filter((r) => r.writable > 0)
+                    .sort((a, b) => b.writable - a.writable)
+                    .slice(0, 15)
+                    .map((r) => ({
+                        name: r.name,
+                        detail: `${r.writable} objects writable`
+                    }));
+            } catch (error) {
+                this.toast('Could not list profiles', this.messageOf(error), 'error');
+            }
+        }
+    }
+
     get graphLabel() {
         if (this.building) {
             return `Building the graph… ${this.graph.jobDone || 0} of ${this.graph.jobTotal || '?'} batches`;
@@ -103,8 +141,9 @@ export default class AiChangeConsole extends LightningElement {
         this.building = true;
         try {
             await buildGraph();
-            this.toast('Graph build started',
-                'Walking the pod scope. This runs as a batch job.', 'success');
+            this.toast('Rebuilding',
+                'Clearing the old graph first, then walking the pod scope.',
+                'success');
             await this.refreshGraph();
         } catch (error) {
             this.building = false;

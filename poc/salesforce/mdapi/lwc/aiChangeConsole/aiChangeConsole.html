@@ -28,6 +28,31 @@
                     disabled={building}></lightning-button>
             </div>
 
+            <template if:true={scopeWarning}>
+                <div class="scopewarn">
+                    <lightning-icon icon-name="utility:warning" size="xx-small"
+                        class="slds-var-m-right_x-small"></lightning-icon>
+                    <div>
+                        <p>{scopeWarning}</p>
+                        <a class="summaryline__toggle"
+                           onclick={toggleProfiles}>{profileToggleLabel}</a>
+                        <template if:true={showProfiles}>
+                            <ul class="evidence slds-var-m-top_x-small">
+                                <template for:each={profiles} for:item="p">
+                                    <li key={p.name}>
+                                        <strong>{p.name}</strong> — {p.detail}
+                                    </li>
+                                </template>
+                            </ul>
+                            <p class="slds-text-body_small slds-var-m-top_x-small">
+                                Set the exact name on Custom Metadata Types,
+                                AI POC Config, Default, field Pod Profile Name.
+                            </p>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
             <div class="composer">
                 <lightning-textarea
                     label={composerLabel}

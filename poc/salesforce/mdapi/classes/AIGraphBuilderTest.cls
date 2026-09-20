@@ -94,6 +94,36 @@ private class AIGraphBuilderTest {
     }
 
     @IsTest
+    static void ownershipIsNarrowerThanVisibility() {
+        // Read access is a poor proxy for ownership: the first real build
+        // walked ~1,400 objects because every profile reads most of the org.
+        AINetworkServicesScope.clearCache();
+        AINetworkServicesScope scope =
+            AINetworkServicesScope.resolve('No Such Profile Here');
+        System.assert(scope.owned.size() <= scope.readable.size(),
+            'Owned must never exceed readable.');
+    }
+
+    @IsTest
+    static void purgeEmptiesTheGraphBeforeARebuild() {
+        insert new Graph_Node__c(Node_Id__c = 'sobj:Stale__c',
+            Node_Type__c = 'SObject', Node_Name__c = 'Stale',
+            Api_Name__c = 'Stale__c', Source_System__c = 'Salesforce',
+            Snapshot_Id__c = 'old');
+        insert new Graph_Edge__c(Edge_Id__c = 'stale1',
+            From_Node_Id__c = 'sobj:Stale__c', To_Node_Id__c = 'sobj:Other__c',
+            Edge_Type__c = 'SOBJECT_HAS_FIELD', Snapshot_Id__c = 'old');
+
+        Test.startTest();
+        AIGraphPurge.run(false);
+        Test.stopTest();
+
+        // The edge phase runs inside the test; nodes chain after it.
+        System.assertEquals(0, [SELECT COUNT() FROM Graph_Edge__c],
+            'A narrowed scope must not leave stale edges behind.');
+    }
+
+    @IsTest
     static void rebuildUpsertsRatherThanDuplicating() {
         Test.startTest();
         AIGraphBuilder.run();
