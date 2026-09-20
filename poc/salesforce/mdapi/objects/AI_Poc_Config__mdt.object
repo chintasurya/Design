@@ -87,4 +87,11 @@
         <type>Text</type>
         <unique>false</unique>
     </fields>
+    <fields>
+        <fullName>Use_Live_Search__c</fullName>
+        <defaultValue>false</defaultValue>
+        <fieldManageability>SubscriberControlled</fieldManageability>
+        <label>Use Live Search Instead Of Graph</label>
+        <type>Checkbox</type>
+    </fields>
 </CustomObject>

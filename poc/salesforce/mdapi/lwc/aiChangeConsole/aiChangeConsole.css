@@ -84,3 +84,14 @@
 
 .verdict { padding: 0.75rem; }
 .step { padding: 0.35rem 0.6rem; }
+
+.graphbar {
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.6rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}
+.graphbar_ready { background: #f3f9ff; border-left: 3px solid #0176d3; }
+.graphbar_empty { background: #fdf5ef; border-left: 3px solid #fe9339; }

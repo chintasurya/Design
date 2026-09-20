@@ -13,6 +13,7 @@ public class AIServiceFactory {
                 Use_Stub_Graph__c = false,
                 Use_Remote_Graph__c = false,
                 Pod_Profile_Name__c = 'Network Service',
+                Use_Live_Search__c = false,
                 Context_Named_Credential__c = 'Semantica_Context_Service',
                 Context_Query_Path__c = '/v1/context/query');
         }
@@ -33,7 +34,11 @@ public class AIServiceFactory {
             // Semantica on GCP, once it exists.
             return new AIContextGraphHttp();
         }
-        // Default: search this org live, plus Jira and Confluence if configured.
-        return new AIContextGraphLive();
+        if (cfg.Use_Live_Search__c) {
+            // Explicit opt-out of the graph. Search, not traversal.
+            return new AIContextGraphLive();
+        }
+        // Default: traverse the persisted knowledge graph.
+        return new AIContextGraphStored();
     }
 }

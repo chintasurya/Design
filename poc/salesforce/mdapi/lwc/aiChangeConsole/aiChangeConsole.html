@@ -19,6 +19,15 @@
         <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
             <!-- ask -->
+            <div class={graphClass}>
+                <lightning-icon icon-name="utility:hierarchy" size="xx-small"
+                    class="slds-var-m-right_x-small"></lightning-icon>
+                <span>{graphLabel}</span>
+                <lightning-button label={buildLabel} variant="base"
+                    class="slds-m-left_small" onclick={handleBuildGraph}
+                    disabled={building}></lightning-button>
+            </div>
+
             <div class="composer">
                 <lightning-textarea
                     label={composerLabel}
@@ -44,11 +53,11 @@
 
                 <div class="slds-var-m-top_medium">
                     <lightning-button variant="brand" label={submitLabel}
-                        onclick={handleSubmit} disabled={submitDisabled}></lightning-button>
+                        onclick={handleSubmit} disabled={analyseDisabled}></lightning-button>
                     <p class="slds-text-body_small slds-text-color_weak
                               slds-var-m-top_xx-small">
-                        The org is searched first. A model is only called after you
-                        approve what was found.
+                        The graph is traversed first. A model is only called after
+                        you approve what was found.
                     </p>
                 </div>
             </div>

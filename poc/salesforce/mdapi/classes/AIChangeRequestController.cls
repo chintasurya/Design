@@ -37,8 +37,13 @@ public with sharing class AIChangeRequestController {
         try {
             AINetworkServicesScope scope = AINetworkServicesScope.resolve(
                 AIServiceFactory.config().Pod_Profile_Name__c);
+            String detail = scope.note;
+            if (AIGraphQuery.isBuilt()) {
+                detail += ' · graph holds ' + AIGraphQuery.nodeCount()
+                        + ' nodes and ' + AIGraphQuery.edgeCount() + ' edges';
+            }
             return new AIContextGraphLive.Step('scope',
-                'Resolved the Network Services scope', scope.note, elapsed(t0));
+                'Resolved the Network Services scope', detail, elapsed(t0));
         } catch (Exception e) {
             throw asAura(e);
         }
@@ -65,6 +70,39 @@ public with sharing class AIChangeRequestController {
     public static ConsoleView stepAssess(Id requestId) {
         try {
             return getView(requestId);
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    /** Kick off the graph build. Returns the batch job id. */
+    @AuraEnabled
+    public static String buildGraph() {
+        try {
+            return String.valueOf(AIGraphBuilder.run());
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    @AuraEnabled(cacheable=false)
+    public static Map<String, Object> graphStatus() {
+        try {
+            Boolean built = AIGraphQuery.isBuilt();
+            List<AsyncApexJob> jobs = [
+                SELECT Status, JobItemsProcessed, TotalJobItems, NumberOfErrors
+                FROM AsyncApexJob
+                WHERE ApexClass.Name = 'AIGraphBuilder'
+                ORDER BY CreatedDate DESC LIMIT 1];
+            return new Map<String, Object>{
+                'built' => built,
+                'nodes' => built ? AIGraphQuery.nodeCount() : 0,
+                'edges' => built ? AIGraphQuery.edgeCount() : 0,
+                'jobStatus' => jobs.isEmpty() ? null : jobs[0].Status,
+                'jobDone' => jobs.isEmpty() ? 0 : jobs[0].JobItemsProcessed,
+                'jobTotal' => jobs.isEmpty() ? 0 : jobs[0].TotalJobItems,
+                'jobErrors' => jobs.isEmpty() ? 0 : jobs[0].NumberOfErrors
+            };
         } catch (Exception e) {
             throw asAura(e);
         }

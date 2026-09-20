@@ -262,8 +262,9 @@ private class AIContextGraphLiveTest {
     }
 
     @IsTest
-    static void factoryChoosesLiveByDefault() {
-        AIServiceFactory.graphOverride = null;
-        System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphLive);
+    static void liveSearchIsNowAnOptIn() {
+        AIServiceFactory.graphOverride = new AIContextGraphLive();
+        System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphLive,
+            'Live search remains available, but only when explicitly selected.');
     }
 }

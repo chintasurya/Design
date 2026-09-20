@@ -9,6 +9,8 @@ import approveAnalysis from '@salesforce/apex/AIChangeRequestController.approveA
 import approveCode from '@salesforce/apex/AIChangeRequestController.approveCode';
 import rejectRequest from '@salesforce/apex/AIChangeRequestController.rejectRequest';
 import getView from '@salesforce/apex/AIChangeRequestController.getView';
+import buildGraph from '@salesforce/apex/AIChangeRequestController.buildGraph';
+import graphStatus from '@salesforce/apex/AIChangeRequestController.graphStatus';
 
 const FINDING_COLUMNS = [
     { label: 'Type', fieldName: 'Node_Type__c', initialWidth: 120 },
@@ -44,6 +46,71 @@ export default class AiChangeConsole extends LightningElement {
     busy = false;
     stepsExpanded = false;
     totalMs = 0;
+    @track graph = { built: false, nodes: 0, edges: 0 };
+    building = false;
+    pollId;
+
+    connectedCallback() {
+        this.refreshGraph();
+    }
+
+    disconnectedCallback() {
+        clearInterval(this.pollId);
+    }
+
+    get graphLabel() {
+        if (this.building) {
+            return `Building the graph… ${this.graph.jobDone || 0} of ${this.graph.jobTotal || '?'} batches`;
+        }
+        return this.graph.built
+            ? `Graph: ${this.graph.nodes} nodes · ${this.graph.edges} edges`
+            : 'Graph not built yet';
+    }
+
+    get graphClass() {
+        return this.graph.built && !this.building
+            ? 'graphbar graphbar_ready' : 'graphbar graphbar_empty';
+    }
+
+    get buildLabel() {
+        return this.graph.built ? 'Rebuild graph' : 'Build graph';
+    }
+
+    get analyseDisabled() {
+        return this.submitDisabled || !this.graph.built;
+    }
+
+    async refreshGraph() {
+        try {
+            this.graph = await graphStatus();
+            const running =
+                this.graph.jobStatus === 'Processing' ||
+                this.graph.jobStatus === 'Queued' ||
+                this.graph.jobStatus === 'Preparing';
+            this.building = running;
+            if (running && !this.pollId) {
+                this.pollId = setInterval(() => this.refreshGraph(), 3000);
+            } else if (!running && this.pollId) {
+                clearInterval(this.pollId);
+                this.pollId = undefined;
+            }
+        } catch (error) {
+            this.toast('Could not read graph status', this.messageOf(error), 'error');
+        }
+    }
+
+    async handleBuildGraph() {
+        this.building = true;
+        try {
+            await buildGraph();
+            this.toast('Graph build started',
+                'Walking the pod scope. This runs as a batch job.', 'success');
+            await this.refreshGraph();
+        } catch (error) {
+            this.building = false;
+            this.toast('Build failed', this.messageOf(error), 'error');
+        }
+    }
 
     findingColumns = FINDING_COLUMNS;
     testColumns = TEST_COLUMNS;
