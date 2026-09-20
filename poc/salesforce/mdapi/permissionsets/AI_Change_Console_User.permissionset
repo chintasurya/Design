@@ -271,4 +271,16 @@
         <apexClass>AIServiceFactory</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>AIContextGraphLive</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AISalesforceMetadataSource</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AIAtlassianSource</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
 </PermissionSet>

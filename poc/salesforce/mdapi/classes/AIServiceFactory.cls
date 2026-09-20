@@ -10,7 +10,8 @@ public class AIServiceFactory {
         AI_Poc_Config__mdt cfg = AI_Poc_Config__mdt.getInstance('Default');
         if (cfg == null) {
             cfg = new AI_Poc_Config__mdt(
-                Use_Stub_Graph__c = true,
+                Use_Stub_Graph__c = false,
+                Use_Remote_Graph__c = false,
                 Context_Named_Credential__c = 'Semantica_Context_Service',
                 Context_Query_Path__c = '/v1/context/query');
         }
@@ -21,8 +22,17 @@ public class AIServiceFactory {
         if (graphOverride != null) {
             return graphOverride;
         }
-        return config().Use_Stub_Graph__c
-             ? (AIContextGraphService) new AIContextGraphStub()
-             : (AIContextGraphService) new AIContextGraphHttp();
+        AI_Poc_Config__mdt cfg = config();
+        if (cfg.Use_Stub_Graph__c) {
+            // Offline demo only. Returns fixtures, not org data.
+            return new AIContextGraphStub();
+        }
+        if (cfg.Use_Remote_Graph__c
+                && String.isNotBlank(cfg.Context_Named_Credential__c)) {
+            // Semantica on GCP, once it exists.
+            return new AIContextGraphHttp();
+        }
+        // Default: search this org live, plus Jira and Confluence if configured.
+        return new AIContextGraphLive();
     }
 }

@@ -4,7 +4,7 @@
     <protected>false</protected>
     <values>
         <field>Use_Stub_Graph__c</field>
-        <value xsi:type="xsd:boolean">true</value>
+        <value xsi:type="xsd:boolean">false</value>
     </values>
     <values>
         <field>Context_Named_Credential__c</field>

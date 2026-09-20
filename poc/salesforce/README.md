@@ -86,7 +86,54 @@ Findings are **rows, not a JSON blob**, so the approval screen, the Jira ticket
 and any audit report all read the same records. No field in this package ever
 holds a whole graph.
 
-## Switching from stub to live service
+## Where the findings come from
+
+Three implementations sit behind `AIContextGraphService`. The factory picks one
+from `AI_Poc_Config__mdt.Default`:
+
+| Mode | Config | What it reads |
+|---|---|---|
+| **Live (default)** | both checkboxes off | This org's real metadata, plus Jira and Confluence when their credentials exist |
+| Remote | `Use_Remote_Graph__c` on | Semantica on GCP via `AIContextGraphHttp` |
+| Stub | `Use_Stub_Graph__c` on | Fixtures. Offline demo only |
+
+### Live mode needs no setup for Salesforce
+
+`AISalesforceMetadataSource` reads the running org with no callout and no
+configuration:
+
+- `Schema.getGlobalDescribe()` and `describe()` for objects, fields, formulas,
+  lookups and record type counts
+- `ApexTrigger` by `TableEnumOrId`, so triggers are tied to the object they fire on
+- `FlowDefinitionView` for active flows and the object each one is triggered by
+- `ApexClass` by name
+
+Every finding carries real provenance: the actual field count, the real API
+version, the true flow version number. If a term matches nothing, the result is
+**zero findings and a note saying so**, never a guess.
+
+### Adding Jira and Confluence
+
+Create Named Credentials, then fill in the config record:
+
+| Field | Example |
+|---|---|
+| `Jira_Named_Credential__c` | `Jira_Cloud` |
+| `Jira_Project_Key__c` | `NSVC` |
+| `Confluence_Named_Credential__c` | `Confluence_Cloud` |
+| `Confluence_Space_Key__c` | `NSDOCS` |
+
+Leave one blank and the summary line says `Jira: Jira not configured`. A source
+that cannot be reached reports that rather than contributing nothing silently.
+
+### What live mode is not
+
+Federated keyword search over live metadata, not graph traversal. No
+precomputed typed edges, no multi-hop blast radius, no reuse detection across
+capabilities, no cross-source relationship inference. Those are what the graph
+layer adds. Nothing above `AIContextGraphService` changes when it arrives.
+
+## Switching to the remote graph service
 
 Edit **Custom Metadata Types > AI POC Config > Default**:
 

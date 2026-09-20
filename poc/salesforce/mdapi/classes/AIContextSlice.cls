@@ -24,6 +24,23 @@ public class AIContextSlice {
         public Decimal confidence;
     }
 
+    /** Build one finding. Shared so every source produces the same shape. */
+    public static Finding build(String nodeId, String nodeType, String nodeName,
+            String path, String impact, String risk, String sourceSystem,
+            String provenance) {
+        Finding f = new Finding();
+        f.nodeId = nodeId;
+        f.nodeType = nodeType;
+        f.nodeName = nodeName;
+        f.relationshipPath = path;
+        f.impact = impact;
+        f.riskTier = risk;
+        f.sourceSystem = sourceSystem;
+        f.provenance = provenance;
+        f.confidence = 1.0;
+        return f;
+    }
+
     /** Project the slice onto findings rows hung off a request. */
     public List<AI_Graph_Finding__c> toRecords(Id requestId) {
         List<AI_Graph_Finding__c> rows = new List<AI_Graph_Finding__c>();
