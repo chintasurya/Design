@@ -161,6 +161,38 @@ private class AIGraphFileTest {
     }
 
     @IsTest
+    static void scopeMatchingIgnoresCase() {
+        // ObjectPermissions.SobjectType and getGlobalDescribe().keySet() do not
+        // reliably agree on casing. A case-sensitive comparison between them
+        // produced an empty scope: 350 orphan nodes and zero edges.
+        AINetworkServicesScope.clearCache();
+        AINetworkServicesScope s =
+            AINetworkServicesScope.resolve('System Administrator');
+        if (s.profileFound && !s.owned.isEmpty()) {
+            String sample = new List<String>(s.owned)[0];
+            System.assert(s.covers(sample.toLowerCase()),
+                'Lowercase must match: ' + sample);
+            System.assert(s.covers(sample.toUpperCase()),
+                'Uppercase must match: ' + sample);
+        }
+    }
+
+    @IsTest
+    static void everyNodeIsReachableByAtLeastOneEdge() {
+        // An orphan node can never be reached by traversal, so it is noise.
+        AIGraphDocument d = sample();
+        Set<String> touched = new Set<String>();
+        for (AIGraphDocument.GraphEdge e : d.relationships) {
+            touched.add(e.fromId);
+            touched.add(e.toId);
+        }
+        for (AIGraphDocument.GraphNode n : d.nodes) {
+            System.assert(touched.contains(n.id),
+                'Orphan node with no edge: ' + n.id);
+        }
+    }
+
+    @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphFile);

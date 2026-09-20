@@ -33,6 +33,13 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
             AIServiceFactory.config().Pod_Profile_Name__c);
 
         List<String> targets = inScopeObjects(scope);
+        if (targets.isEmpty()) {
+            // 350 orphan nodes and zero edges is what an empty scope looks
+            // like when the export carries on regardless. Refuse instead.
+            throw new ScopeTooWideException(
+                'No objects are in scope, so there is nothing to build a graph '
+                + 'from. ' + scope.note);
+        }
         if (targets.size() > MAX_OBJECTS) {
             throw new ScopeTooWideException(
                 'Scope resolved to ' + targets.size() + ' objects, over the '
@@ -45,6 +52,7 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         doc.snapshotId = String.valueOf(System.now().getTime());
         doc.notes.add(scope.note);
 
+        doc.notes.add(targets.size() + ' objects in scope');
         Map<String, Schema.SObjectType> described = Schema.getGlobalDescribe();
         Map<String, String> labelToApi = new Map<String, String>();
         Set<String> known = new Set<String>(targets);
@@ -180,6 +188,8 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
 
     private static void addFlows(AIGraphDocument doc, Set<String> known,
                                  Map<String, String> labelToApi) {
+        // Staged, then committed only if an edge exists. A node nothing points
+        // at can never be reached by traversal, so it is pure noise.
         // FlowDefinitionView rejects queryMore(), so this must not be a SOQL
         // for-loop and must stay inside one batch.
         List<FlowDefinitionView> flows = [
@@ -188,24 +198,25 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
             FROM FlowDefinitionView WHERE IsActive = true LIMIT 200];
         Integer linked = 0;
         for (FlowDefinitionView f : flows) {
+            // TriggerObjectOrEventLabel is a LABEL, so it resolves through the
+            // label map. Comparing it to API names matched only Account.
+            String target = resolve(f.TriggerObjectOrEventLabel, known, labelToApi);
+            if (target == null) {
+                continue;
+            }
             String id = 'flow:' + f.ApiName;
             doc.addNode(id, 'Flow', f.Label, f.ApiName,
                 '{"processType":"' + f.ProcessType + '","version":'
                     + f.VersionNumber + '}', 'High',
                 'METADATA Flow ' + f.ApiName + ' v' + f.VersionNumber,
                 'Salesforce');
-            // TriggerObjectOrEventLabel is a LABEL, so it resolves through the
-            // label map. Comparing it to API names matched only Account.
-            String target = resolve(f.TriggerObjectOrEventLabel, known, labelToApi);
-            if (target != null) {
-                doc.addEdge(id, 'FLOW_UPDATES_SOBJECT', 'sobj:' + target,
-                    'record-triggered on ' + f.TriggerObjectOrEventLabel);
-                linked++;
-            }
+            doc.addEdge(id, 'FLOW_UPDATES_SOBJECT', 'sobj:' + target,
+                'record-triggered on ' + f.TriggerObjectOrEventLabel);
+            linked++;
         }
-        doc.notes.add(flows.size() + ' active flows, ' + linked
-            + ' linked to a scoped object (the rest are screen or scheduled '
-            + 'flows, whose target needs the Tooling API)');
+        doc.notes.add(linked + ' of ' + flows.size() + ' active flows linked to a '
+            + 'scoped object; the rest are screen or scheduled flows whose '
+            + 'target needs the Tooling API, and are omitted as unreachable');
     }
 
     private static void addApexClasses(AIGraphDocument doc, Set<String> known) {
@@ -214,24 +225,36 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
             FROM ApexClass
             WHERE NamespacePrefix = null AND LengthWithoutComments < 40000
             ORDER BY Name LIMIT 150];
+        Integer linked = 0;
         for (ApexClass c : classes) {
-            Boolean isTest = c.Body != null && c.Body.containsIgnoreCase('@isTest');
+            if (c.Body == null) {
+                continue;
+            }
+            List<String> references = new List<String>();
+            for (String apiName : known) {
+                if (c.Body.contains(apiName)) {
+                    references.add(apiName);
+                }
+            }
+            c.Body = null;    // release heap before the next class
+            if (references.isEmpty()) {
+                continue;     // unreachable by traversal, so not worth a node
+            }
+            Boolean isTest = c.Name.endsWithIgnoreCase('Test')
+                          || c.Name.startsWithIgnoreCase('Test');
             String id = 'apex:' + c.Name;
             doc.addNode(id, isTest ? 'TestClass' : 'ApexClass', c.Name, c.Name,
                 '{"apiVersion":' + c.ApiVersion + ',"test":' + isTest + '}',
                 c.LengthWithoutComments > 5000 ? 'High' : 'Medium',
                 'METADATA ApexClass ' + c.Name, 'Salesforce');
-            if (c.Body == null) {
-                continue;
+            for (String apiName : references) {
+                doc.addEdge(id, 'APEX_REFERENCES_SOBJECT', 'sobj:' + apiName,
+                    'API name found in ApexClass.Body');
             }
-            for (String apiName : known) {
-                if (c.Body.contains(apiName)) {
-                    doc.addEdge(id, 'APEX_REFERENCES_SOBJECT', 'sobj:' + apiName,
-                        'API name found in ApexClass.Body');
-                }
-            }
-            c.Body = null;    // release heap before the next class
+            linked++;
         }
+        doc.notes.add(linked + ' of ' + classes.size() + ' Apex classes reference '
+            + 'a scoped object; the rest are omitted as unreachable');
     }
 
     // ----------------------------------------------------------------- helpers

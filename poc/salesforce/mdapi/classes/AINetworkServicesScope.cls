@@ -127,11 +127,13 @@ public with sharing class AINetworkServicesScope {
 
         if (owned.isEmpty()) {
             owned.addAll(readable);
+            indexLowercase();
             note = 'Profile "' + profileName + '" grants no create or edit access '
                  + 'and no object carries a Network record type, so the scope '
                  + 'falls back to all ' + readable.size() + ' readable objects';
             return;
         }
+        indexLowercase();
         String shown = String.isBlank(matchedProfile) ? profileName : matchedProfile;
         String matchNote = (matchedProfile != null && matchedProfile != profileName)
             ? ' (configured as "' + profileName + '", matched "' + matchedProfile + '")'
@@ -142,12 +144,36 @@ public with sharing class AINetworkServicesScope {
              + ' readable';
     }
 
-    /** Scope test used by the builder and the search. */
+    /**
+     * Scope test used by the exporter and the search.
+     *
+     * Case-insensitive on purpose. ObjectPermissions.SobjectType and
+     * Schema.getGlobalDescribe().keySet() do not reliably agree on casing, and
+     * a case-sensitive Set comparison between them produced an EMPTY scope:
+     * zero objects, zero fields, zero edges, and 350 orphan automation nodes
+     * that looked like a graph.
+     */
     public Boolean covers(String objectApiName) {
-        if (!owned.isEmpty()) {
-            return owned.contains(objectApiName);
+        if (String.isBlank(objectApiName)) {
+            return false;
         }
-        return !profileFound || readable.contains(objectApiName);
+        String key = objectApiName.toLowerCase();
+        if (!ownedLower.isEmpty()) {
+            return ownedLower.contains(key);
+        }
+        return !profileFound || readableLower.contains(key);
+    }
+
+    private Set<String> ownedLower = new Set<String>();
+    private Set<String> readableLower = new Set<String>();
+
+    private void indexLowercase() {
+        for (String o : owned) {
+            ownedLower.add(o.toLowerCase());
+        }
+        for (String r : readable) {
+            readableLower.add(r.toLowerCase());
+        }
     }
 
     /** Every profile in the org with how many objects each can create or edit. */
