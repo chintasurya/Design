@@ -1,0 +1,254 @@
+/**
+ * Layers 2, 3 and 6 for the Salesforce source: read it, interpret it, export
+ * the neutral graph document.
+ *
+ * A Queueable, not a Batch. Batch state has to survive serialization between
+ * chunks, and a growing node list does not do that well. One asynchronous
+ * transaction gives 60s CPU and 12 MB heap, which comfortably covers a pod of
+ * up to a couple of hundred objects.
+ *
+ * The scope guard is the important part. The previous record-based builder
+ * silently walked ~1,400 objects and wrote 221 MB, filling the sandbox. This
+ * one refuses to start when the scope looks like a whole org, because a
+ * failure that names the cause beats a success that quietly produces garbage.
+ */
+public with sharing class AIGraphSalesforceExport implements Queueable {
+
+    /** Above this, the scope is not a pod and the JSON would not load anyway. */
+    @TestVisible private static final Integer MAX_OBJECTS = 220;
+    private static final Integer MAX_FIELDS_PER_OBJECT = 200;
+
+    public class ScopeTooWideException extends Exception {}
+
+    public void execute(QueueableContext ctx) {
+        build();
+    }
+
+    public static Id start() {
+        return System.enqueueJob(new AIGraphSalesforceExport());
+    }
+
+    public static AIGraphDocument build() {
+        AINetworkServicesScope scope = AINetworkServicesScope.resolve(
+            AIServiceFactory.config().Pod_Profile_Name__c);
+
+        List<String> targets = inScopeObjects(scope);
+        if (targets.size() > MAX_OBJECTS) {
+            throw new ScopeTooWideException(
+                'Scope resolved to ' + targets.size() + ' objects, over the '
+                + MAX_OBJECTS + ' limit. That is an org, not a pod: the export '
+                + 'would exceed the heap ceiling when loaded. ' + scope.note);
+        }
+
+        AIGraphDocument doc = new AIGraphDocument();
+        doc.source = 'SALESFORCE';
+        doc.snapshotId = String.valueOf(System.now().getTime());
+        doc.notes.add(scope.note);
+
+        Map<String, Schema.SObjectType> described = Schema.getGlobalDescribe();
+        Map<String, String> labelToApi = new Map<String, String>();
+        Set<String> known = new Set<String>(targets);
+
+        for (String apiName : targets) {
+            addObject(doc, described.get(apiName), apiName, labelToApi);
+        }
+        addTriggers(doc, known, labelToApi);
+        addFlows(doc, known, labelToApi);
+        addApexClasses(doc, known);
+
+        doc.notes.add('Lightning components, validation rules and real '
+            + 'dependency edges need the Tooling API, which is not configured');
+        AIGraphFileStore.save(AIGraphFileStore.SALESFORCE, doc);
+        rebuildCombined();
+        return doc;
+    }
+
+    /** Re-merge whatever per-source files exist into the file queries read. */
+    public static AIGraphDocument rebuildCombined() {
+        List<AIGraphDocument> parts = new List<AIGraphDocument>();
+        for (String name : new List<String>{
+                AIGraphFileStore.SALESFORCE, AIGraphFileStore.JIRA,
+                AIGraphFileStore.CONFLUENCE}) {
+            AIGraphDocument part = AIGraphFileStore.load(name);
+            if (part != null) {
+                parts.add(part);
+            }
+        }
+        AIGraphDocument combined = AIGraphDocument.combine(parts);
+        AIGraphFileStore.save(AIGraphFileStore.COMBINED, combined);
+        return combined;
+    }
+
+    // ------------------------------------------------------------------ scope
+
+    private static List<String> inScopeObjects(AINetworkServicesScope scope) {
+        List<String> targets = new List<String>();
+        for (String apiName : Schema.getGlobalDescribe().keySet()) {
+            if (!scope.covers(apiName)) {
+                continue;
+            }
+            if (apiName.endsWith('__History') || apiName.endsWith('__Share')
+                    || apiName.endsWith('__Feed') || apiName.endsWith('__Tag')
+                    || apiName.endsWith('ChangeEvent')) {
+                continue;
+            }
+            targets.add(apiName);
+        }
+        targets.sort();
+        return targets;
+    }
+
+    // ----------------------------------------------------------------- nodes
+
+    private static void addObject(AIGraphDocument doc, Schema.SObjectType sot,
+                                  String apiName, Map<String, String> labelToApi) {
+        if (sot == null) {
+            return;
+        }
+        Schema.DescribeSObjectResult d = sot.getDescribe();
+        Map<String, Schema.SObjectField> fields = d.fields.getMap();
+        String objId = 'sobj:' + apiName;
+
+        labelToApi.put(normalize(d.getLabel()), apiName);
+        labelToApi.put(normalize(apiName), apiName);
+
+        doc.addNode(objId, 'SObject', d.getLabel(), apiName,
+            '{"fieldCount":' + fields.size() + ',"custom":' + d.isCustom() + '}',
+            fields.size() > 100 ? 'High' : 'Medium',
+            'SCHEMA describe(' + apiName + ') · ' + fields.size() + ' fields',
+            'Salesforce');
+
+        for (Schema.RecordTypeInfo rt : d.getRecordTypeInfos()) {
+            if (rt.isMaster() || !rt.isAvailable()) {
+                continue;
+            }
+            String rtId = 'rt:' + apiName + '.' + rt.getDeveloperName();
+            doc.addNode(rtId, 'RecordType', rt.getName(), rt.getDeveloperName(),
+                '{"default":' + rt.isDefaultRecordTypeMapping() + '}', 'Low',
+                'SCHEMA record type on ' + apiName, 'Salesforce');
+            doc.addEdge(objId, 'SOBJECT_HAS_RECORDTYPE', rtId,
+                'describe().getRecordTypeInfos()');
+        }
+
+        Integer n = 0;
+        for (String fieldName : fields.keySet()) {
+            if (n++ >= MAX_FIELDS_PER_OBJECT) {
+                doc.notes.add('Fields truncated at ' + MAX_FIELDS_PER_OBJECT
+                    + ' for ' + apiName);
+                break;
+            }
+            Schema.DescribeFieldResult fd = fields.get(fieldName).getDescribe();
+            String fieldId = 'field:' + apiName + '.' + fd.getName();
+            doc.addNode(fieldId, 'Field', fd.getLabel(), fd.getName(),
+                '{"dataType":"' + fd.getType() + '","custom":' + fd.isCustom()
+                    + ',"formula":' + fd.isCalculated()
+                    + ',"required":' + (!fd.isNillable()) + '}',
+                fd.isCalculated() ? 'High' : 'Low',
+                'SCHEMA ' + apiName + '.' + fd.getName() + ' · ' + fd.getType(),
+                'Salesforce');
+            doc.addEdge(objId, 'SOBJECT_HAS_FIELD', fieldId,
+                'describe().fields.getMap()');
+
+            if (fd.getType() == Schema.DisplayType.REFERENCE) {
+                for (Schema.SObjectType ref : fd.getReferenceTo()) {
+                    doc.addEdge(objId, 'SOBJECT_RELATES_TO_SOBJECT',
+                        'sobj:' + ref.getDescribe().getName(),
+                        'via ' + fd.getName());
+                }
+            }
+        }
+    }
+
+    private static void addTriggers(AIGraphDocument doc, Set<String> known,
+                                    Map<String, String> labelToApi) {
+        List<ApexTrigger> triggers = [
+            SELECT Name, TableEnumOrId, Status, ApiVersion
+            FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 200];
+        for (ApexTrigger t : triggers) {
+            String onObject = resolve(t.TableEnumOrId, known, labelToApi);
+            if (onObject == null) {
+                continue;
+            }
+            String id = 'trigger:' + t.Name;
+            doc.addNode(id, 'ApexTrigger', t.Name, t.Name,
+                '{"status":"' + t.Status + '"}', 'High',
+                'METADATA ApexTrigger on ' + onObject, 'Salesforce');
+            doc.addEdge(id, 'TRIGGER_FIRES_ON_SOBJECT', 'sobj:' + onObject,
+                'ApexTrigger.TableEnumOrId');
+        }
+    }
+
+    private static void addFlows(AIGraphDocument doc, Set<String> known,
+                                 Map<String, String> labelToApi) {
+        // FlowDefinitionView rejects queryMore(), so this must not be a SOQL
+        // for-loop and must stay inside one batch.
+        List<FlowDefinitionView> flows = [
+            SELECT ApiName, Label, ProcessType, TriggerType,
+                   TriggerObjectOrEventLabel, VersionNumber
+            FROM FlowDefinitionView WHERE IsActive = true LIMIT 200];
+        Integer linked = 0;
+        for (FlowDefinitionView f : flows) {
+            String id = 'flow:' + f.ApiName;
+            doc.addNode(id, 'Flow', f.Label, f.ApiName,
+                '{"processType":"' + f.ProcessType + '","version":'
+                    + f.VersionNumber + '}', 'High',
+                'METADATA Flow ' + f.ApiName + ' v' + f.VersionNumber,
+                'Salesforce');
+            // TriggerObjectOrEventLabel is a LABEL, so it resolves through the
+            // label map. Comparing it to API names matched only Account.
+            String target = resolve(f.TriggerObjectOrEventLabel, known, labelToApi);
+            if (target != null) {
+                doc.addEdge(id, 'FLOW_UPDATES_SOBJECT', 'sobj:' + target,
+                    'record-triggered on ' + f.TriggerObjectOrEventLabel);
+                linked++;
+            }
+        }
+        doc.notes.add(flows.size() + ' active flows, ' + linked
+            + ' linked to a scoped object (the rest are screen or scheduled '
+            + 'flows, whose target needs the Tooling API)');
+    }
+
+    private static void addApexClasses(AIGraphDocument doc, Set<String> known) {
+        List<ApexClass> classes = [
+            SELECT Name, Body, ApiVersion, LengthWithoutComments
+            FROM ApexClass
+            WHERE NamespacePrefix = null AND LengthWithoutComments < 40000
+            ORDER BY Name LIMIT 150];
+        for (ApexClass c : classes) {
+            Boolean isTest = c.Body != null && c.Body.containsIgnoreCase('@isTest');
+            String id = 'apex:' + c.Name;
+            doc.addNode(id, isTest ? 'TestClass' : 'ApexClass', c.Name, c.Name,
+                '{"apiVersion":' + c.ApiVersion + ',"test":' + isTest + '}',
+                c.LengthWithoutComments > 5000 ? 'High' : 'Medium',
+                'METADATA ApexClass ' + c.Name, 'Salesforce');
+            if (c.Body == null) {
+                continue;
+            }
+            for (String apiName : known) {
+                if (c.Body.contains(apiName)) {
+                    doc.addEdge(id, 'APEX_REFERENCES_SOBJECT', 'sobj:' + apiName,
+                        'API name found in ApexClass.Body');
+                }
+            }
+            c.Body = null;    // release heap before the next class
+        }
+    }
+
+    // ----------------------------------------------------------------- helpers
+
+    private static String resolve(String reference, Set<String> known,
+                                  Map<String, String> labelToApi) {
+        if (String.isBlank(reference)) {
+            return null;
+        }
+        if (known.contains(reference)) {
+            return reference;
+        }
+        String resolved = labelToApi.get(normalize(reference));
+        return (resolved != null && known.contains(resolved)) ? resolved : null;
+    }
+
+    private static String normalize(String value) {
+        return value == null ? '' : value.toLowerCase().replaceAll('[^a-z0-9]', '');
+    }
+}

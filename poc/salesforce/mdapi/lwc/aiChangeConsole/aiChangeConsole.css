@@ -106,3 +106,4 @@
     background: #fdf5ef;
     border-left: 3px solid #fe9339;
 }
+.graphbar_failed { background: #fef1f1; border-left: 3px solid #ba0517; }

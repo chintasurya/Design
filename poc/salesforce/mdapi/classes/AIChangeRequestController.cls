@@ -38,10 +38,6 @@ public with sharing class AIChangeRequestController {
             AINetworkServicesScope scope = AINetworkServicesScope.resolve(
                 AIServiceFactory.config().Pod_Profile_Name__c);
             String detail = scope.note;
-            if (AIGraphQuery.isBuilt()) {
-                detail += ' · graph holds ' + AIGraphQuery.nodeCount()
-                        + ' nodes and ' + AIGraphQuery.edgeCount() + ' edges';
-            }
             return new AIContextGraphLive.Step('scope',
                 'Resolved the Network Services scope', detail, elapsed(t0));
         } catch (Exception e) {
@@ -75,11 +71,11 @@ public with sharing class AIChangeRequestController {
         }
     }
 
-    /** Clear the graph and rebuild it, so a scope change cannot leave stale nodes. */
+    /** Export the Salesforce graph to its JSON file, then re-merge the combined file. */
     @AuraEnabled
     public static String buildGraph() {
         try {
-            return String.valueOf(AIGraphPurge.run(true));
+            return String.valueOf(AIGraphSalesforceExport.start());
         } catch (Exception e) {
             throw asAura(e);
         }
@@ -98,11 +94,14 @@ public with sharing class AIChangeRequestController {
     @AuraEnabled(cacheable=false)
     public static Map<String, Object> graphStatus() {
         try {
-            Boolean built = AIGraphQuery.isBuilt();
+            Map<String, Object> file =
+                AIGraphFileStore.describe(AIGraphFileStore.COMBINED);
+            Boolean built = (Boolean) file.get('exists');
             List<AsyncApexJob> jobs = [
-                SELECT Status, JobItemsProcessed, TotalJobItems, NumberOfErrors
+                SELECT Status, JobItemsProcessed, TotalJobItems, NumberOfErrors,
+                       ExtendedStatus
                 FROM AsyncApexJob
-                WHERE ApexClass.Name = 'AIGraphBuilder'
+                WHERE ApexClass.Name = 'AIGraphSalesforceExport'
                 ORDER BY CreatedDate DESC LIMIT 1];
             AINetworkServicesScope scope = AINetworkServicesScope.resolve(
                 AIServiceFactory.config().Pod_Profile_Name__c);
@@ -111,8 +110,10 @@ public with sharing class AIChangeRequestController {
                 'scopeNote' => scope.note,
                 'profileFound' => scope.profileFound,
                 'ownedObjects' => scope.owned.size(),
-                'nodes' => built ? AIGraphQuery.nodeCount() : 0,
-                'edges' => built ? AIGraphQuery.edgeCount() : 0,
+                'nodes' => built ? nodeCountOf(file) : 0,
+                'edges' => built ? edgeCountOf(file) : 0,
+                'sizeKb' => built ? file.get('kb') : 0,
+                'jobError' => jobs.isEmpty() ? null : jobs[0].ExtendedStatus,
                 'jobStatus' => jobs.isEmpty() ? null : jobs[0].Status,
                 'jobDone' => jobs.isEmpty() ? 0 : jobs[0].JobItemsProcessed,
                 'jobTotal' => jobs.isEmpty() ? 0 : jobs[0].TotalJobItems,
@@ -121,6 +122,16 @@ public with sharing class AIChangeRequestController {
         } catch (Exception e) {
             throw asAura(e);
         }
+    }
+
+    private static Integer nodeCountOf(Map<String, Object> file) {
+        AIGraphMemory g = AIGraphMemory.load(AIGraphFileStore.COMBINED);
+        return g == null ? 0 : g.nodeCount;
+    }
+
+    private static Integer edgeCountOf(Map<String, Object> file) {
+        AIGraphMemory g = AIGraphMemory.load(AIGraphFileStore.COMBINED);
+        return g == null ? 0 : g.edgeCount;
     }
 
     private static Integer elapsed(Long t0) {

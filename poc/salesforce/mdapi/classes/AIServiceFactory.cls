@@ -38,7 +38,7 @@ public class AIServiceFactory {
             // Explicit opt-out of the graph. Search, not traversal.
             return new AIContextGraphLive();
         }
-        // Default: traverse the persisted knowledge graph.
-        return new AIContextGraphStored();
+        // Default: traverse the file-backed knowledge graph.
+        return new AIContextGraphFile();
     }
 }

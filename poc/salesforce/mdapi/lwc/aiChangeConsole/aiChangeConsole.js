@@ -100,18 +100,26 @@ export default class AiChangeConsole extends LightningElement {
         if (this.building) {
             return `Building the graph… ${this.graph.jobDone || 0} of ${this.graph.jobTotal || '?'} batches`;
         }
+        if (this.graph.jobError) {
+            return `Build failed: ${this.graph.jobError}`;
+        }
         return this.graph.built
-            ? `Graph: ${this.graph.nodes} nodes · ${this.graph.edges} edges`
-            : 'Graph not built yet';
-    }
-
-    get graphClass() {
-        return this.graph.built && !this.building
-            ? 'graphbar graphbar_ready' : 'graphbar graphbar_empty';
+            ? `Graph: ${this.graph.nodes} nodes · ${this.graph.edges} edges · ` +
+              `${this.graph.sizeKb} KB JSON`
+            : 'Graph not exported yet';
     }
 
     get buildLabel() {
-        return this.graph.built ? 'Rebuild graph' : 'Build graph';
+        return this.graph.built ? 'Re-export graph' : 'Export graph';
+    }
+
+    get graphClass() {
+        if (this.graph.jobError) {
+            return 'graphbar graphbar_failed';
+        }
+        return this.graph.built && !this.building
+            ? 'graphbar graphbar_ready'
+            : 'graphbar graphbar_empty';
     }
 
     get analyseDisabled() {
@@ -141,8 +149,8 @@ export default class AiChangeConsole extends LightningElement {
         this.building = true;
         try {
             await buildGraph();
-            this.toast('Rebuilding',
-                'Clearing the old graph first, then walking the pod scope.',
+            this.toast('Exporting',
+                'Walking the pod scope and writing graph-salesforce.json.',
                 'success');
             await this.refreshGraph();
         } catch (error) {
