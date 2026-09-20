@@ -35,6 +35,10 @@ public with sharing class AIGraphPurge implements Database.Batchable<SObject>,
 
     public void execute(Database.BatchableContext ctx, List<SObject> scope) {
         Database.delete(scope, false);
+        // A plain delete frees no storage: rows sit in the Recycle Bin for 15
+        // days and still count. 113,310 records at roughly 2 KB each is about
+        // 221 MB, which is what filled the sandbox.
+        Database.emptyRecycleBin(scope);
     }
 
     public void finish(Database.BatchableContext ctx) {

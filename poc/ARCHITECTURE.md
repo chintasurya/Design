@@ -255,6 +255,46 @@ Not used. The runtime is Apex. What is preserved is the boundary:
 `AIContextGraphService` and `AIContextSlice` are the neutral contract, so
 moving the runtime to Semantica changes one class and nothing above it.
 
+## Layer 5 correction: JSON, not records
+
+The first real build wrote 36,330 nodes and 76,980 edges as custom object
+records. That is 113,310 rows at roughly 2 KB each, about **221 MB of data
+storage**, and it filled the sandbox. For one pod. The approach does not
+survive contact with a second one.
+
+Storing the graph as rows was a deviation from the design. Layer 5 says
+**vendor-neutral JSON**, and the reason it says that is now obvious.
+
+### Where the JSON goes
+
+A Salesforce **File** (`ContentVersion`), not a Static Resource.
+
+| | Static Resource | ContentVersion |
+|---|---|---|
+| Writable from Apex at runtime | no, needs a Metadata API callout | **yes, a plain insert** |
+| Size cap | 5 MB | ~2 GB |
+| Storage bucket | its own 250 MB | **file storage, not data storage** |
+
+File storage is a separate allocation from data storage, so the graph stops
+competing with actual records.
+
+### The size the approach depends on
+
+| Graph | As records | As JSON |
+|---|---|---|
+| Whole org, as built | 221 MB data storage | ~11 MB |
+| Pod, properly scoped | ~13 MB data storage | **~1 MB** |
+
+A 1 MB JSON graph deserialises inside the 12 MB asynchronous heap. An 11 MB
+one does not. **The JSON approach only works if the pod scope works**, which
+makes correct scoping a hard prerequisite rather than a tuning exercise.
+
+### Deleting records does not free storage
+
+A plain `delete` leaves rows in the Recycle Bin for 15 days, still counted.
+`Database.emptyRecycleBin()` is required. The first version of `AIGraphPurge`
+was missing it and would have freed nothing.
+
 ## Technology decisions
 
 Reviewed against the platform recommendation from engineering leadership.
