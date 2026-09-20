@@ -198,6 +198,87 @@ Node **properties and provenance** are stored. Raw artifact bodies are not. The
 graph carries `artifactPath` and `artifactHash`, and the model fetches source on
 demand for the two or three components in the change plan.
 
+## Technology decisions
+
+Reviewed against the platform recommendation from engineering leadership.
+Most of it matches what is already built; two rows are worth arguing.
+
+| Capability | Recommended | What we built | Verdict |
+|---|---|---|---|
+| Salesforce UI | LWC | `aiChangeConsole` | Agreed, shipped |
+| Salesforce integration layer | Apex | `AIChangeRequestController`, `AIChangeRequestService` | Agreed, shipped |
+| Call GCP from Salesforce | Named Credential / OAuth | `Semantica_Context_Service` + `AI_Poc_Config__mdt` | Agreed, shipped |
+| Source ingestion | Cloud Run Jobs | Cloud Run Jobs | Agreed, and a better call than a long-running service |
+| Scheduling | Cloud Scheduler | Cloud Scheduler | Agreed, fills a gap we had left open |
+| Transformation / context generation | Cloud Run | Cloud Run | Agreed |
+| Intermediate snapshot | Cloud Storage | Cloud Storage **+ Git** | Add Git for readable snapshot diffs |
+| **Graph DB** | **Spanner Graph** | **Semantica now, Spanner as the destination** | **Defer, see below** |
+| Graph API | Cloud Run service | Cloud Run service | Agreed |
+| Secrets | Secret Manager | Secret Manager | Agreed, fills a gap |
+| **Audit / analytics** | **BigQuery / Cloud Logging** | **Audit in Salesforce, analytics in BigQuery** | **Split the row, see below** |
+| Graph visualization | Spanner Studio initially | Contingent on the graph DB call | Contingent |
+| Business-facing visualization | Custom LWC later | Agreed | Agreed |
+
+Rows the platform table does not cover, which the flow needs:
+
+| Capability | Where it belongs | Why |
+|---|---|---|
+| LLM provider gateway | Cloud Run, not Apex | Apex caps a callout at 120s with no streaming; one abstraction beats three Named Credentials and three response parsers |
+| Approval workflow and state | Salesforce, `AI_Change_Request__c` | The gates are the governance story; they belong where the approver works |
+| Metadata write-back | Apex, Tooling API | Must originate in-org |
+| Test execution and results | Apex, Tooling API | Must originate in-org |
+| Jira write-back | Cloud Run or Apex | Either; Apex keeps the audit chain in one place |
+
+### Graph DB: the choice is deferrable
+
+Spanner Graph is a defensible destination and the instinct behind it is right.
+Durable, managed, ACID, IAM-governed, and it removes the "who maintains this
+library" question at an architecture review. The Engineering Memory scaling
+notes already call for durable graph persistence at enterprise level.
+
+The reasons not to adopt it for the POC:
+
+- One pod's graph is roughly 3,000 to 6,000 nodes, about a megabyte. Spanner is
+  built for petabyte-scale distributed OLTP, and it carries a real monthly floor
+  even at minimum provisioning. Price it before committing.
+- Semantica already exists, already holds the analysis functions, and is already
+  Layer 7 in the client deck.
+- An in-memory traversal answers in under 10 ms with no network hop.
+
+The reason this is not urgent: **Salesforce has no opinion about it.**
+`AIContextGraphService` is an interface, and everything downstream depends on
+`AIContextSlice` rather than on a graph runtime. Moving from Semantica to
+Spanner Graph changes the Cloud Run Graph API and nothing else. No Apex, no LWC,
+no objects, no redeploy.
+
+One thing to prove before committing either way: express `blast_radius` with a
+runtime-variable hop count, `reuse_candidates` and `coverage_gap` in GQL against
+a representative subgraph. If Spanner Graph handles those cleanly, the migration
+is genuinely a swap. Note also that adopting Spanner shrinks Semantica's role to
+ingestion and context generation, since the analysis functions become GQL plus
+application logic in the Graph API.
+
+### Audit and analytics are two different rows
+
+They have different readers and belong in different places.
+
+**Audit belongs in Salesforce.** Who asked, what the graph found, who approved,
+what deployed, what the tests said. This is evidence attached to a governed
+decision, and the approver has to see it in the same place they approved. For a
+healthcare client, the audit trail living where the governance lives is the
+point. `AI_Change_Request__c` and its children already hold it, queryable by
+delivery leads without a data engineer in the loop.
+
+**Analytics belongs in BigQuery.** Sync durations, node and edge counts over
+time, graph growth per pod, model usage. Aggregate measurement over time is a
+warehouse job, and Salesforce is the wrong tool for it.
+
+**Cloud Logging is neither.** It is service telemetry, useful for debugging a
+failed sync, not an audit trail and not analytics.
+
+Putting the audit in BigQuery means the approver cannot see the evidence behind
+the decision they are being asked to make.
+
 ## The return path
 
 The original diagram ends at consumption. The POC does not: it writes back, and
