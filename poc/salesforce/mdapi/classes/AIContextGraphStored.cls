@@ -83,9 +83,9 @@ public with sharing class AIContextGraphStored implements AIContextGraphService 
     }
 
     private static String snapshot() {
-        List<Graph_Node__c> any = [
+        List<Graph_Node__c> latest = [
             SELECT Snapshot_Id__c FROM Graph_Node__c
             ORDER BY LastModifiedDate DESC LIMIT 1];
-        return any.isEmpty() ? 'none' : any[0].Snapshot_Id__c;
+        return latest.isEmpty() ? 'none' : latest[0].Snapshot_Id__c;
     }
 }

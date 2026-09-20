@@ -37,12 +37,12 @@ public with sharing class AIGraphQuery {
         }
         Set<Id> seen = new Set<Id>();
         for (String term : terms) {
-            String like = '%' + term + '%';
+            String pattern = '%' + term + '%';
             for (Graph_Node__c n : [
                     SELECT Id, Node_Id__c, Node_Type__c, Node_Name__c, Api_Name__c,
                            Properties__c, Provenance__c, Risk_Tier__c, Source_System__c
                     FROM Graph_Node__c
-                    WHERE Api_Name__c LIKE :like OR Node_Name__c LIKE :like
+                    WHERE Api_Name__c LIKE :pattern OR Node_Name__c LIKE :pattern
                     ORDER BY Node_Type__c
                     LIMIT 40]) {
                 if (seen.add(n.Id)) {

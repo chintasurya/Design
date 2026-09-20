@@ -172,15 +172,15 @@ public with sharing class AIGraphBuilder implements Database.Batchable<String>,
             SELECT Name, TableEnumOrId, Status, ApiVersion
             FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 200];
         for (ApexTrigger t : triggers) {
-            String on = resolveObject(t.TableEnumOrId, known);
-            if (on == null) {
+            String onObject = resolveObject(t.TableEnumOrId, known);
+            if (onObject == null) {
                 continue;
             }
             String id = 'trigger:' + t.Name;
             node(nodes, id, 'ApexTrigger', t.Name, t.Name,
                 '{"status":"' + t.Status + '","apiVersion":' + t.ApiVersion + '}',
-                'High', 'METADATA ApexTrigger on ' + on);
-            edge(edges, id, 'sobj:' + on, 'TRIGGER_FIRES_ON_SOBJECT',
+                'High', 'METADATA ApexTrigger on ' + onObject);
+            edge(edges, id, 'sobj:' + onObject, 'TRIGGER_FIRES_ON_SOBJECT',
                 'ApexTrigger.TableEnumOrId');
         }
     }

@@ -12,8 +12,14 @@ yourself to ignore:
 
   1. Identifiers ending in "_"          Apex forbids it outright.
   2. Reserved words as parameter names  "system", "type", "date" and friends.
-  3. Custom exception class names       Must end "Exception", must not reuse
+  3. Reserved words as local variables  "any", "list", "limit" and friends.
+  4. Custom exception class names       Must end "Exception", must not reuse
                                         the name of a System exception.
+
+Checks 2 and 3 exist because the same class of bug reached a real org three
+times: a parameter called "system", a field called "override_", and a local
+called "any". Each one produced a wall of "dependent class needs
+recompilation" errors that buried the single line actually at fault.
 
     python3 tools/lint_apex.py mdapi/classes
 """
@@ -52,6 +58,15 @@ SIGNATURE = re.compile(
 
 EXC_CLASS = re.compile(r'\bclass\s+(\w+)\s+extends\s+Exception\b')
 
+# Local and field declarations, restricted to type forms that cannot be
+# confused with anything else once SOQL and strings are stripped. A broader
+# pattern matches SOQL field lists and drowns the real findings in noise.
+LOCAL_DECL = re.compile(
+    r'\b(?:List|Map|Set)\s*<[^<>]*>\s+([A-Za-z]\w*)\s*[;=:)]'
+    r'|\b(?:String|Integer|Boolean|Decimal|Double|Long|Date|Datetime|Time|'
+    r'Blob|Object|Id)\s+([A-Za-z]\w*)\s*[;=:)]'
+    r'|\b(\w+__c)\s+([A-Za-z]\w*)\s*[;=:)]')
+
 # Anything a custom object or field legitimately ends with.
 SF_SUFFIX = re.compile(r'__(c|r|e|x|b|mdt|Share|History|Feed|Tag)$', re.I)
 
@@ -74,6 +89,12 @@ def check(path):
         for ident in re.findall(r'\b([A-Za-z]\w*_)(?![\w])', line):
             if not SF_SUFFIX.search(ident):
                 out.append((n, ident, 'identifier may not end with "_"'))
+
+    for m in LOCAL_DECL.finditer(src):
+        name = next((g for g in m.groups()[::-1] if g), None)
+        if name and name.lower() in RESERVED:
+            n = src[:m.start()].count('\n') + 1
+            out.append((n, name, 'variable name is reserved in Apex'))
 
     for m in SIGNATURE.finditer(src):
         n = src[:m.start()].count('\n') + 1
