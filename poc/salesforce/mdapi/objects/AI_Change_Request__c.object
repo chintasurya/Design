@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <enableActivities>false</enableActivities>
+    <enableHistory>false</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>AI Change Request</label>
+    <pluralLabel>AI Change Requests</pluralLabel>
+    <nameField>
+        <displayFormat>AICR-{00000}</displayFormat>
+        <label>Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <sharingModel>ReadWrite</sharingModel>
+    <fields>
+        <fullName>Request_Text__c</fullName>
+        <label>Request Text</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>8</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Request_Type__c</fullName>
+        <label>Request Type</label>
+        <required>true</required>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>New Enhancement</fullName>
+                    <default>false</default>
+                    <label>New Enhancement</label>
+                </value>
+                <value>
+                    <fullName>Update Existing</fullName>
+                    <default>true</default>
+                    <label>Update Existing</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Pod__c</fullName>
+        <externalId>false</externalId>
+        <label>Pod</label>
+        <length>80</length>
+        <required>false</required>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Model__c</fullName>
+        <label>Model</label>
+        <required>true</required>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Codex</fullName>
+                    <default>true</default>
+                    <label>Codex</label>
+                </value>
+                <value>
+                    <fullName>Claude</fullName>
+                    <default>false</default>
+                    <label>Claude</label>
+                </value>
+                <value>
+                    <fullName>Gemini</fullName>
+                    <default>false</default>
+                    <label>Gemini</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Status__c</fullName>
+        <label>Status</label>
+        <required>true</required>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Draft</fullName>
+                    <default>true</default>
+                    <label>Draft</label>
+                </value>
+                <value>
+                    <fullName>Analyzing</fullName>
+                    <default>false</default>
+                    <label>Analyzing</label>
+                </value>
+                <value>
+                    <fullName>Awaiting Analysis Approval</fullName>
+                    <default>false</default>
+                    <label>Awaiting Analysis Approval</label>
+                </value>
+                <value>
+                    <fullName>Ticket Created</fullName>
+                    <default>false</default>
+                    <label>Ticket Created</label>
+                </value>
+                <value>
+                    <fullName>Generating</fullName>
+                    <default>false</default>
+                    <label>Generating</label>
+                </value>
+                <value>
+                    <fullName>Awaiting Code Approval</fullName>
+                    <default>false</default>
+                    <label>Awaiting Code Approval</label>
+                </value>
+                <value>
+                    <fullName>Deploying</fullName>
+                    <default>false</default>
+                    <label>Deploying</label>
+                </value>
+                <value>
+                    <fullName>Testing</fullName>
+                    <default>false</default>
+                    <label>Testing</label>
+                </value>
+                <value>
+                    <fullName>Complete</fullName>
+                    <default>false</default>
+                    <label>Complete</label>
+                </value>
+                <value>
+                    <fullName>Rejected</fullName>
+                    <default>false</default>
+                    <label>Rejected</label>
+                </value>
+                <value>
+                    <fullName>Failed</fullName>
+                    <default>false</default>
+                    <label>Failed</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Correlation_Id__c</fullName>
+        <externalId>true</externalId>
+        <label>Correlation Id</label>
+        <length>36</length>
+        <required>false</required>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>Snapshot_Id__c</fullName>
+        <externalId>false</externalId>
+        <label>Graph Snapshot Id</label>
+        <length>36</length>
+        <required>false</required>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Analysis_Summary__c</fullName>
+        <label>Analysis Summary</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>8</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Jira_Issue_Key__c</fullName>
+        <externalId>false</externalId>
+        <label>Jira Issue Key</label>
+        <length>30</length>
+        <required>false</required>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Jira_Issue_Url__c</fullName>
+        <label>Jira Issue URL</label>
+        <required>false</required>
+        <type>Url</type>
+    </fields>
+    <fields>
+        <fullName>Analysis_Approved_By__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <label>Analysis Approved By</label>
+        <referenceTo>User</referenceTo>
+        <relationshipLabel>Analysis Approved By</relationshipLabel>
+        <relationshipName>AI_Analysis_Approvals</relationshipName>
+        <required>false</required>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>Analysis_Approved_At__c</fullName>
+        <label>Analysis Approved At</label>
+        <required>false</required>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+        <fullName>Code_Approved_By__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <label>Code Approved By</label>
+        <referenceTo>User</referenceTo>
+        <relationshipLabel>Code Approved By</relationshipLabel>
+        <relationshipName>AI_Code_Approvals</relationshipName>
+        <required>false</required>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>Code_Approved_At__c</fullName>
+        <label>Code Approved At</label>
+        <required>false</required>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+        <fullName>Error_Message__c</fullName>
+        <label>Error Message</label>
+        <length>32768</length>
+        <type>LongTextArea</type>
+        <visibleLines>4</visibleLines>
+    </fields>
+</CustomObject>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>AI POC Config</label>
+    <pluralLabel>AI POC Config</pluralLabel>
+    <visibility>Public</visibility>
+    <fields>
+        <fullName>Use_Stub_Graph__c</fullName>
+        <defaultValue>true</defaultValue>
+        <label>Use Stub Graph</label>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>Context_Named_Credential__c</fullName>
+        <externalId>false</externalId>
+        <label>Context Named Credential</label>
+        <length>100</length>
+        <required>false</required>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Context_Query_Path__c</fullName>
+        <externalId>false</externalId>
+        <label>Context Query Path</label>
+        <length>255</length>
+        <required>false</required>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+</CustomObject>
