@@ -4,7 +4,7 @@
  */
 public class AIServiceFactory {
 
-    @TestVisible private static AIContextGraphService override_;
+    @TestVisible private static AIContextGraphService graphOverride;
 
     public static AI_Poc_Config__mdt config() {
         AI_Poc_Config__mdt cfg = AI_Poc_Config__mdt.getInstance('Default');
@@ -18,8 +18,8 @@ public class AIServiceFactory {
     }
 
     public static AIContextGraphService contextGraph() {
-        if (override_ != null) {
-            return override_;
+        if (graphOverride != null) {
+            return graphOverride;
         }
         return config().Use_Stub_Graph__c
              ? (AIContextGraphService) new AIContextGraphStub()

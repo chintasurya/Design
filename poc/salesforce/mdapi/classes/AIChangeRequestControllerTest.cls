@@ -3,7 +3,7 @@ private class AIChangeRequestControllerTest {
 
     @IsTest
     static void consoleViewCarriesRequestAndFindings() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
 
         Id reqId = AIChangeRequestController.createRequest(
             'Update HFN logic so reactivation does not duplicate',
@@ -35,7 +35,7 @@ private class AIChangeRequestControllerTest {
 
     @IsTest
     static void approveAndRejectRoundTripThroughController() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         Id reqId = AIChangeRequestController.createRequest(
             'Add HFN expiry warning', 'New Enhancement', 'Gemini');
 

@@ -37,17 +37,17 @@ public class AIContextGraphStub implements AIContextGraphService {
         return slice;
     }
 
-    private AIContextSlice.Finding build(String id, String type, String name,
-            String path, String impact, String risk, String system,
-            String provenance, Decimal confidence) {
+    private AIContextSlice.Finding build(String nodeId, String nodeType,
+            String nodeName, String path, String impact, String risk,
+            String sourceSystem, String provenance, Decimal confidence) {
         AIContextSlice.Finding f = new AIContextSlice.Finding();
-        f.nodeId = id;
-        f.nodeType = type;
-        f.nodeName = name;
+        f.nodeId = nodeId;
+        f.nodeType = nodeType;
+        f.nodeName = nodeName;
         f.relationshipPath = path;
         f.impact = impact;
         f.riskTier = risk;
-        f.sourceSystem = system;
+        f.sourceSystem = sourceSystem;
         f.provenance = provenance;
         f.artifactHash = 'sha256:stub';
         f.confidence = confidence;

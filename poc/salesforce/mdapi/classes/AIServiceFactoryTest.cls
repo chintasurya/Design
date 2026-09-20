@@ -11,7 +11,7 @@ private class AIServiceFactoryTest {
 
     @IsTest
     static void overrideWinsOverConfiguration() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphStub);
     }
 }

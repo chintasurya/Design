@@ -1,9 +1,11 @@
 @IsTest
 private class AIChangeRequestServiceTest {
 
+    private class StubFailureException extends Exception {}
+
     private class ThrowingGraph implements AIContextGraphService {
         public AIContextSlice query(AI_Change_Request__c request) {
-            throw new CalloutException('service unreachable');
+            throw new StubFailureException('service unreachable');
         }
     }
 
@@ -35,7 +37,7 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void analyzeStoresFindingsAndParksAtApprovalGate() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         AI_Change_Request__c req = AIChangeRequestService.create(
             'Update HFN logic', 'Update Existing', 'Codex');
 
@@ -65,7 +67,7 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void analyzeIsIdempotentAcrossReruns() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         AI_Change_Request__c req = AIChangeRequestService.create(
             'Update HFN logic', 'Update Existing', 'Codex');
 
@@ -82,7 +84,7 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void analyzeFailureRecordsErrorAndFailsRequest() {
-        AIServiceFactory.override_ = new ThrowingGraph();
+        AIServiceFactory.graphOverride = new ThrowingGraph();
         AI_Change_Request__c req = AIChangeRequestService.create(
             'Update HFN logic', 'Update Existing', 'Gemini');
 
@@ -102,7 +104,7 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void approvalGatesCannotBeSkipped() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         AI_Change_Request__c req = AIChangeRequestService.create(
             'Update HFN logic', 'Update Existing', 'Codex');
 
@@ -125,7 +127,7 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void happyPathReachesDeployingWithBothApprovalsStamped() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         AI_Change_Request__c req = AIChangeRequestService.create(
             'Update HFN logic', 'Update Existing', 'Codex');
 
@@ -155,7 +157,7 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void rejectIsAllowedFromAnyGate() {
-        AIServiceFactory.override_ = new AIContextGraphStub();
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
         AI_Change_Request__c req = AIChangeRequestService.create(
             'Update HFN logic', 'Update Existing', 'Codex');
         AIChangeRequestService.analyze(req.Id);

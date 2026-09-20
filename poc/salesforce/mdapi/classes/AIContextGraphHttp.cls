@@ -7,7 +7,7 @@
  */
 public class AIContextGraphHttp implements AIContextGraphService {
 
-    public class CalloutException extends Exception {}
+    public class ContextServiceException extends Exception {}
 
     private static final Integer TIMEOUT_MS = 100000;
 
@@ -33,7 +33,7 @@ public class AIContextGraphHttp implements AIContextGraphService {
 
         HttpResponse res = new Http().send(req);
         if (res.getStatusCode() < 200 || res.getStatusCode() >= 300) {
-            throw new CalloutException('Context service returned HTTP '
+            throw new ContextServiceException('Context service returned HTTP '
                 + res.getStatusCode() + ': ' + res.getBody().abbreviate(500));
         }
         return (AIContextSlice) JSON.deserialize(res.getBody(), AIContextSlice.class);

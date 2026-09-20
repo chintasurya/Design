@@ -18,6 +18,20 @@ build:
 - `AI_Poc_Config.Default.md` used the `xsd:` prefix without declaring the
   namespace. A namespace-aware parser rejects the file outright.
 
+A second round then failed on Apex compilation, with two root causes and
+eight cascade errors hiding behind them:
+
+- `AIServiceFactory.override_` ended in an underscore, which Apex forbids
+  outright, and `override` is a reserved word besides.
+- `AIContextGraphStub.build()` took a parameter named `system`, which is
+  reserved.
+
+`tools/lint_apex.py` now catches both, plus exception classes that do not end
+in `Exception` or that shadow a System exception. Run `python3 tools/build.py`
+before shipping a package: it lints, parses every XML file with namespaces
+enabled, checks package.xml against the files actually present, and only then
+writes the zips.
+
 If the main package still fails, deploy `stage/01-schema.zip`, then
 `stage/02-code.zip`, then `stage/03-config.zip` in that order. Whichever stage
 fails names the problem area.
