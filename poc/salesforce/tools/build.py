@@ -4,6 +4,10 @@ Lint, validate and package the POC for deployment.
 
 Runs every check that has caught a real deploy failure so far:
   - Apex naming rules      (tools/lint_apex.py)
+  - permission set regen   (tools/gen_permset.py, so it cannot drift)
+  - contiguous XML groups  (the Metadata API rejects a repeated element that
+                            appears in two places, with "Element X is
+                            duplicated at this location")
   - namespace-aware XML    (a non namespace-aware parser once passed a file
                             with an undeclared prefix, and the deploy failed
                             with UNKNOWN_EXCEPTION and zero component errors)
@@ -40,8 +44,56 @@ def lint():
         fail('apex lint')
 
 
+def regen_permset():
+    print('[2] permission set')
+    r = subprocess.run([sys.executable, os.path.join(HERE, 'tools', 'gen_permset.py')],
+                       capture_output=True, text=True)
+    print(r.stdout.rstrip())
+    if r.returncode:
+        fail('permission set generation')
+
+
+def contiguity_check():
+    """
+    A repeated element split across two places is a deploy parse error.
+
+    Only DIRECT SIBLINGS count. Repeated <fields> blocks are legitimate and
+    each contains its own children, so a flat scan of tag names sees them as
+    interleaved and reports nonsense. Walk parent by parent instead.
+    """
+    print('[4] contiguous element groups')
+    import xml.etree.ElementTree as ET
+    bad = []
+    for f in sorted(glob.glob(SRC + '/**/*', recursive=True)):
+        if not os.path.isfile(f) or os.path.splitext(f)[1] not in (
+                '.object', '.permissionset', '.md', '.xml'):
+            continue
+        try:
+            root = ET.parse(f).getroot()
+        except ET.ParseError as e:
+            fail('%s will not parse: %s' % (os.path.relpath(f, HERE), e))
+        for parent in root.iter():
+            seen, previous, broken = set(), None, set()
+            for child in list(parent):
+                name = child.tag.split('}')[-1]
+                if name != previous:
+                    if name in seen:
+                        broken.add(name)
+                    seen.add(name)
+                    previous = name
+            for name in sorted(broken):
+                bad.append('%s: <%s> under <%s> appears in more than one place'
+                           % (os.path.relpath(f, HERE), name,
+                              parent.tag.split('}')[-1]))
+    for b in bad:
+        print('    ' + b)
+    if bad:
+        fail('non-contiguous repeated elements')
+    print('    all repeated elements are grouped')
+
+
 def xml_check():
-    print('[2] namespace-aware xml')
+    print('[3] namespace-aware xml')
     files = [f for f in glob.glob(SRC + '/**/*', recursive=True)
              if os.path.isfile(f) and os.path.splitext(f)[1] in
              ('.object', '.xml', '.md', '.permissionset')]
@@ -98,14 +150,16 @@ def package(dest, text, dirs):
 def main():
     os.chdir(HERE)
     lint()
+    regen_permset()
     xml_check()
+    contiguity_check()
 
     objects = sorted(os.path.splitext(os.path.basename(f))[0]
                      for f in glob.glob(SRC + '/objects/*.object'))
     classes = sorted(os.path.splitext(os.path.basename(f))[0]
                      for f in glob.glob(SRC + '/classes/*.cls'))
 
-    print('[3] packaging')
+    print('[5] packaging')
     os.makedirs('stage', exist_ok=True)
 
     # Main path. The custom metadata RECORD is deliberately excluded: deploying
