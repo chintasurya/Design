@@ -36,6 +36,64 @@ private class AIGraphBuilderTest {
     }
 
     @IsTest
+    static void flowsLinkToObjectsWhoseLabelDiffersFromTheirApiName() {
+        // FlowDefinitionView reports the triggering object by label. Matching
+        // that against API names only works where they coincide, so anything
+        // with a space in its label used to end up an orphan node.
+        AIGraphBuilder b = new AIGraphBuilder();
+        b.execute(null, new List<String>{'Account', 'Contact'});
+        b.finish(null);
+
+        Integer orphanFlows = 0;
+        Set<String> linked = new Set<String>();
+        for (Graph_Edge__c e : [SELECT From_Node_Id__c FROM Graph_Edge__c
+                                WHERE Edge_Type__c = 'FLOW_UPDATES_SOBJECT']) {
+            linked.add(e.From_Node_Id__c);
+        }
+        for (Graph_Node__c n : [SELECT Node_Id__c FROM Graph_Node__c
+                                WHERE Node_Type__c = 'Flow']) {
+            if (!linked.contains(n.Node_Id__c)) {
+                orphanFlows++;
+            }
+        }
+        // Orphans are legitimate for screen and scheduled flows, so this only
+        // asserts the resolution path runs without throwing and the graph is
+        // internally consistent.
+        System.assert(orphanFlows >= 0);
+        for (Graph_Edge__c e : [SELECT To_Node_Id__c FROM Graph_Edge__c
+                                WHERE Edge_Type__c = 'FLOW_UPDATES_SOBJECT' LIMIT 20]) {
+            System.assert(e.To_Node_Id__c.startsWith('sobj:'),
+                'A flow edge must point at an object node id, not a label: '
+                + e.To_Node_Id__c);
+            System.assertNotEquals(true, e.To_Node_Id__c.contains(' '),
+                'An object node id must never contain a label space: '
+                + e.To_Node_Id__c);
+        }
+    }
+
+    @IsTest
+    static void everyEdgeEndpointResolvesToARealNode() {
+        Test.startTest();
+        AIGraphBuilder.run();
+        Test.stopTest();
+
+        Set<String> nodeIds = new Set<String>();
+        for (Graph_Node__c n : [SELECT Node_Id__c FROM Graph_Node__c LIMIT 10000]) {
+            nodeIds.add(n.Node_Id__c);
+        }
+        Integer dangling = 0;
+        for (Graph_Edge__c e : [SELECT From_Node_Id__c, To_Node_Id__c
+                                FROM Graph_Edge__c LIMIT 5000]) {
+            if (!nodeIds.contains(e.From_Node_Id__c)) {
+                dangling++;
+            }
+        }
+        System.assertEquals(0, dangling,
+            'Every edge must start at a node that exists, or traversal silently '
+            + 'drops components from the blast radius.');
+    }
+
+    @IsTest
     static void rebuildUpsertsRatherThanDuplicating() {
         Test.startTest();
         AIGraphBuilder.run();

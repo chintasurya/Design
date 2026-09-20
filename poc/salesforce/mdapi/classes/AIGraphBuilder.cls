@@ -25,6 +25,17 @@ public with sharing class AIGraphBuilder implements Database.Batchable<String>,
     public Integer nodeCount = 0;
     public Integer edgeCount = 0;
 
+    /**
+     * Object label to API name, accumulated while describing.
+     *
+     * FlowDefinitionView reports the triggering object by LABEL, not API name.
+     * Comparing that against API names only ever matches where the two happen
+     * to be identical, such as Account. Every custom object silently lost its
+     * FLOW_UPDATES_SOBJECT edge, which is the quietest possible failure: the
+     * node still exists, so the graph looks built while the flow is orphaned.
+     */
+    private Map<String, String> labelToApi = new Map<String, String>();
+
     private static final Integer SCOPE_SIZE = 8;
     private static final Integer MAX_FIELDS_PER_OBJECT = 250;
 
@@ -99,6 +110,8 @@ public with sharing class AIGraphBuilder implements Database.Batchable<String>,
         Schema.DescribeSObjectResult d = sot.getDescribe();
         Map<String, Schema.SObjectField> fields = d.fields.getMap();
         String objId = 'sobj:' + apiName;
+        labelToApi.put(normalizeName(d.getLabel()), apiName);
+        labelToApi.put(normalizeName(apiName), apiName);
 
         node(nodes, objId, 'SObject', d.getLabel(), apiName,
             '{"fieldCount":' + fields.size()
@@ -159,14 +172,15 @@ public with sharing class AIGraphBuilder implements Database.Batchable<String>,
             SELECT Name, TableEnumOrId, Status, ApiVersion
             FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 200];
         for (ApexTrigger t : triggers) {
-            if (!known.contains(t.TableEnumOrId)) {
+            String on = resolveObject(t.TableEnumOrId, known);
+            if (on == null) {
                 continue;
             }
             String id = 'trigger:' + t.Name;
             node(nodes, id, 'ApexTrigger', t.Name, t.Name,
                 '{"status":"' + t.Status + '","apiVersion":' + t.ApiVersion + '}',
-                'High', 'METADATA ApexTrigger on ' + t.TableEnumOrId);
-            edge(edges, id, 'sobj:' + t.TableEnumOrId, 'TRIGGER_FIRES_ON_SOBJECT',
+                'High', 'METADATA ApexTrigger on ' + on);
+            edge(edges, id, 'sobj:' + on, 'TRIGGER_FIRES_ON_SOBJECT',
                 'ApexTrigger.TableEnumOrId');
         }
     }
@@ -184,10 +198,10 @@ public with sharing class AIGraphBuilder implements Database.Batchable<String>,
                 '{"processType":"' + f.ProcessType + '","version":'
                 + f.VersionNumber + '}', 'High',
                 'METADATA Flow ' + f.ApiName + ' v' + f.VersionNumber);
-            if (String.isNotBlank(f.TriggerObjectOrEventLabel)
-                    && known.contains(f.TriggerObjectOrEventLabel)) {
-                edge(edges, id, 'sobj:' + f.TriggerObjectOrEventLabel,
-                    'FLOW_UPDATES_SOBJECT', 'record-triggered flow');
+            String target = resolveObject(f.TriggerObjectOrEventLabel, known);
+            if (target != null) {
+                edge(edges, id, 'sobj:' + target, 'FLOW_UPDATES_SOBJECT',
+                    'record-triggered on ' + f.TriggerObjectOrEventLabel);
             }
         }
     }
@@ -274,6 +288,26 @@ public with sharing class AIGraphBuilder implements Database.Batchable<String>,
             Database.upsert(edges.values(), Graph_Edge__c.Edge_Id__c, false);
             edgeCount += edges.size();
         }
+    }
+
+    /**
+     * Resolve whatever a metadata source calls an object into its API name.
+     * Sources are inconsistent: ApexTrigger gives an API name,
+     * FlowDefinitionView gives a label. Both route through here.
+     */
+    private String resolveObject(String reference, Set<String> known) {
+        if (String.isBlank(reference)) {
+            return null;
+        }
+        if (known.contains(reference)) {
+            return reference;
+        }
+        String resolved = labelToApi.get(normalizeName(reference));
+        return (resolved != null && known.contains(resolved)) ? resolved : null;
+    }
+
+    private static String normalizeName(String value) {
+        return value == null ? '' : value.toLowerCase().replaceAll('[^a-z0-9]', '');
     }
 
     private static String trim(String value, Integer max) {
