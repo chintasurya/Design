@@ -257,6 +257,20 @@ private class AIGraphFileTest {
     }
 
     @IsTest
+    static void loadingReportsTheHeapItActuallyUsed() {
+        AIGraphFileStore.save('graph-heap-test', sample());
+
+        Test.startTest();
+        AIGraphMemory g = AIGraphMemory.load('graph-heap-test');
+        Test.stopTest();
+
+        System.assertNotEquals(null, g);
+        System.assert(g.heapLimitBytes > 0,
+            'The limit must be captured so the margin is visible.');
+        System.assert(g.heapNote().contains('MB heap'), g.heapNote());
+    }
+
+    @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphFile);

@@ -25,6 +25,19 @@ public with sharing class AIGraphMemory {
     public Integer edgeCount = 0;
     public List<String> notes = new List<String>();
 
+    /** Heap consumed by loading and indexing, measured rather than estimated. */
+    public Integer heapUsedBytes = 0;
+    public Integer heapLimitBytes = 0;
+
+    public String heapNote() {
+        if (heapLimitBytes == 0) {
+            return '';
+        }
+        return String.valueOf(heapUsedBytes / 1048576) + '.'
+             + String.valueOf((heapUsedBytes * 10 / 1048576) - (heapUsedBytes / 1048576) * 10)
+             + ' of ' + (heapLimitBytes / 1048576) + ' MB heap';
+    }
+
     private Map<String, AIGraphDocument.GraphNode> nodesById =
         new Map<String, AIGraphDocument.GraphNode>();
     private Map<String, List<AIGraphDocument.GraphEdge>> outgoing =
@@ -41,8 +54,15 @@ public with sharing class AIGraphMemory {
     // ------------------------------------------------------------- loading
 
     public static AIGraphMemory load(String fileName) {
+        Integer before = Limits.getHeapSize();
         AIGraphDocument doc = AIGraphFileStore.load(fileName);
-        return doc == null ? null : fromDocument(doc);
+        if (doc == null) {
+            return null;
+        }
+        AIGraphMemory g = fromDocument(doc);
+        g.heapUsedBytes = Limits.getHeapSize() - before;
+        g.heapLimitBytes = Limits.getLimitHeapSize();
+        return g;
     }
 
     public static AIGraphMemory fromDocument(AIGraphDocument doc) {

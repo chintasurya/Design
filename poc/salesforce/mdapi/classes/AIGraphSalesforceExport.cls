@@ -147,12 +147,23 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
             }
             Schema.DescribeFieldResult fd = fields.get(fieldName).getDescribe();
             String fieldId = 'field:' + apiName + '.' + fd.getName();
-            doc.addNode(fieldId, 'Field', fd.getLabel(), fd.getName(),
-                '{"dataType":"' + fd.getType() + '","custom":' + fd.isCustom()
-                    + ',"formula":' + fd.isCalculated()
-                    + ',"required":' + (!fd.isNillable()) + '}',
+            // Only non-default flags are written. Spelling out custom:false,
+            // formula:false and required:false on every field cost roughly
+            // 50 bytes each across a couple of thousand fields.
+            String props = '{"dataType":"' + fd.getType() + '"';
+            if (fd.isCustom()) {
+                props += ',"custom":true';
+            }
+            if (fd.isCalculated()) {
+                props += ',"formula":true';
+            }
+            if (!fd.isNillable()) {
+                props += ',"required":true';
+            }
+            props += '}';
+            doc.addNode(fieldId, 'Field', fd.getLabel(), fd.getName(), props,
                 fd.isCalculated() ? 'High' : 'Low',
-                'SCHEMA ' + apiName + '.' + fd.getName() + ' · ' + fd.getType(),
+                'SCHEMA field · ' + fd.getType(),   // the id already names the object
                 'Salesforce');
             doc.addEdge(objId, 'SOBJECT_HAS_FIELD', fieldId,
                 'describe().fields.getMap()');

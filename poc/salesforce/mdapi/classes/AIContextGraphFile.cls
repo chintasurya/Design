@@ -14,7 +14,17 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
         AIContextSlice slice = new AIContextSlice();
         AIRequestIntent intent = AIRequestIntent.parse(request.Request_Text__c);
 
-        AIGraphMemory graph = AIGraphMemory.load(AIGraphFileStore.COMBINED);
+        AIGraphMemory graph;
+        try {
+            graph = AIGraphMemory.load(AIGraphFileStore.COMBINED);
+        } catch (System.LimitException e) {
+            slice.snapshotId = 'none';
+            slice.summary = 'The graph is too large to load in this context. '
+                + 'It must be narrowed, or the search moved to an asynchronous '
+                + 'job where the heap limit is 12 MB rather than 6 MB. '
+                + e.getMessage();
+            return slice;
+        }
         if (graph == null) {
             slice.snapshotId = 'none';
             slice.summary = 'The knowledge graph has not been exported yet. '
@@ -68,7 +78,8 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
             + ' · traversed ' + hops + ' hop' + (hops == 1 ? '' : 's')
             + ' from ' + seedBasis
             + ' across ' + graph.nodeCount + ' nodes and ' + graph.edgeCount
-            + ' edges · ' + slice.findings.size() + ' reached';
+            + ' edges · ' + slice.findings.size() + ' reached · '
+            + graph.heapNote();
         return slice;
     }
 
