@@ -1,109 +1,157 @@
 <template>
-    <lightning-card title="AI Change Console" icon-name="standard:apex">
+    <lightning-card icon-name="standard:apex">
+        <h1 slot="title" class="slds-text-heading_small">
+            Engineering Context Console
+            <span class="slds-text-body_small slds-text-color_weak
+                         slds-var-m-left_x-small">Network Services</span>
+        </h1>
         <span slot="actions">
-            <lightning-badge label={status} class="slds-m-right_x-small"></lightning-badge>
             <template if:true={hasRequest}>
+                <lightning-badge label={status}
+                    class="slds-m-right_x-small"></lightning-badge>
                 <lightning-button label="Refresh" onclick={handleRefresh}
-                    disabled={loading}></lightning-button>
+                    disabled={busy}></lightning-button>
                 <lightning-button label="New request" class="slds-m-left_xx-small"
-                    onclick={handleReset} disabled={loading}></lightning-button>
+                    onclick={handleReset} disabled={busy}></lightning-button>
             </template>
         </span>
 
-        <div class="slds-var-p-horizontal_medium">
-            <template if:true={loading}>
-                <lightning-spinner alternative-text="Working" size="small"></lightning-spinner>
-            </template>
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
-            <!-- Step 1: the ask -->
-            <template if:false={hasRequest}>
-                <lightning-textarea label="What do you need changed?"
-                    placeholder="Update HFN logic so reactivating a provider does not generate a duplicate HFN"
+            <!-- ask -->
+            <template if:true={showComposer}>
+                <lightning-textarea
+                    label="What do you need changed?"
+                    placeholder="Describe the change in your own words"
                     value={requestText} onchange={handleText}></lightning-textarea>
 
-                <lightning-radio-group class="slds-var-m-top_small"
-                    name="requestType" label="Request type" type="button"
-                    options={typeOptions} value={requestType}
-                    onchange={handleType}></lightning-radio-group>
-
-                <div class="slds-var-m-top_medium">
-                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Model</p>
-                    <template for:each={models} for:item="m">
-                        <lightning-button key={m.name} label={m.name} variant={m.variant}
-                            data-model={m.name} onclick={handleModel}
-                            class="slds-m-right_xx-small"></lightning-button>
-                    </template>
+                <div class="slds-grid slds-wrap slds-gutters_small slds-var-m-top_small">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <lightning-radio-group name="requestType" label="Type"
+                            type="button" options={typeOptions} value={requestType}
+                            onchange={handleType}></lightning-radio-group>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                        <p class="slds-form-element__label">Model</p>
+                        <template for:each={models} for:item="m">
+                            <lightning-button key={m.name} label={m.name}
+                                variant={m.variant} data-model={m.name}
+                                onclick={handleModel}
+                                class="slds-m-right_xx-small"></lightning-button>
+                        </template>
+                    </div>
                 </div>
 
-                <div class="slds-var-m-top_medium slds-var-m-bottom_small">
-                    <lightning-button variant="brand" label="Search the graph"
+                <div class="slds-var-m-top_medium">
+                    <lightning-button variant="brand" label="Analyse"
                         onclick={handleSubmit} disabled={submitDisabled}></lightning-button>
-                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">
-                        The knowledge graph is searched first. The model is only called
-                        after you approve what the graph found.
+                    <p class="slds-text-body_small slds-text-color_weak
+                              slds-var-m-top_xx-small">
+                        The org is searched first. A model is only called after you
+                        approve what was found.
                     </p>
                 </div>
             </template>
 
-            <!-- Step 2: what the graph found -->
-            <template if:true={showAnalysis}>
-                <div class="slds-box slds-box_x-small slds-var-m-bottom_small">
-                    <p class="slds-text-heading_small">{requestName}</p>
-                    <p class="slds-var-m-top_xx-small">{analysisSummary}</p>
-                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">
-                        Snapshot {snapshotId} &middot; {findingCount} connected components
-                    </p>
-                </div>
+            <!-- live pipeline -->
+            <template if:true={showSteps}>
+                <ul class="slds-var-m-bottom_medium">
+                    <template for:each={steps} for:item="s">
+                        <li key={s.key} class={s.css}>
+                            <lightning-icon icon-name={s.icon} size="x-small"
+                                class="slds-var-m-right_x-small step__icon"></lightning-icon>
+                            <span class="step__label">{s.label}</span>
+                            <template if:true={s.elapsed}>
+                                <span class="step__elapsed">{s.elapsed}</span>
+                            </template>
+                            <template if:true={s.detail}>
+                                <div class="step__detail">{s.detail}</div>
+                            </template>
+                        </li>
+                    </template>
+                </ul>
+            </template>
 
+            <!-- verdict -->
+            <template if:true={verdict}>
+                <div class={verdictClass}>
+                    <div class="slds-media slds-media_small">
+                        <div class="slds-media__figure">
+                            <lightning-icon icon-name={verdictIcon}
+                                size="small"></lightning-icon>
+                        </div>
+                        <div class="slds-media__body">
+                            <p class="slds-text-title_caps
+                                      slds-text-color_weak">{verdict.outcome}</p>
+                            <p class="slds-text-heading_small
+                                      slds-var-m-top_xx-small">{verdict.headline}</p>
+                            <p class="slds-var-m-top_x-small">{verdict.detail}</p>
+                            <p class="slds-var-m-top_x-small slds-text-body_small">
+                                <strong>Recommendation.</strong> {verdict.recommendation}
+                            </p>
+                            <template if:true={verdict.evidence.length}>
+                                <ul class="slds-var-m-top_x-small evidence">
+                                    <template for:each={verdict.evidence} for:item="e">
+                                        <li key={e}>{e}</li>
+                                    </template>
+                                </ul>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- findings -->
+            <template if:true={hasFindings}>
+                <div class="slds-grid slds-grid_align-spread slds-var-m-bottom_xx-small">
+                    <h2 class="slds-text-title_caps">
+                        What this touches in the org
+                    </h2>
+                    <span class="slds-text-body_small
+                                 slds-text-color_weak">{snapshotLine}</span>
+                </div>
                 <lightning-datatable key-field="Id" data={findings}
                     columns={findingColumns} hide-checkbox-column
                     wrap-text-max-lines="3"></lightning-datatable>
             </template>
 
-            <!-- Step 3: generated change -->
+            <!-- generated change -->
             <template if:true={showArtifacts}>
-                <h3 class="slds-text-heading_small slds-var-m-vertical_small">
+                <h2 class="slds-text-title_caps slds-var-m-vertical_small">
                     Proposed change
-                </h3>
+                </h2>
                 <template for:each={artifacts} for:item="a">
-                    <div key={a.Id} class="slds-box slds-box_x-small slds-var-m-bottom_x-small">
+                    <div key={a.Id}
+                         class="slds-box slds-box_x-small slds-var-m-bottom_x-small">
                         <p class="slds-text-title_bold">
-                            {a.Operation__c} {a.Metadata_Type__c} &middot; {a.Api_Name__c}
+                            {a.Operation__c} {a.Metadata_Type__c} · {a.Api_Name__c}
                         </p>
-                        <p class="slds-text-body_small slds-var-m-top_xx-small">
-                            {a.Diff_Summary__c}
-                        </p>
+                        <p class="slds-text-body_small
+                                  slds-var-m-top_xx-small">{a.Diff_Summary__c}</p>
                         <pre class="slds-box slds-box_xx-small slds-var-m-top_x-small
                                     slds-scrollable">{a.Source_Body__c}</pre>
                     </div>
                 </template>
             </template>
 
-            <!-- Step 4: tests -->
+            <!-- tests -->
             <template if:true={showTests}>
-                <h3 class="slds-text-heading_small slds-var-m-vertical_small">
+                <h2 class="slds-text-title_caps slds-var-m-vertical_small">
                     Test results
-                </h3>
+                </h2>
                 <lightning-datatable key-field="Id" data={testResults}
                     columns={testColumns} hide-checkbox-column></lightning-datatable>
             </template>
 
-            <!-- Approval gate -->
+            <!-- gate -->
             <template if:true={atAnyGate}>
-                <div class="slds-box slds-theme_shade slds-var-m-vertical_medium">
+                <div class="slds-box slds-theme_shade slds-var-m-top_medium">
                     <p class="slds-var-m-bottom_x-small">{gateLabel}</p>
                     <lightning-button variant="success" label="Approve"
-                        onclick={handleApprove} disabled={loading}></lightning-button>
+                        onclick={handleApprove} disabled={busy}></lightning-button>
                     <lightning-button variant="destructive-text" label="Reject"
                         class="slds-m-left_xx-small" onclick={handleReject}
-                        disabled={loading}></lightning-button>
-                </div>
-            </template>
-
-            <template if:true={errorMessage}>
-                <div class="slds-var-m-vertical_small">
-                    <lightning-formatted-text value={errorMessage}
-                        class="slds-text-color_error"></lightning-formatted-text>
+                        disabled={busy}></lightning-button>
                 </div>
             </template>
         </div>

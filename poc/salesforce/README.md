@@ -86,52 +86,68 @@ Findings are **rows, not a JSON blob**, so the approval screen, the Jira ticket
 and any audit report all read the same records. No field in this package ever
 holds a whole graph.
 
-## Where the findings come from
+## What the console actually concludes
 
-Three implementations sit behind `AIContextGraphService`. The factory picks one
-from `AI_Poc_Config__mdt.Default`:
+Four real Apex round trips, shown as they complete. Each line appears because
+work behind it finished, not on a timer.
 
-| Mode | Config | What it reads |
+```
+1  Reading the request        Create a Field named "Provider NPI" on Account
+2  Resolving the scope        34 objects readable by "Network Service", 12 writable
+3  Searching live metadata    9 connected components identified
+4  Assessing reuse            Field "Provider NPI" already exists
+```
+
+### Asking for something that already exists
+
+This is the rule the architecture exists to enforce: modify what is there,
+create new only when genuinely needed. `AIReuseAnalyzer` returns one of four
+outcomes:
+
+| Outcome | When | What the console does |
 |---|---|---|
-| **Live (default)** | both checkboxes off | This org's real metadata, plus Jira and Confluence when their credentials exist |
-| Remote | `Use_Remote_Graph__c` on | Semantica on GCP via `AIContextGraphHttp` |
-| Stub | `Use_Stub_Graph__c` on | Fixtures. Offline demo only |
+| **Already Exists** | Create request, exact match found | Blocks, cites the existing component, tells you to reuse it |
+| **Safe to Create** | Create request, no match | Allows, lists near misses, warns about automation needing regression |
+| **Impact Assessed** | Update or delete | Reports the blast radius, direct vs one hop, how many are high risk |
+| **Needs Clarification** | Nothing matched | Asks you to name the component rather than guessing |
 
-### Live mode needs no setup for Salesforce
+Name matching normalises across spellings, so `Provider NPI`,
+`Provider_NPI__c` and `providernpi` are recognised as the same field. Asking to
+create a field that is already there returns the existing field with its real
+type and provenance, and refuses to duplicate it.
 
-`AISalesforceMetadataSource` reads the running org with no callout and no
-configuration:
+### What it reads, with no configuration
 
-- `Schema.getGlobalDescribe()` and `describe()` for objects, fields, formulas,
-  lookups and record type counts
-- `ApexTrigger` by `TableEnumOrId`, so triggers are tied to the object they fire on
-- `FlowDefinitionView` for active flows and the object each one is triggered by
-- `ApexClass` by name
+Scope comes from the pod's profile, so "why is this in scope" always has the
+answer "the Network Service profile can read it".
 
-Every finding carries real provenance: the actual field count, the real API
-version, the true flow version number. If a term matches nothing, the result is
-**zero findings and a note saying so**, never a guess.
+| Component | Source | Available |
+|---|---|---|
+| Objects | `Schema.describe()` | yes |
+| Fields, formulas, lookups | `Schema.describe()` | yes |
+| Record types | `getRecordTypeInfos()` | yes |
+| Apex classes | SOQL `ApexClass` | yes |
+| Triggers | SOQL `ApexTrigger` by `TableEnumOrId` | yes |
+| Flows | SOQL `FlowDefinitionView` | yes |
+| Lightning components | Tooling API only | not yet |
+| Validation rules | Tooling API only | not yet |
 
-### Adding Jira and Confluence
+The last two are unreachable from Apex without the Tooling API. The search says
+so in its notes rather than omitting them silently.
 
-Create Named Credentials, then fill in the config record:
+### Jira and Confluence
 
-| Field | Example |
-|---|---|
-| `Jira_Named_Credential__c` | `Jira_Cloud` |
-| `Jira_Project_Key__c` | `NSVC` |
-| `Confluence_Named_Credential__c` | `Confluence_Cloud` |
-| `Confluence_Space_Key__c` | `NSDOCS` |
-
-Leave one blank and the summary line says `Jira: Jira not configured`. A source
-that cannot be reached reports that rather than contributing nothing silently.
+Not read sources. They are write targets for this POC: a ticket raised on
+analysis approval, a page written on completion. The config fields are in
+place; the write services are Phase 2.
 
 ### What live mode is not
 
-Federated keyword search over live metadata, not graph traversal. No
-precomputed typed edges, no multi-hop blast radius, no reuse detection across
-capabilities, no cross-source relationship inference. Those are what the graph
-layer adds. Nothing above `AIContextGraphService` changes when it arrives.
+Name matching against live metadata, not graph traversal. It resolves what a
+change touches directly and one hop out. Multi-hop blast radius, reuse across
+capabilities and cross-source edges need precomputed typed relationships, which
+is the graph layer's job. Nothing above `AIContextGraphService` changes when it
+arrives.
 
 ## Switching to the remote graph service
 

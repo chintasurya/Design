@@ -14,4 +14,8 @@
         <field>Context_Query_Path__c</field>
         <value xsi:type="xsd:string">/v1/context/query</value>
     </values>
+    <values>
+        <field>Pod_Profile_Name__c</field>
+        <value xsi:type="xsd:string">Network Service</value>
+    </values>
 </CustomMetadata>

@@ -11,6 +11,67 @@ public with sharing class AIChangeRequestController {
         @AuraEnabled public List<AI_Graph_Finding__c> findings;
         @AuraEnabled public List<AI_Generated_Artifact__c> artifacts;
         @AuraEnabled public List<AI_Test_Result__c> testResults;
+        @AuraEnabled public AIReuseAnalyzer.Verdict verdict;
+    }
+
+    /** Step 1. What is being asked for. Returned so the user can correct a misread. */
+    @AuraEnabled
+    public static AIContextGraphLive.Step stepUnderstand(Id requestId) {
+        Long t0 = System.currentTimeMillis();
+        try {
+            AI_Change_Request__c req = [
+                SELECT Id, Request_Text__c FROM AI_Change_Request__c
+                WHERE Id = :requestId WITH USER_MODE LIMIT 1];
+            AIRequestIntent intent = AIRequestIntent.parse(req.Request_Text__c);
+            return new AIContextGraphLive.Step('understand', 'Understood the request',
+                intent.summary, elapsed(t0));
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    /** Step 2. Which objects the pod's profile can actually see. */
+    @AuraEnabled
+    public static AIContextGraphLive.Step stepScope(Id requestId) {
+        Long t0 = System.currentTimeMillis();
+        try {
+            AINetworkServicesScope scope = AINetworkServicesScope.resolve(
+                AIServiceFactory.config().Pod_Profile_Name__c);
+            return new AIContextGraphLive.Step('scope',
+                'Resolved the Network Services scope', scope.note, elapsed(t0));
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    /** Step 3. The live metadata search. Writes the findings rows. */
+    @AuraEnabled
+    public static AIContextGraphLive.Step stepSearch(Id requestId) {
+        Long t0 = System.currentTimeMillis();
+        try {
+            AIChangeRequestService.analyze(requestId);
+            Integer n = [SELECT COUNT() FROM AI_Graph_Finding__c
+                         WHERE Change_Request__c = :requestId];
+            return new AIContextGraphLive.Step('search', 'Searched live org metadata',
+                n == 0 ? 'Nothing matched in scope'
+                       : n + ' connected components identified', elapsed(t0));
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    /** Step 4. Reuse or create, and what that means. */
+    @AuraEnabled
+    public static ConsoleView stepAssess(Id requestId) {
+        try {
+            return getView(requestId);
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    private static Integer elapsed(Long t0) {
+        return (Integer) (System.currentTimeMillis() - t0);
     }
 
     @AuraEnabled
@@ -93,6 +154,15 @@ public with sharing class AIChangeRequestController {
                        Message__c, Run_Time_Ms__c
                 FROM AI_Test_Result__c
                 WHERE Change_Request__c = :requestId WITH USER_MODE];
+
+            List<AIContextSlice.Finding> slice = new List<AIContextSlice.Finding>();
+            for (AI_Graph_Finding__c f : v.findings) {
+                slice.add(AIContextSlice.build(f.Node_Id__c, f.Node_Type__c,
+                    f.Node_Name__c, f.Relationship_Path__c, f.Impact__c,
+                    f.Risk_Tier__c, f.Source_System__c, f.Provenance__c));
+            }
+            v.verdict = AIReuseAnalyzer.assess(
+                AIRequestIntent.parse(v.request.Request_Text__c), slice);
             return v;
         } catch (Exception e) {
             throw asAura(e);

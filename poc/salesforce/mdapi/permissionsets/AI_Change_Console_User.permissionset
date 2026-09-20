@@ -280,7 +280,15 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
-        <apexClass>AIAtlassianSource</apexClass>
+        <apexClass>AIRequestIntent</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AINetworkServicesScope</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AIReuseAnalyzer</apexClass>
         <enabled>true</enabled>
     </classAccesses>
 </PermissionSet>

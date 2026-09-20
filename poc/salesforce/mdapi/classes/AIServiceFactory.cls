@@ -12,6 +12,7 @@ public class AIServiceFactory {
             cfg = new AI_Poc_Config__mdt(
                 Use_Stub_Graph__c = false,
                 Use_Remote_Graph__c = false,
+                Pod_Profile_Name__c = 'Network Service',
                 Context_Named_Credential__c = 'Semantica_Context_Service',
                 Context_Query_Path__c = '/v1/context/query');
         }
