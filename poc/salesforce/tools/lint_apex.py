@@ -19,6 +19,10 @@ yourself to ignore:
                                         class declaring "enum Phase" with
                                         "Static field cannot be referenced
                                         from a non static context".
+  6. Case-insensitive shadowing         Apex identifiers ignore case, so a
+                                        local "automation" shadows a static
+                                        "AUTOMATION" and calls resolve against
+                                        the wrong type.
 
 Checks 2 and 3 exist because the same class of bug reached a real org three
 times: a parameter called "system", a field called "override_", and a local
@@ -93,6 +97,24 @@ def check(path):
         for ident in re.findall(r'\b([A-Za-z]\w*_)(?![\w])', line):
             if not SF_SUFFIX.search(ident):
                 out.append((n, ident, 'identifier may not end with "_"'))
+
+    # Static fields, so locals that collide with them can be spotted.
+    statics = {}
+    for m in re.finditer(
+            r'\bstatic\s+(?:final\s+)?[\w.<>,\s\[\]]+?\s+([A-Za-z]\w*)\s*[;=]',
+            src):
+        statics[m.group(1).lower()] = m.group(1)
+
+    for m in LOCAL_DECL.finditer(src):
+        name = next((g for g in m.groups()[::-1] if g), None)
+        if not name:
+            continue
+        other = statics.get(name.lower())
+        if other and other != name:
+            n = src[:m.start()].count('\n') + 1
+            out.append((n, name,
+                        'shadows static "%s"; Apex ignores case, so calls '
+                        'resolve against this local' % other))
 
     for m in LOCAL_DECL.finditer(src):
         name = next((g for g in m.groups()[::-1] if g), None)

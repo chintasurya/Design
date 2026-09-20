@@ -97,12 +97,11 @@ public with sharing class AIReuseAnalyzer {
                 v.evidence.add(f.nodeId + ' · ' + f.provenance);
             }
         }
-        Integer automation = countTypes(all,
-            new Set<String>{'Flow', 'ApexTrigger', 'ApexClass', 'ValidationRule'});
-        v.recommendation = automation == 0
+        Integer automationCount = countTypes(all, AUTOMATION);
+        v.recommendation = automationCount == 0
             ? 'Approve to generate the change.'
-            : automation + ' automation component'
-              + (automation == 1 ? '' : 's') + ' on this object will need regression '
+            : automationCount + ' automation component'
+              + (automationCount == 1 ? '' : 's') + ' on this object will need regression '
               + 'coverage once the change lands.';
         return v;
     }
@@ -149,7 +148,7 @@ public with sharing class AIReuseAnalyzer {
      */
     private static Verdict behaviour(Verdict v, AIRequestIntent intent,
                                      List<AIContextSlice.Finding> findings) {
-        List<AIContextSlice.Finding> automation = new List<AIContextSlice.Finding>();
+        List<AIContextSlice.Finding> automationHits = new List<AIContextSlice.Finding>();
         List<AIContextSlice.Finding> overlapping = new List<AIContextSlice.Finding>();
 
         Set<String> affectedLower = new Set<String>();
@@ -161,7 +160,7 @@ public with sharing class AIReuseAnalyzer {
             if (!AUTOMATION.contains(f.nodeType)) {
                 continue;
             }
-            automation.add(f);
+            automationHits.add(f);
             String haystack = ((f.nodeName == null ? '' : f.nodeName) + ' '
                             + (f.relationshipPath == null ? '' : f.relationshipPath))
                             .toLowerCase().replaceAll('[^a-z0-9]', '');
@@ -194,11 +193,11 @@ public with sharing class AIReuseAnalyzer {
             return v;
         }
 
-        if (!automation.isEmpty()) {
+        if (!automationHits.isEmpty()) {
             v.outcome = NEEDS_REVIEW;
             v.blocksCreation = true;
-            v.headline = automation.size() + ' automation component'
-                + (automation.size() == 1 ? '' : 's') + ' already fire on '
+            v.headline = automationHits.size() + ' automation component'
+                + (automationHits.size() == 1 ? '' : 's') + ' already fire on '
                 + intent.triggerObject + '.';
             v.detail = 'None of them names ' + what + ', but Flow and Apex '
                 + 'internals cannot be read without the Tooling API, so this '
@@ -207,7 +206,7 @@ public with sharing class AIReuseAnalyzer {
             v.recommendation = 'Review these before building. Adding another '
                 + 'component that fires on the same event risks duplicate '
                 + 'records and ordering problems.';
-            for (AIContextSlice.Finding f : automation) {
+            for (AIContextSlice.Finding f : automationHits) {
                 v.evidence.add(f.nodeId + ' · ' + f.provenance);
             }
             return v;

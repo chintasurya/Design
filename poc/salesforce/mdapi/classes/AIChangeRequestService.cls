@@ -102,9 +102,11 @@ public with sharing class AIChangeRequestService {
     }
 
     private static void transitionTo(AI_Change_Request__c req, String target) {
-        Set<String> allowed = ALLOWED.get(req.Status__c);
+        // Not named "allowed": Apex ignores case, so a local by that name
+        // would shadow the ALLOWED map and resolve calls against itself.
+        Set<String> permitted = ALLOWED.get(req.Status__c);
         Boolean legal = target == REJECTED || target == FAILED
-                     || (allowed != null && allowed.contains(target));
+                     || (permitted != null && permitted.contains(target));
         if (!legal) {
             throw new StateException(
                 'Cannot move from "' + req.Status__c + '" to "' + target + '".');
