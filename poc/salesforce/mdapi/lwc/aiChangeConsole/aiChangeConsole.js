@@ -60,7 +60,27 @@ export default class AiChangeConsole extends LightningElement {
     }
 
     @track profiles = [];
+    allProfiles = [];
+    profileFilter = '';
     showProfiles = false;
+
+    get profileCountLabel() {
+        return this.profiles.length === this.allProfiles.length
+            ? `${this.allProfiles.length} profiles`
+            : `${this.profiles.length} of ${this.allProfiles.length} profiles`;
+    }
+
+    handleProfileFilter(event) {
+        this.profileFilter = event.target.value || '';
+        this.applyProfileFilter();
+    }
+
+    applyProfileFilter() {
+        const needle = this.profileFilter.trim().toLowerCase();
+        this.profiles = needle
+            ? this.allProfiles.filter((p) => p.name.toLowerCase().includes(needle))
+            : this.allProfiles;
+    }
 
     get scopeWarning() {
         if (!this.graph.scopeNote) {
@@ -82,14 +102,13 @@ export default class AiChangeConsole extends LightningElement {
         if (this.showProfiles && this.profiles.length === 0) {
             try {
                 const rows = await listProfiles();
-                this.profiles = rows
-                    .filter((r) => r.writable > 0)
-                    .sort((a, b) => b.writable - a.writable)
-                    .slice(0, 15)
+                this.allProfiles = rows
                     .map((r) => ({
                         name: r.name,
                         detail: `${r.writable} objects writable`
-                    }));
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                this.applyProfileFilter();
             } catch (error) {
                 this.toast('Could not list profiles', this.messageOf(error), 'error');
             }

@@ -107,3 +107,10 @@
     border-left: 3px solid #fe9339;
 }
 .graphbar_failed { background: #fef1f1; border-left: 3px solid #ba0517; }
+
+/* Every profile, scrollable. Truncating this list to a top 15 by object count
+   is what hid "Network Services" when it was the one actually needed. */
+.profilelist {
+    max-height: 14rem;
+    overflow-y: auto;
+}

@@ -148,6 +148,31 @@ private class AIContextGraphLiveTest {
     }
 
     @IsTest
+    static void singularVersusPluralProfileNameStillMatches() {
+        // The config said "Network Service", the org has "Network Services",
+        // and an exact-match lookup silently widened the scope to the whole
+        // org over one trailing character.
+        AINetworkServicesScope.clearCache();
+        AINetworkServicesScope s = AINetworkServicesScope.resolve('Standard Use');
+        if (s.profileFound) {
+            System.assertNotEquals(null, s.matchedProfile,
+                'A fuzzy match must report which profile it actually used.');
+            System.assert(s.note.contains('matched'),
+                'The note must make the substitution visible: ' + s.note);
+        }
+    }
+
+    @IsTest
+    static void exactMatchIsPreferredOverFuzzy() {
+        AINetworkServicesScope.clearCache();
+        AINetworkServicesScope s = AINetworkServicesScope.resolve('System Administrator');
+        System.assertEquals(true, s.profileFound);
+        System.assertEquals('System Administrator', s.matchedProfile);
+        System.assert(!s.note.contains('matched'),
+            'An exact hit must not report a substitution: ' + s.note);
+    }
+
+    @IsTest
     static void scopeReportsWhenTheProfileIsMissing() {
         AINetworkServicesScope s = AINetworkServicesScope.resolve('No Such Profile Here');
         System.assertEquals(false, s.profileFound);

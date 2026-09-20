@@ -16,6 +16,6 @@
     </values>
     <values>
         <field>Pod_Profile_Name__c</field>
-        <value xsi:type="xsd:string">Network Service</value>
+        <value xsi:type="xsd:string">Network Services</value>
     </values>
 </CustomMetadata>

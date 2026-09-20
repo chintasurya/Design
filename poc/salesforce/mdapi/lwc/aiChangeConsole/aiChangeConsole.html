@@ -37,7 +37,14 @@
                         <a class="summaryline__toggle"
                            onclick={toggleProfiles}>{profileToggleLabel}</a>
                         <template if:true={showProfiles}>
-                            <ul class="evidence slds-var-m-top_x-small">
+                            <lightning-input type="search" label="Filter profiles"
+                                variant="label-hidden" placeholder="Type to filter"
+                                value={profileFilter}
+                                onchange={handleProfileFilter}
+                                class="slds-var-m-top_x-small"></lightning-input>
+                            <p class="slds-text-body_small slds-text-color_weak
+                                      slds-var-m-top_xx-small">{profileCountLabel}</p>
+                            <ul class="evidence profilelist slds-var-m-top_x-small">
                                 <template for:each={profiles} for:item="p">
                                     <li key={p.name}>
                                         <strong>{p.name}</strong> — {p.detail}

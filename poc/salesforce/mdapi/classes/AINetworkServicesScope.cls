@@ -13,6 +13,7 @@ public with sharing class AINetworkServicesScope {
     public Set<String> recordTypeObjects = new Set<String>();
     public Set<String> owned = new Set<String>();
     public Boolean profileFound = false;
+    public String matchedProfile;
     public String note;
 
     private static Map<String, AINetworkServicesScope> cache =
@@ -30,10 +31,7 @@ public with sharing class AINetworkServicesScope {
         }
         AINetworkServicesScope s = new AINetworkServicesScope();
 
-        List<PermissionSet> owned = [
-            SELECT Id FROM PermissionSet
-            WHERE IsOwnedByProfile = true AND Profile.Name = :key
-            LIMIT 1];
+        List<PermissionSet> owned = findProfile(key, s);
 
         if (owned.isEmpty()) {
             s.note = 'Profile "' + key + '" not found, so the search is not scoped '
@@ -56,6 +54,51 @@ public with sharing class AINetworkServicesScope {
         s.resolveOwned(key);
         cache.put(key, s);
         return s;
+    }
+
+    /**
+     * Find the profile, tolerating a near miss.
+     *
+     * The configured name was "Network Service" and the real profile is
+     * "Network Services". An exact-match-only lookup silently widened the
+     * scope to the whole org over a single trailing character, so the lookup
+     * now falls back through case-insensitive and prefix matching, and always
+     * reports which profile it actually used.
+     */
+    private static List<PermissionSet> findProfile(String wanted,
+                                                   AINetworkServicesScope s) {
+        List<PermissionSet> exact = [
+            SELECT Id, Profile.Name FROM PermissionSet
+            WHERE IsOwnedByProfile = true AND Profile.Name = :wanted LIMIT 1];
+        if (!exact.isEmpty()) {
+            s.matchedProfile = exact[0].Profile.Name;
+            return exact;
+        }
+
+        String target = normalize(wanted);
+        List<PermissionSet> all = [
+            SELECT Id, Profile.Name FROM PermissionSet
+            WHERE IsOwnedByProfile = true LIMIT 500];
+
+        for (PermissionSet ps : all) {           // case and punctuation only
+            if (normalize(ps.Profile.Name) == target) {
+                s.matchedProfile = ps.Profile.Name;
+                return new List<PermissionSet>{ ps };
+            }
+        }
+        for (PermissionSet ps : all) {           // singular versus plural
+            String candidate = normalize(ps.Profile.Name);
+            if (target.length() >= 6
+                    && (candidate.startsWith(target) || target.startsWith(candidate))) {
+                s.matchedProfile = ps.Profile.Name;
+                return new List<PermissionSet>{ ps };
+            }
+        }
+        return new List<PermissionSet>();
+    }
+
+    private static String normalize(String value) {
+        return value == null ? '' : value.toLowerCase().replaceAll('[^a-z0-9]', '');
     }
 
     /**
@@ -89,7 +132,11 @@ public with sharing class AINetworkServicesScope {
                  + 'falls back to all ' + readable.size() + ' readable objects';
             return;
         }
-        note = owned.size() + ' objects owned by "' + profileName + '" ('
+        String shown = String.isBlank(matchedProfile) ? profileName : matchedProfile;
+        String matchNote = (matchedProfile != null && matchedProfile != profileName)
+            ? ' (configured as "' + profileName + '", matched "' + matchedProfile + '")'
+            : '';
+        note = owned.size() + ' objects owned by "' + shown + '"' + matchNote + ' ('
              + writable.size() + ' writable, ' + recordTypeObjects.size()
              + ' with a Network record type) out of ' + readable.size()
              + ' readable';
@@ -103,7 +150,7 @@ public with sharing class AINetworkServicesScope {
         return !profileFound || readable.contains(objectApiName);
     }
 
-    /** Profiles in the org with how many objects each can create or edit. */
+    /** Every profile in the org with how many objects each can create or edit. */
     public static List<Map<String, Object>> candidates() {
         Map<Id, String> nameOf = new Map<Id, String>();
         Map<Id, Integer> writableOf = new Map<Id, Integer>();
