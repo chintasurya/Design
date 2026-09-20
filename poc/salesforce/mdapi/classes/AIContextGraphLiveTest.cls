@@ -14,6 +14,78 @@ private class AIContextGraphLiveTest {
     }
 
     @IsTest
+    static void readsTheRealSentenceThatBrokeTheParser() {
+        // Reported verbatim. The old parser returned the name "type", because
+        // "type" is the word immediately before "field".
+        AIRequestIntent i = AIRequestIntent.parse(
+            'create effective from date, date data type field in healthcarefacility object');
+
+        System.assertEquals('Create', i.action);
+        System.assertEquals('Field', i.targetType);
+        System.assertEquals('effective from date', i.targetName,
+            'The name is everything before the comma, not the word before "field".');
+        System.assertEquals('Date', i.targetDataType);
+        System.assertEquals('healthcarefacility', i.targetObject);
+    }
+
+    @IsTest
+    static void descriptiveWordsNeverBecomeTheName() {
+        for (String phrase : new List<String>{
+                'create a date field on Account',
+                'add a new custom field to Account',
+                'create a text data type field in Account'}) {
+            AIRequestIntent i = AIRequestIntent.parse(phrase);
+            System.assertNotEquals('type', i.targetName, phrase);
+            System.assertNotEquals('data', i.targetName, phrase);
+            System.assertNotEquals('date', i.targetName, phrase);
+            System.assertNotEquals('custom', i.targetName, phrase);
+            System.assertNotEquals('new', i.targetName, phrase);
+        }
+    }
+
+    @IsTest
+    static void picksTheLongerDataTypeFirst() {
+        System.assertEquals('DateTime',
+            AIRequestIntent.parse('add a datetime field to Account').targetDataType,
+            'DATETIME must be matched before DATE.');
+        System.assertEquals('TextArea',
+            AIRequestIntent.parse('add a textarea field to Account').targetDataType);
+    }
+
+    @IsTest
+    static void unknownNodeTypesFallBackRatherThanFailingTheInsert() {
+        AI_Change_Request__c req = AIChangeRequestService.create(
+            'Review Account', 'Update Existing', 'Codex');
+        AIContextSlice slice = new AIContextSlice();
+        slice.findings.add(AIContextSlice.build('x:1', 'SomethingBrandNew', 'X',
+            'path', 'Direct', 'Low', 'Salesforce', 'PROVENANCE'));
+
+        insert slice.toRecords(req.Id);
+
+        AI_Graph_Finding__c saved = [
+            SELECT Node_Type__c FROM AI_Graph_Finding__c
+            WHERE Change_Request__c = :req.Id LIMIT 1];
+        System.assertEquals('Other', saved.Node_Type__c,
+            'An unrecognised node type must not fail the whole insert.');
+    }
+
+    @IsTest
+    static void recordTypeIsAnAcceptedNodeType() {
+        AI_Change_Request__c req = AIChangeRequestService.create(
+            'Review Account', 'Update Existing', 'Codex');
+        AIContextSlice slice = new AIContextSlice();
+        slice.findings.add(AIContextSlice.build('rt:Account.Biz', 'RecordType',
+            'Business', 'SOBJECT_HAS_RECORDTYPE -> sobj:Account',
+            'Direct', 'Low', 'Salesforce', 'SCHEMA record type'));
+
+        insert slice.toRecords(req.Id);
+
+        System.assertEquals('RecordType', [
+            SELECT Node_Type__c FROM AI_Graph_Finding__c
+            WHERE Change_Request__c = :req.Id LIMIT 1].Node_Type__c);
+    }
+
+    @IsTest
     static void readsUpdateRequestsWithoutANamedTarget() {
         AIRequestIntent i = AIRequestIntent.parse(
             'Update the Account duplicate handling so reactivation is safe');

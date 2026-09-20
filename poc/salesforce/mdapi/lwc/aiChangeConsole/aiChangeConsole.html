@@ -19,9 +19,9 @@
         <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
             <!-- ask -->
-            <template if:true={showComposer}>
+            <div class="composer">
                 <lightning-textarea
-                    label="What do you need changed?"
+                    label={composerLabel}
                     placeholder="Describe the change in your own words"
                     value={requestText} onchange={handleText}></lightning-textarea>
 
@@ -43,7 +43,7 @@
                 </div>
 
                 <div class="slds-var-m-top_medium">
-                    <lightning-button variant="brand" label="Analyse"
+                    <lightning-button variant="brand" label={submitLabel}
                         onclick={handleSubmit} disabled={submitDisabled}></lightning-button>
                     <p class="slds-text-body_small slds-text-color_weak
                               slds-var-m-top_xx-small">
@@ -51,11 +51,10 @@
                         approve what was found.
                     </p>
                 </div>
-            </template>
+            </div>
 
-            <!-- what was asked -->
-            <template if:true={submittedText}>
-                <p class="askline">&ldquo;{submittedText}&rdquo;</p>
+            <template if:true={hasResult}>
+                <hr class="slds-var-m-vertical_small" />
             </template>
 
             <!-- live pipeline, collapses to one line once finished -->

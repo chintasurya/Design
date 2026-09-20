@@ -66,8 +66,18 @@ export default class AiChangeConsole extends LightningElement {
         return !!this.view;
     }
 
-    get showComposer() {
-        return !this.view && this.steps.length === 0;
+    // Always on screen. Swapping the composer out for results was the thing
+    // that made this feel like a second page.
+    get composerLabel() {
+        return this.steps.length > 0 ? 'Refine and run again' : 'What do you need changed?';
+    }
+
+    get submitLabel() {
+        return this.steps.length > 0 ? 'Re-analyse' : 'Analyse';
+    }
+
+    get hasResult() {
+        return this.steps.length > 0;
     }
 
     get showSteps() {

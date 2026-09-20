@@ -12,6 +12,7 @@ public with sharing class AIRequestIntent {
     public String targetType = 'Unknown';    // Field | SObject | Flow | ...
     public String targetName;
     public String targetObject;
+    public String targetDataType;
     public Set<String> terms = new Set<String>();
     public String summary;
 
@@ -64,49 +65,161 @@ public with sharing class AIRequestIntent {
 
         i.targetName = extractName(text);
         i.targetObject = extractObject(text);
+        i.targetDataType = extractDataType(text);
         i.summary = describe(i);
         return i;
     }
 
-    /** "called X", "named X", a quoted string, or the word before the type. */
+    private static final Map<String, String> DATA_TYPES = new Map<String, String>{
+        'DATETIME' => 'DateTime', 'DATE' => 'Date', 'TEXTAREA' => 'TextArea',
+        'TEXT' => 'Text', 'NUMBER' => 'Number', 'CURRENCY' => 'Currency',
+        'CHECKBOX' => 'Checkbox', 'PICKLIST' => 'Picklist', 'EMAIL' => 'Email',
+        'PHONE' => 'Phone', 'URL' => 'URL', 'FORMULA' => 'Formula',
+        'LOOKUP' => 'Lookup', 'PERCENT' => 'Percent'
+    };
+
+    // Apex Map key order is not guaranteed, so the fallback scan needs an
+    // explicit order: DATETIME must be tried before DATE, TEXTAREA before TEXT.
+    private static final List<String> TYPE_SCAN_ORDER = new List<String>{
+        'DATETIME', 'DATE', 'TEXTAREA', 'TEXT', 'CURRENCY', 'NUMBER',
+        'CHECKBOX', 'PICKLIST', 'EMAIL', 'PHONE', 'URL', 'FORMULA',
+        'LOOKUP', 'PERCENT'
+    };
+
+    /** Words that describe a request rather than name anything in it. */
+    private static final Set<String> NEVER_A_NAME = new Set<String>{
+        'type', 'data', 'datatype', 'field', 'fields', 'object', 'objects',
+        'new', 'custom', 'standard', 'a', 'an', 'the', 'this', 'that',
+        'value', 'values', 'flow', 'class', 'trigger', 'component', 'rule',
+        'record', 'records', 'date', 'text', 'number', 'checkbox', 'picklist',
+        'formula', 'lookup', 'currency', 'email', 'phone', 'url', 'percent'
+    };
+
+    private static final Pattern OBJECT_CLAUSE = Pattern.compile(
+        '(?i)\\s*\\b(?:in|on|to|for)\\s+(?:the\\s+)?' +
+        '([A-Za-z0-9_]{3,60})(?:\\s+object)?\\s*$');
+
+    /**
+     * Pull the component name out of free text.
+     *
+     * Ordered by how explicit the phrasing is. The comma rule matters most in
+     * practice, because people write "effective from date, date data type
+     * field on X" and the name is everything before the first comma.
+     */
     private static String extractName(String text) {
-        Matcher m = Pattern.compile(
-            '(?i)(?:called|named)\\s+["\']?([A-Za-z0-9_ ]{2,40}?)["\']?' +
-            '(?:\\s+(?:on|in|to|for|of|so|which|that)\\b|[.,]|$)').matcher(text);
+        Matcher m = Pattern.compile('["\']([^"\']{2,60})["\']').matcher(text);
         if (m.find()) {
-            return m.group(1).trim();
+            return clean(m.group(1));
         }
-        m = Pattern.compile('["\']([^"\']{2,40})["\']').matcher(text);
+
+        m = Pattern.compile(
+            '(?i)(?:called|named)\\s+["\']?([A-Za-z0-9_ ]{2,60}?)["\']?' +
+            '(?:\\s+(?:on|in|to|for|of|so|which|that|with)\\b|[.,]|$)').matcher(text);
         if (m.find()) {
-            return m.group(1).trim();
+            return clean(m.group(1));
         }
+
+        String body = stripObjectClause(text);
+
+        if (body.contains(',')) {
+            String candidate = clean(stripLeadIn(body.substringBefore(',')));
+            if (isUsableName(candidate)) {
+                return candidate;
+            }
+        }
+
         m = Pattern.compile(
             '(?i)\\b([A-Za-z0-9_]{2,40})\\s+' +
-            '(?:field|object|flow|trigger|class|component)\\b').matcher(text);
+            '(?:field|object|flow|trigger|class|component)\\b').matcher(body);
+        if (m.find()) {
+            String candidate = clean(m.group(1));
+            if (isUsableName(candidate)) {
+                return candidate;
+            }
+        }
+
+        String residue = clean(stripLeadIn(body));
+        return isUsableName(residue) ? residue : null;
+    }
+
+    private static String extractObject(String text) {
+        Matcher m = OBJECT_CLAUSE.matcher(text.trim());
         if (m.find()) {
             String candidate = m.group(1);
-            if (!(new Set<String>{'a','an','the','new','custom','this','that'}
-                    .contains(candidate.toLowerCase()))) {
+            if (!NEVER_A_NAME.contains(candidate.toLowerCase())) {
+                return candidate;
+            }
+        }
+        // Fall back to any "in|on|to|for X" earlier in the sentence.
+        m = Pattern.compile(
+            '(?i)\\b(?:in|on|to|for)\\s+(?:the\\s+)?' +
+            '([A-Za-z0-9_]{3,60})(?:\\s+object)?\\b').matcher(text);
+        while (m.find()) {
+            String candidate = m.group(1);
+            if (!NEVER_A_NAME.contains(candidate.toLowerCase())
+                    && !ACTIONS.containsKey(candidate.toUpperCase())) {
                 return candidate;
             }
         }
         return null;
     }
 
-    /** Whatever follows "on", "in", "to" or "for". */
-    private static String extractObject(String text) {
+    /** "date data type" wins over a bare type word appearing in a name. */
+    private static String extractDataType(String text) {
         Matcher m = Pattern.compile(
-            '(?i)\\b(?:on|in|to|for)\\s+(?:the\\s+)?' +
-            '([A-Za-z0-9_]{3,60}(?:__c)?)\\b').matcher(text);
-        while (m.find()) {
-            String candidate = m.group(1);
-            if (!(new Set<String>{'order','production','sandbox','it','them','this',
-                    'that','avoid','make','ensure','create','update'}
-                    .contains(candidate.toLowerCase()))) {
-                return candidate;
+            '(?i)\\b([A-Za-z]+)\\s+data\\s*type\\b').matcher(text);
+        if (m.find() && DATA_TYPES.containsKey(m.group(1).toUpperCase())) {
+            return DATA_TYPES.get(m.group(1).toUpperCase());
+        }
+        String upper = text.toUpperCase();
+        for (String key : TYPE_SCAN_ORDER) {
+            if (Pattern.compile('\\b' + key + '\\b').matcher(upper).find()) {
+                return DATA_TYPES.get(key);
             }
         }
         return null;
+    }
+
+    private static String stripObjectClause(String text) {
+        Matcher m = OBJECT_CLAUSE.matcher(text.trim());
+        return m.find() ? text.trim().substring(0, m.start()) : text.trim();
+    }
+
+    /** Drop a leading verb and article so "create a X" yields "X". */
+    private static String stripLeadIn(String text) {
+        String out = text.trim();
+        for (Integer i = 0; i < 3; i++) {
+            Matcher m = Pattern.compile(
+                '(?i)^(create|add|new|build|introduce|update|change|modify|fix|' +
+                'delete|remove|retire|please|a|an|the)\\b\\s*').matcher(out);
+            if (!m.find()) {
+                break;
+            }
+            out = out.substring(m.end());
+        }
+        return out;
+    }
+
+    private static String clean(String value) {
+        return value == null ? null
+            : value.trim().replaceAll('[\\s]+', ' ').replaceAll('^[,.;:]+|[,.;:]+$', '').trim();
+    }
+
+    private static Boolean isUsableName(String candidate) {
+        if (String.isBlank(candidate) || candidate.length() < 2 || candidate.length() > 60) {
+            return false;
+        }
+        if (NEVER_A_NAME.contains(candidate.toLowerCase())) {
+            return false;
+        }
+        // "date data type" is a description, not a name.
+        String collapsed = candidate.toLowerCase().replaceAll('[^a-z ]', '');
+        for (String word : collapsed.split(' ')) {
+            if (!NEVER_A_NAME.contains(word)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String describe(AIRequestIntent i) {
@@ -114,6 +227,9 @@ public with sharing class AIRequestIntent {
         parts.add(i.targetType == 'Unknown' ? 'component' : 'a ' + label(i.targetType));
         if (String.isNotBlank(i.targetName)) {
             parts.add('named "' + i.targetName + '"');
+        }
+        if (String.isNotBlank(i.targetDataType)) {
+            parts.add('(' + i.targetDataType + ')');
         }
         if (String.isNotBlank(i.targetObject)) {
             parts.add('on ' + i.targetObject);

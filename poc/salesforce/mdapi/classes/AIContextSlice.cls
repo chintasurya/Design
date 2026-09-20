@@ -41,6 +41,19 @@ public class AIContextSlice {
         return f;
     }
 
+    /**
+     * Values Node_Type__c will accept. Kept here so a new node type added to a
+     * source cannot fail the entire insert with
+     * INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST, which is what happens when the
+     * Apex and the picklist drift apart.
+     */
+    private static final Set<String> KNOWN_TYPES = new Set<String>{
+        'SObject', 'Field', 'RecordType', 'Flow', 'ApexClass', 'ApexTrigger',
+        'ValidationRule', 'LightningComponent', 'PermissionSet', 'Layout',
+        'TestCase', 'Requirement', 'DesignDocument', 'BusinessRule',
+        'Release', 'IntegrationEvent', 'Other'
+    };
+
     /** Project the slice onto findings rows hung off a request. */
     public List<AI_Graph_Finding__c> toRecords(Id requestId) {
         List<AI_Graph_Finding__c> rows = new List<AI_Graph_Finding__c>();
@@ -48,7 +61,8 @@ public class AIContextSlice {
             rows.add(new AI_Graph_Finding__c(
                 Change_Request__c  = requestId,
                 Node_Id__c         = f.nodeId,
-                Node_Type__c       = f.nodeType,
+                Node_Type__c       = KNOWN_TYPES.contains(f.nodeType)
+                                     ? f.nodeType : 'Other',
                 Node_Name__c       = f.nodeName,
                 Relationship_Path__c = f.relationshipPath,
                 Impact__c          = f.impact,

@@ -107,6 +107,26 @@
                     <default>false</default>
                     <label>IntegrationEvent</label>
                 </value>
+                <value>
+                    <fullName>RecordType</fullName>
+                    <default>false</default>
+                    <label>RecordType</label>
+                </value>
+                <value>
+                    <fullName>PermissionSet</fullName>
+                    <default>false</default>
+                    <label>PermissionSet</label>
+                </value>
+                <value>
+                    <fullName>Layout</fullName>
+                    <default>false</default>
+                    <label>Layout</label>
+                </value>
+                <value>
+                    <fullName>Other</fullName>
+                    <default>false</default>
+                    <label>Other</label>
+                </value>
             </valueSetDefinition>
         </valueSet>
     </fields>
