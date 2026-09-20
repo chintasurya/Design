@@ -34,5 +34,5 @@
         <members>AI_Change_Console_User</members>
         <name>PermissionSet</name>
     </types>
-    <version>62.0</version>
+    <version>59.0</version>
 </Package>

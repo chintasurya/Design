@@ -6,6 +6,27 @@ today, with no backend service, because the graph layer ships with a stub.
 **`AI_Change_Console_POC.zip`** is the Workbench-ready artifact.
 **`mdapi/`** is the same content unzipped, and is the source of truth in git.
 
+## If the deploy fails
+
+`UNKNOWN_EXCEPTION` with **0 component errors and 0 components deployed** means
+the package failed while being parsed, before any component was examined. It is
+a packaging fault, not a metadata fault. Two were found and fixed in the first
+build:
+
+- Custom metadata type fields were missing `<fieldManageability>`, which is
+  mandatory on every CMT field.
+- `AI_Poc_Config.Default.md` used the `xsd:` prefix without declaring the
+  namespace. A namespace-aware parser rejects the file outright.
+
+If the main package still fails, deploy `stage/01-schema.zip`, then
+`stage/02-code.zip`, then `stage/03-config.zip` in that order. Whichever stage
+fails names the problem area.
+
+The custom metadata **record** is deliberately not in the main package.
+`AIServiceFactory.config()` falls back to sane defaults when the record is
+absent, so the console runs without it. Deploy `03-config.zip` only if you want
+the record present, or create it by hand in Setup.
+
 ## Deploy via Workbench
 
 1. Log in to Workbench against the sandbox (`https://test.salesforce.com`).
