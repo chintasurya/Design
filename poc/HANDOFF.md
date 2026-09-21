@@ -461,6 +461,14 @@ All in the sandbox, ~15 minutes, needs Setup access.
 6. **Verify with `tools/verify_tooling_api.apex`** before building anything on
    it. Read-only, four callouts.
 
+**This org locks PKCE on** (*"To change this required setting, contact
+Support"*), so the authorization code flow is unavailable: a Salesforce-type
+Auth. Provider sends no `code_challenge` and saving the Named Credential fails
+with `missing required code challenge`. **Use Appendix A of
+TOOLING_API_SETUP.md, the client credentials flow**, which never redirects a
+browser, has no refresh token to rotate, and works in asynchronous Apex — which
+the Queueable export needs regardless. It was the better destination anyway.
+
 **`test.salesforce.com` is a login host, not an API host.** It is correct for
 the Auth. Provider endpoints and wrong for the Named Credential URL: a callout
 there returns a login page, so the failure looks like an HTML body or a 302

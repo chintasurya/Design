@@ -7,6 +7,26 @@ POC never sees them and never needs them.
 
 ---
 
+## Read this first: which path applies to you
+
+There are two ways to authenticate, and **the org decides which one is
+available**, not preference.
+
+Look at **External Client App → Settings → OAuth → Security → Require Proof Key
+for Code Exchange (PKCE) extension for Supported Authorization Flows**.
+
+| What you see | Path |
+|---|---|
+| The checkbox is editable | Either works. Sections 1 to 5 below (authorization code) are fewer screens. |
+| **Greyed out, with "To change this required setting, contact Support"** | **Authorization code is not available.** A Salesforce-type Auth. Provider does not send a `code_challenge`, so saving the Named Credential fails with `missing required code challenge` and no setting you control will fix it. **Go straight to Appendix A: Client Credentials.** |
+
+Client Credentials is not a workaround. It never redirects a browser, so PKCE
+does not apply; it has no refresh token to expire or rotate; and it works in
+asynchronous Apex, which the graph export needs anyway. If the org locks PKCE
+on, this was always the right destination.
+
+---
+
 ## One correction before you start
 
 You asked for `test.salesforce.com` throughout. It is right in one place and
@@ -368,40 +388,140 @@ Authentication Flow on Save** ticked.
 
 ### If org policy will not allow PKCE to be disabled
 
-Then do not use the authorization code flow at all. **Client Credentials never
-sends a code challenge**, because there is no browser redirect and no
-authorization code in the first place. It also has no refresh token to expire
-and works in asynchronous Apex, which this POC needs anyway.
-
-1. **External Client App → Policies → OAuth Policies → Edit**
-   - **Enable Client Credentials Flow**: checked
-   - **Run As**: the integration user whose access the callouts should use
-   - Save.
-2. **Setup → Named Credentials → External Credentials → New**
-   - Label / Name: `AI Tooling Cred`
-   - Authentication Protocol: **OAuth 2.0**
-   - Authentication Flow Type: **Client Credentials with Client Secret**
-   - Identity Provider URL / token endpoint:
-     `https://test.salesforce.com/services/oauth2/token`
-   - Save, then **Principals → New**: name it `Tooling`, Sequence 1, and add
-     the **Client ID** and **Client Secret** as authentication parameters.
-3. **Permission set → External Credential Principal Access → add the `Tooling`
-   principal**, and assign that permission set to yourself. Without this step
-   the running user gets no token and the callout returns
-   `INVALID_SESSION_ID`.
-4. **Setup → Named Credentials → New**
-   - Name `AI_Tooling_API`, URL = the My Domain sandbox URL
-   - External Credential: `AI Tooling Cred`
-   - **Generate Authorization Header**: checked
-
-Field labels in this area have moved between releases. If one does not match
-what is on screen, take the nearest equivalent — the shape is: app enables
-client credentials and names a run-as user, external credential holds the
-token, a permission set grants the principal to the running user, named
-credential points at the org.
+See **Appendix A** below. That is the whole answer: client credentials never
+sends a code challenge, so the setting stops mattering.
 
 ### Neither of these is blocking the POC today
 
 `tools/verify_tooling_session.apex` answers the five Tooling API questions with
 no OAuth at all. Run that first so the flow reader can be designed against real
 output while this is being sorted out.
+
+
+---
+
+# Appendix A: Client Credentials
+
+Use this when PKCE is locked on, or whenever you would rather not depend on a
+browser authorization and a rotating refresh token. There is no redirect, no
+authorization code and no `code_challenge`, so the PKCE setting is simply not
+in the conversation.
+
+The shape, so the steps make sense even if a label has moved between releases:
+
+```
+External Client App          enables the flow and names a Run As user
+        ↓  client id + secret
+External Credential          holds the token, one Principal
+        ↓  granted by
+Permission Set               External Credential Principal Access
+        ↓  used by
+Named Credential             points at the org's My Domain URL
+```
+
+Skipping the permission set is the most common mistake and produces
+`INVALID_SESSION_ID`, not a permissions error, which sends people looking in
+the wrong place.
+
+## A1. External Client App
+
+**Settings → OAuth → Flow Enablement**
+
+| Setting | Value |
+|---|---|
+| Enable Client Credentials Flow | **checked** |
+| Enable Authorization Code and Credentials Flow | not needed |
+
+**Policies → OAuth Policies → Edit**
+
+| Setting | Value |
+|---|---|
+| Enable Client Credentials Flow | **checked** — a second switch, as with OAuth itself |
+| **Run As** | the user the callouts should run as |
+| Permitted Users | if *Admin approved users are pre-authorized*, the Run As user must have the app assigned through their profile or a permission set |
+| IP Relaxation | **Relax IP restrictions** |
+
+**The Run As user is the identity every callout uses.** It needs **API
+Enabled**, **View Setup and Configuration**, and **View All Data** if
+dependency edges are wanted. Pick a user whose access you are happy to have
+the graph build read with, because it will read exactly that and nothing more.
+
+Copy the **Consumer Key** and **Consumer Secret** from
+**Settings → OAuth Settings → Consumer Key and Secret**, and wait about ten
+minutes before A2 so they propagate.
+
+## A2. External Credential
+
+**Setup → Named Credentials → External Credentials tab → New**
+
+| Field | Value |
+|---|---|
+| Label | `AI Tooling Cred` |
+| Name | `AI_Tooling_Cred` |
+| Authentication Protocol | **OAuth 2.0** |
+| Authentication Flow Type | **Client Credentials with Client Secret** |
+| Identity Provider URL (token endpoint) | `https://test.salesforce.com/services/oauth2/token` |
+| Scope | `api` |
+
+This is the one place `test.salesforce.com` is correct in this appendix: it is
+the token endpoint, a login host doing what login hosts do.
+
+Save.
+
+## A3. Principal
+
+On the saved External Credential, **Principals → New**.
+
+| Field | Value |
+|---|---|
+| Parameter Name | `Tooling` |
+| Sequence Number | `1` |
+| Client ID / Consumer Key | from A1 |
+| Client Secret / Consumer Secret | from A1 |
+
+Depending on release these are either two named fields or two rows in an
+**Authentication Parameters** list, in which case the names are `client_id`
+and `client_secret`. Save.
+
+## A4. Grant the principal — the step everyone misses
+
+A principal is inert until a running user is granted it. Without this the
+callout carries no token and returns
+`[{"message":"Session expired or invalid","errorCode":"INVALID_SESSION_ID"}]`,
+which reads like an authentication failure rather than a missing grant.
+
+**Setup → Permission Sets →** pick or create one **→ External Credential
+Principal Access → Edit → add `AI_Tooling_Cred - Tooling` → Save.**
+
+Assign that permission set to **yourself** (so the probe scripts work) and to
+whoever or whatever triggers the graph build.
+
+## A5. Named Credential
+
+**Setup → Named Credentials → New** (the standard one this time, not Legacy —
+the new model is what External Credentials plug into).
+
+| Field | Value |
+|---|---|
+| Label | `AI Tooling API` |
+| Name | `AI_Tooling_API` |
+| URL | `https://<mydomain>--<sandbox>.sandbox.my.salesforce.com` — **My Domain, never test.salesforce.com** |
+| Enabled for Callouts | **checked** |
+| External Credential | `AI Tooling Cred` |
+| Generate Authorization Header | **checked** |
+| Allow Formulas in HTTP Header | unchecked |
+| Allow Formulas in HTTP Body | unchecked |
+
+## A6. Verify
+
+Run `tools/verify_tooling_api.apex`. There is no authentication status to
+check on this model and nothing to click through: the first callout either
+returns a token-backed `HTTP 200` or it does not.
+
+| Result | Meaning |
+|---|---|
+| `HTTP 200` | Done. Send the log. |
+| `HTTP 401 INVALID_SESSION_ID` | The permission set grant in A4 is missing, or not assigned to you |
+| `HTTP 403` | The **Run As** user lacks API Enabled or View Setup and Configuration |
+| Body starts with `<` | The Named Credential URL is a login host, not My Domain |
+| Callout exception | No Named Credential by that name |
