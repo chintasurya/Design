@@ -376,7 +376,22 @@ the Queueable, then the status bar shows node/edge/KB counts.
    reason each object qualified, and the exporter now writes the names into the
    graph notes so every graph file says what it covered. Neither is a
    substitute for running it: the scope is live org state.
-5. The graph can see *that* a flow exists but not *what it does*. Reading
+5. **There is no snapshot model, only snapshot retention.** Saving to an
+   existing `ContentDocumentId` keeps every prior build as a ContentVersion,
+   and each build stamps a `snapshotId` and `exportedAt` that
+   `AI_Change_Request__c.Snapshot_Id__c` records, so any past answer can be
+   tied to the graph state it was given for. Nothing is built on top of that:
+   `load()` always takes `IsLatest = true`, no code reads an earlier version,
+   nothing diffs two builds, and no node or edge carries a `validFrom` or
+   `validTo`. So the questions a snapshot model exists to answer — what
+   changed since the last sync, when did this component appear, what did the
+   graph hold when that decision was approved — cannot be asked. The target
+   architecture names snapshot diffing and temporal retraction as Layer 7
+   capabilities; the POC has neither. `AIGraphFileStore`'s header used to
+   claim diffing "comes for free"; it does not, and the comment now says so.
+   The cheapest first step is a diff between two ContentVersions of the same
+   file, which needs no schema change at all.
+6. The graph can see *that* a flow exists but not *what it does*. Reading
    `recordCreates` / `recordUpdates` needs the Tooling API (section 8).
 
 ---

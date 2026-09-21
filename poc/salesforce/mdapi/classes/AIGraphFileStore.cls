@@ -10,8 +10,19 @@
  * ContentVersion directly; writing a Static Resource at runtime needs a
  * Metadata API callout.
  *
- * Saving with an existing ContentDocumentId creates a new VERSION, so each
- * sync keeps its predecessor and snapshot diffing comes for free.
+ * Saving with an existing ContentDocumentId creates a new VERSION, so every
+ * prior build is retained by the platform.
+ *
+ * That is retention, not a snapshot model, and the two are easy to confuse.
+ * load() always takes IsLatest = true, nothing reads an earlier version, and
+ * nothing compares two of them. A build stamps a snapshotId and an exportedAt,
+ * and AI_Change_Request__c records which snapshot its analysis ran against, so
+ * an answer can always be tied back to the state of the org it was given for.
+ * What is absent is everything built on top of that: no diff between builds,
+ * no validFrom or validTo on a node or an edge, no record of what appeared or
+ * disappeared, and no way to ask what the graph held last Tuesday without
+ * fetching an old ContentVersion by hand. Versioning makes those buildable.
+ * It does not make them built.
  *
  * "without sharing" is deliberate: the graph is org-wide reference metadata
  * built by whichever user ran the sync, and every console user must be able to
