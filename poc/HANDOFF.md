@@ -278,18 +278,36 @@ the Queueable, then the status bar shows node/edge/KB counts.
 
 **Known broken or suspect:**
 
-1. **No Flow is linked to Account**, so *"when an Account is created, create a
-   HealthcareProvider and a HealthcareFacility"* still returns Safe to Create
-   when a Flow already does exactly that. Three candidate causes, in order of
-   suspicion — Account is outside the pod scope; the `LIMIT 200` cap on
-   `FlowDefinitionView` (no `ORDER BY`) cut it; or it is a subflow with no
-   trigger object. **`tools/probe_flow_missing.apex` diagnoses all three** and
-   has not yet been run.
-2. **The scope note reads "36 objects owned by Network Services (12 writable, 24
-   with a Network record type) out of 18 readable."** Only 18 readable objects
-   strongly suggests this org grants access through **Permission Sets, not the
-   profile** — which would make the profile the wrong scope signal entirely.
-   Unresolved.
+1. **The Account flow gap is addressed in code but unconfirmed in the org.**
+   All three candidate causes were fixed without waiting for the probe, because
+   each fix is cheap and correct on its own terms:
+   - *Account outside the pod scope* — a flow is no longer dropped when its
+     trigger object is outside the pod. The object enters as a **boundary
+     node**: one node, no fields, enough to hang the automation off. Trigger
+     labels now resolve against the whole org, not just the scoped set.
+   - *The `LIMIT 200` cap* — the read now asks for record-triggered flows
+     first, ordered, so screen flows cannot displace the ones that can produce
+     an edge. The cap itself cannot be raised; `FlowDefinitionView` rejects
+     `queryMore()`. When the batch fills, the notes say so.
+   - *A subflow with no trigger object* — still needs the Tooling API (P4). The
+     probe now reports whether `FlowElementView` is queryable and dumps its
+     fields, which decides whether P4 is needed for this case at all.
+
+   Two further defects were found while fixing it, both of which would have
+   kept the symptom alive after the export was correct. See section 9.
+
+   **Still to do: run `tools/probe_flow_missing.apex` and report the output.**
+   It confirms which cause was real and whether the fix took.
+2. **The scope note is now measured rather than suspected.** Every resolve also
+   counts the objects writable through **permission sets assigned to the
+   profile's users**, and the note prints it next to the profile's own numbers.
+   If permission sets grant more than the profile does, the note says outright
+   that the profile is the narrower signal and may be the wrong one. The old
+   note's apparent contradiction ("36 owned out of 18 readable") was real but
+   not a bug: `owned` is the *union* of writable and record-type objects, and
+   record types are not filtered by profile readability. The note now says that.
+   When the profile grants nothing at all, the scope falls back to the
+   permission-set objects rather than to every readable object.
 3. The graph can see *that* a flow exists but not *what it does*. Reading
    `recordCreates` / `recordUpdates` needs the Tooling API (section 8).
 
@@ -297,12 +315,26 @@ the Queueable, then the status bar shows node/edge/KB counts.
 
 ## 7. Open work, in priority order
 
-### P1 — Run the probe and fix the Account flow gap
-`tools/probe_flow_missing.apex` in Developer Console → Execute Anonymous, with
-Open Log ticked. Read-only. It prints the scope, the true active-flow count,
-every active flow record-triggered on Account, what reached the graph, and
-whether `FlowElementView` is describable (which might give flow internals with
-plain SOQL and skip the Tooling API for this case).
+### P1 — Run the probe and confirm the Account flow gap is closed
+**The code fixes are in** (section 6, item 1). What remains is confirmation in
+the org, which needs someone with a Developer Console.
+
+`tools/probe_flow_missing.apex` → Developer Console → Execute Anonymous, with
+Open Log ticked. Read-only, and every risky query is wrapped so a view object
+refusing a filter degrades one answer instead of killing the run. It prints:
+
+- the scope, including how much access comes from permission sets rather than
+  the profile, and a `SIGNAL:` line if the permission sets grant more;
+- the true active-flow count, and whether the view can be filtered and sorted
+  at all — the filter the exporter now depends on;
+- every active flow record-triggered on Account;
+- what reached the graph, including whether `sobj:Account` is present **only as
+  a boundary node**, and how many flow edges point at it;
+- whether `FlowElementView` is queryable and what fields it carries, which
+  decides whether flow internals need the Tooling API (P4) or not.
+
+Deploy the new package first, run **Build Graph** again, then run the probe:
+the graph file has to be rebuilt for the boundary nodes to exist.
 
 ### P2 — LWC restructure (user's point 3, agreed, not started)
 - **Remove the "Change something that exists / Add something new" Type buttons.**
@@ -417,6 +449,42 @@ call rather than taking it on trust.
   `gen_permset.py` — never hand-append to a permission set.
 - API version is pinned at **59.0** (62.0 was tried and lowered).
 
+### Graph and traversal traps
+
+- **A node budget spent on columns never reaches the automation.** `blastRadius`
+  walked edges in storage order, and an object with 200 fields has 200
+  `SOBJECT_HAS_FIELD` edges against perhaps three pieces of automation. With
+  `MAX_NODES = 60` the walk finished inside the field list and the Flow that
+  answered the question never entered the result. Edges are now walked
+  **behaviour before structure**, and a caller can exclude node types from the
+  traversal outright — filtering the result afterwards is too late, the budget
+  is already gone.
+- **An unsearched absence is not an absence.** `AIReuseAnalyzer.behaviour()`
+  returned Safe to Create on an empty finding list, which meant "the graph does
+  not hold Account" and "nothing runs on Account" produced the same verdict.
+  A clearance now requires the trigger object to appear in the evidence: if it
+  was never searched, the verdict says so and blocks. This is the single most
+  important rule in the analyzer — the whole POC exists to stop a confident
+  answer that nothing checked.
+- **Automation is allowed to reach outside the pod.** A Flow record-triggered
+  on Account is part of the pod's behaviour even when Account is not a pod
+  object. Dropping it because its target was out of scope was how the console
+  came to answer a question about a Flow by not knowing the Flow existed.
+  Out-of-scope trigger objects now enter as **boundary nodes**, capped at 150,
+  carrying `{"boundary":true}` and a provenance line that says why they are
+  there.
+- **Resolving a label needs the whole org, not the scope.** `labelToApi` was
+  built only from scoped objects, so any reference outside the pod resolved to
+  null regardless of the cause. The org index is built from
+  `getGlobalDescribe().keySet()` — **keys only**, no `getDescribe()` calls,
+  because describing ~1,400 objects to read their labels would spend the CPU
+  budget the export needs.
+- **A view object may refuse a filter or a sort, and a static SOQL that tries
+  it fails to compile.** The record-triggered-first flow read is `Database.query`
+  inside a try/catch for exactly this reason: an org that will not filter
+  `FlowDefinitionView` on `TriggerObjectOrEventLabel` falls back to the plain
+  read and writes a note, instead of taking the whole class down at deploy.
+
 ### Matching and parsing traps
 
 - `"UPDATE".contains("DATE")` is true. Substring matching returned six unrelated
@@ -440,6 +508,8 @@ call rather than taking it on trust.
 ## 10. Recent commits worth knowing
 
 ```
+(this session)  Stop dropping automation that fires outside the pod, and stop
+                clearing a behaviour the graph never searched
 7676cce  Add a read-only probe for the missing Account flow
 2df9f3d  Read the field name out of the request without swallowing "field"
 b6b40f3  Fix a case-insensitive shadowing bug, and lint for the whole class of it

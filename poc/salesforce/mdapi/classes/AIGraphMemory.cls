@@ -201,11 +201,27 @@ public with sharing class AIGraphMemory {
      */
     public List<Hit> blastRadius(List<String> seedIds, Integer maxHops,
                                  Integer maxNodes) {
+        return blastRadius(seedIds, maxHops, maxNodes, null);
+    }
+
+    /**
+     * The same traversal, with node types the caller has no use for excluded
+     * before they can spend the budget.
+     *
+     * "What already runs when an Account is created" is not answered by
+     * Account's columns, and an object with 200 fields has 200 structural
+     * edges against perhaps three pieces of automation. Filtering the result
+     * afterwards is too late: the fields are already inside maxNodes and the
+     * Flow never entered the traversal at all.
+     */
+    public List<Hit> blastRadius(List<String> seedIds, Integer maxHops,
+                                 Integer maxNodes, Set<String> skipNodeTypes) {
         List<Hit> hits = new List<Hit>();
         if (seedIds == null || seedIds.isEmpty()) {
             return hits;
         }
         Set<String> visited = new Set<String>(seedIds);
+        Set<String> skipped = new Set<String>();
         Set<String> frontier = new Set<String>(seedIds);
         Map<String, Integer> hopOf = new Map<String, Integer>();
         Map<String, String> pathOf = new Map<String, String>();
@@ -221,19 +237,27 @@ public with sharing class AIGraphMemory {
                     if (!visited.add(other)) {
                         continue;
                     }
+                    AIGraphDocument.GraphNode reached = nodesById.get(other);
+                    if (skipNodeTypes != null && reached != null
+                            && skipNodeTypes.contains(reached.nodeType)) {
+                        // Stays in "visited" so it is never reconsidered, but
+                        // it does not expand and does not reach the result.
+                        skipped.add(other);
+                        continue;
+                    }
                     next.add(other);
                     hopOf.put(other, hop);
                     pathOf.put(other,
                         e.fromId + ' -[' + e.edgeType + ']-> ' + e.toId);
-                    if (visited.size() >= maxNodes) {
+                    if (visited.size() - skipped.size() >= maxNodes) {
                         break;
                     }
                 }
-                if (visited.size() >= maxNodes) {
+                if (visited.size() - skipped.size() >= maxNodes) {
                     break;
                 }
             }
-            if (visited.size() >= maxNodes) {
+            if (visited.size() - skipped.size() >= maxNodes) {
                 break;
             }
             frontier = next;
@@ -241,7 +265,7 @@ public with sharing class AIGraphMemory {
 
         for (String nodeId : visited) {
             AIGraphDocument.GraphNode n = nodesById.get(nodeId);
-            if (n == null) {
+            if (n == null || skipped.contains(nodeId)) {
                 continue;
             }
             Hit h = new Hit();
@@ -254,7 +278,25 @@ public with sharing class AIGraphMemory {
         return hits;
     }
 
+    /** Edges that describe an object's shape rather than its behaviour. */
+    private static final Set<String> STRUCTURAL_EDGES = new Set<String>{
+        'SOBJECT_HAS_FIELD', 'SOBJECT_HAS_RECORDTYPE'
+    };
+
+    /**
+     * Every edge at a node, behaviour before structure.
+     *
+     * An object with 200 fields carries 200 structural edges and perhaps three
+     * pieces of automation. Walked in storage order the node budget goes on
+     * columns and the Flow that actually writes to the object never enters the
+     * result, which is how "no automation fires on Account" got reported while
+     * a Flow on Account was doing the very thing being asked for.
+     */
     private List<AIGraphDocument.GraphEdge> edgesTouching(String nodeId) {
+        List<AIGraphDocument.GraphEdge> behaviour =
+            new List<AIGraphDocument.GraphEdge>();
+        List<AIGraphDocument.GraphEdge> structure =
+            new List<AIGraphDocument.GraphEdge>();
         List<AIGraphDocument.GraphEdge> all =
             new List<AIGraphDocument.GraphEdge>();
         if (outgoing.containsKey(nodeId)) {
@@ -263,7 +305,15 @@ public with sharing class AIGraphMemory {
         if (incoming.containsKey(nodeId)) {
             all.addAll(incoming.get(nodeId));
         }
-        return all;
+        for (AIGraphDocument.GraphEdge e : all) {
+            if (STRUCTURAL_EDGES.contains(e.edgeType)) {
+                structure.add(e);
+            } else {
+                behaviour.add(e);
+            }
+        }
+        behaviour.addAll(structure);
+        return behaviour;
     }
 
     /** Counts by node type and edge type, for the console status bar. */

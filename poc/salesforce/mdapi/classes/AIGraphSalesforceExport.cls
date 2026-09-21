@@ -18,6 +18,20 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
     @TestVisible private static final Integer MAX_OBJECTS = 220;
     private static final Integer MAX_FIELDS_PER_OBJECT = 200;
 
+    /**
+     * One batch, because FlowDefinitionView rejects queryMore() and cannot be
+     * paged at all. The cap is not the interesting number; WHICH 200 rows come
+     * back is, which is why the read asks for record-triggered flows first.
+     */
+    private static final Integer MAX_FLOWS = 200;
+
+    /**
+     * Objects pulled in from outside the pod purely because automation inside
+     * the pod fires on them. One node each, no fields, no record types. The
+     * cap exists only so a pathological org cannot unbound the graph.
+     */
+    private static final Integer MAX_BOUNDARY_OBJECTS = 150;
+
     public class ScopeTooWideException extends Exception {}
 
     public void execute(QueueableContext ctx) {
@@ -60,9 +74,26 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         for (String apiName : targets) {
             addObject(doc, described.get(apiName), apiName, labelToApi);
         }
-        addTriggers(doc, known, labelToApi);
-        addFlows(doc, known, labelToApi);
+
+        // Automation is allowed to reach outside the pod. A Flow that is
+        // record-triggered on Account is part of the pod's behaviour even when
+        // Account itself is not a pod object, and dropping it was how the
+        // console came to report "no automation fires on Account" while a Flow
+        // on Account was doing exactly what the request asked for.
+        Map<String, String> orgByName = orgIndex();
+        Set<String> boundaryIds = new Set<String>();
+
+        addTriggers(doc, known, labelToApi, orgByName, boundaryIds);
+        addFlows(doc, known, labelToApi, orgByName, boundaryIds);
         addApexClasses(doc, known);
+
+        if (!boundaryIds.isEmpty()) {
+            doc.notes.add(boundaryIds.size() + ' object'
+                + (boundaryIds.size() == 1 ? '' : 's')
+                + ' outside the pod scope kept as boundary nodes because pod '
+                + 'automation fires on them: '
+                + String.join(new List<String>(boundaryIds), ', '));
+        }
 
         doc.notes.add('Lightning components, validation rules and real '
             + 'dependency edges need the Tooling API, which is not configured');
@@ -179,13 +210,20 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
     }
 
     private static void addTriggers(AIGraphDocument doc, Set<String> known,
-                                    Map<String, String> labelToApi) {
+                                    Map<String, String> labelToApi,
+                                    Map<String, String> orgByName,
+                                    Set<String> boundaryIds) {
         List<ApexTrigger> triggers = [
             SELECT Name, TableEnumOrId, Status, ApiVersion
             FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 200];
         for (ApexTrigger t : triggers) {
-            String onObject = resolve(t.TableEnumOrId, known, labelToApi);
+            String onObject = resolveAnywhere(
+                t.TableEnumOrId, known, labelToApi, orgByName);
             if (onObject == null) {
+                continue;
+            }
+            if (!known.contains(onObject)
+                    && !addBoundaryObject(doc, onObject, boundaryIds)) {
                 continue;
             }
             String id = 'trigger:' + t.Name;
@@ -198,21 +236,34 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
     }
 
     private static void addFlows(AIGraphDocument doc, Set<String> known,
-                                 Map<String, String> labelToApi) {
-        // Staged, then committed only if an edge exists. A node nothing points
-        // at can never be reached by traversal, so it is pure noise.
-        // FlowDefinitionView rejects queryMore(), so this must not be a SOQL
-        // for-loop and must stay inside one batch.
-        List<FlowDefinitionView> flows = [
-            SELECT ApiName, Label, ProcessType, TriggerType,
-                   TriggerObjectOrEventLabel, VersionNumber
-            FROM FlowDefinitionView WHERE IsActive = true LIMIT 200];
+                                 Map<String, String> labelToApi,
+                                 Map<String, String> orgByName,
+                                 Set<String> boundaryIds) {
+        FlowRead read = readFlows(doc);
+        List<FlowDefinitionView> flows = read.rows;
+
         Integer linked = 0;
+        Integer outsidePod = 0;
+        Integer noTrigger = 0;
+        Integer unresolved = 0;
+
         for (FlowDefinitionView f : flows) {
+            if (String.isBlank(f.TriggerObjectOrEventLabel)) {
+                noTrigger++;       // screen or scheduled: no object to point at
+                continue;
+            }
             // TriggerObjectOrEventLabel is a LABEL, so it resolves through the
-            // label map. Comparing it to API names matched only Account.
-            String target = resolve(f.TriggerObjectOrEventLabel, known, labelToApi);
+            // label map first and the whole-org index second. Comparing it to
+            // API names alone matched only Account.
+            String target = resolveAnywhere(
+                f.TriggerObjectOrEventLabel, known, labelToApi, orgByName);
             if (target == null) {
+                unresolved++;
+                continue;
+            }
+            Boolean inPod = known.contains(target);
+            if (!inPod && !addBoundaryObject(doc, target, boundaryIds)) {
+                unresolved++;      // boundary budget spent
                 continue;
             }
             String id = 'flow:' + f.ApiName;
@@ -224,10 +275,74 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
             doc.addEdge(id, 'FLOW_UPDATES_SOBJECT', 'sobj:' + target,
                 'record-triggered on ' + f.TriggerObjectOrEventLabel);
             linked++;
+            if (!inPod) {
+                outsidePod++;
+            }
         }
-        doc.notes.add(linked + ' of ' + flows.size() + ' active flows linked to a '
-            + 'scoped object; the rest are screen or scheduled flows whose '
-            + 'target needs the Tooling API, and are omitted as unreachable');
+
+        doc.notes.add(linked + ' of ' + flows.size() + ' active flows read are '
+            + 'record-triggered on an object the graph can name'
+            + (outsidePod == 0 ? '' : ' (' + outsidePod
+                + ' on objects outside the pod, kept as boundary nodes)')
+            + '; ' + unresolved + ' name something that could not be resolved '
+            + 'to an object'
+            + (read.triggeredOnly
+                ? '. Flows with no trigger object were excluded by the query, '
+                  + 'so they did not consume the batch'
+                : ', ' + noTrigger + ' have no trigger object and are omitted '
+                  + 'as unreachable'));
+        if (flows.size() >= MAX_FLOWS) {
+            doc.notes.add('The flow read filled its ' + MAX_FLOWS + '-row batch. '
+                + 'FlowDefinitionView rejects queryMore(), so flows beyond that '
+                + 'were not seen and any of them could hold automation this '
+                + 'graph does not know about');
+        }
+    }
+
+    /**
+     * Active flows, the ones that can actually produce an edge first.
+     *
+     * The cap cannot be raised: FlowDefinitionView rejects queryMore(), so one
+     * batch is all there is. That makes the ORDER of the read the thing that
+     * matters. An unfiltered read with no ORDER BY returned an arbitrary 200,
+     * and screen flows that can never yield an edge displaced record-triggered
+     * flows that would have, which is one of the three candidate causes of a
+     * Flow on Account never reaching the graph.
+     *
+     * The filter is dynamic deliberately. If TriggerObjectOrEventLabel is not
+     * filterable or sortable in this org, a static query would fail to compile
+     * and take the whole class with it; a dynamic one throws a QueryException
+     * that can be caught, noted, and fallen back from.
+     */
+    private class FlowRead {
+        private List<FlowDefinitionView> rows;
+        private Boolean triggeredOnly = false;
+    }
+
+    private static FlowRead readFlows(AIGraphDocument doc) {
+        FlowRead read = new FlowRead();
+        String cols = 'ApiName, Label, ProcessType, TriggerType, '
+                    + 'TriggerObjectOrEventLabel, VersionNumber';
+        try {
+            read.rows = (List<FlowDefinitionView>) Database.query(
+                'SELECT ' + cols + ' FROM FlowDefinitionView '
+                + 'WHERE IsActive = true AND TriggerObjectOrEventLabel != null '
+                + 'ORDER BY ApiName LIMIT ' + MAX_FLOWS);
+            read.triggeredOnly = true;
+            return read;
+        } catch (Exception e) {
+            doc.notes.add('Flows could not be read record-triggered-first ('
+                + e.getMessage() + '), so an arbitrary batch was read instead '
+                + 'and a record-triggered flow may have been displaced');
+        }
+        // FlowDefinitionView rejects queryMore(), so this must be a list
+        // assignment with an explicit LIMIT, never a SOQL for-loop.
+        read.rows = [
+            SELECT ApiName, Label, ProcessType, TriggerType,
+                   TriggerObjectOrEventLabel, VersionNumber
+            FROM FlowDefinitionView
+            WHERE IsActive = true LIMIT :MAX_FLOWS];
+        return read;
     }
 
     private static void addApexClasses(AIGraphDocument doc, Set<String> known) {
@@ -269,6 +384,82 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
     }
 
     // ----------------------------------------------------------------- helpers
+
+    /**
+     * Every object in the org, keyed by its flattened API name.
+     *
+     * Keys only. getGlobalDescribe() is cheap; calling getDescribe() on ~1,400
+     * objects to read their labels is not, and would spend the CPU the export
+     * needs. A label almost always flattens to the same string as its API name
+     * ("Healthcare Provider" and HealthcareProvider both become
+     * healthcareprovider), so this resolves references outside the pod without
+     * a single describe call.
+     */
+    private static Map<String, String> orgIndex() {
+        Map<String, String> byName = new Map<String, String>();
+        for (String apiName : Schema.getGlobalDescribe().keySet()) {
+            String flat = normalize(apiName);
+            if (!byName.containsKey(flat)) {
+                byName.put(flat, apiName);
+            }
+            if (apiName.endsWith('__c')) {
+                String bare = normalize(apiName.removeEnd('__c'));
+                if (!byName.containsKey(bare)) {
+                    byName.put(bare, apiName);
+                }
+            }
+        }
+        return byName;
+    }
+
+    /**
+     * Resolve an automation reference to an object, widening only on failure:
+     * the pod scope first, then the whole org.
+     *
+     * The second step is what closes the Account gap. A reference that landed
+     * outside the pod used to resolve to null and the entire flow was dropped,
+     * so a Flow record-triggered on Account was absent from the graph at the
+     * moment the console was asked whether that Flow existed. The honest
+     * answer to "is Account out of scope" is to say so on the node, not to
+     * pretend the automation is not there.
+     */
+    private static String resolveAnywhere(String reference, Set<String> known,
+                                          Map<String, String> labelToApi,
+                                          Map<String, String> orgByName) {
+        String scoped = resolve(reference, known, labelToApi);
+        if (scoped != null) {
+            return scoped;
+        }
+        if (String.isBlank(reference)) {
+            return null;
+        }
+        return orgByName.get(normalize(reference));
+    }
+
+    /**
+     * A one-node stand-in for an object outside the pod that pod automation
+     * fires on. No fields and no record types, so it costs a couple of hundred
+     * bytes and cannot drag the object's whole column list into the graph.
+     *
+     * Returns false only when the boundary budget is spent, in which case the
+     * caller drops the automation rather than emitting an edge to a node that
+     * does not exist.
+     */
+    private static Boolean addBoundaryObject(AIGraphDocument doc, String apiName,
+                                             Set<String> boundaryIds) {
+        if (boundaryIds.contains(apiName)) {
+            return true;
+        }
+        if (boundaryIds.size() >= MAX_BOUNDARY_OBJECTS) {
+            return false;
+        }
+        boundaryIds.add(apiName);
+        doc.addNode('sobj:' + apiName, 'SObject', apiName, apiName,
+            '{"boundary":true}', 'Medium',
+            'SCHEMA ' + apiName + ' · outside the pod scope, included because '
+            + 'automation in scope fires on it', 'Salesforce');
+        return true;
+    }
 
     private static String resolve(String reference, Set<String> known,
                                   Map<String, String> labelToApi) {

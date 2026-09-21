@@ -333,12 +333,126 @@ private class AIGraphFileTest {
 
     @IsTest
     static void noAutomationStillClears() {
+        // The clearance is legitimate only because the trigger object is in
+        // the evidence: the graph held Widget__c, searched it, and found no
+        // automation. That is the difference between a searched absence and
+        // an unsearched one.
         AIRequestIntent i = AIRequestIntent.parse(
             'when Widget__c record gets created i want to create Gadget__c record');
-        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(
-            i, new List<AIContextSlice.Finding>());
+        List<AIContextSlice.Finding> findings = new List<AIContextSlice.Finding>{
+            AIContextSlice.build('sobj:Widget__c', 'SObject', 'Widget',
+                'Matched the request directly', 'Direct', 'Medium', 'Salesforce',
+                'SCHEMA describe(Widget__c)')
+        };
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(i, findings);
         System.assertEquals(AIReuseAnalyzer.SAFE_TO_CREATE, v.outcome,
             'With nothing firing on the object there is nothing to duplicate.');
+    }
+
+    @IsTest
+    static void anUnsearchedObjectIsNeverCleared() {
+        // The reported bug, reduced to its root: the graph did not hold
+        // Account, so it found no automation on Account, so it said the
+        // behaviour was safe to build. Nothing had been searched. An absence
+        // of evidence was being reported as evidence of absence.
+        AIRequestIntent i = AIRequestIntent.parse(
+            'when Account record gets created i want to create '
+            + 'HealthcareProvider record');
+
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(
+            i, new List<AIContextSlice.Finding>());
+
+        System.assertNotEquals(AIReuseAnalyzer.SAFE_TO_CREATE, v.outcome,
+            'Nothing was searched, so nothing can be cleared.');
+        System.assertEquals(true, v.blocksCreation);
+        System.assert(v.headline.contains('Account'),
+            'It must name the object it could not see: ' + v.headline);
+    }
+
+    @IsTest
+    static void automationIsNotCrowdedOutByFields() {
+        // Why the Flow on Account stayed invisible even once it was in the
+        // graph. Account carries hundreds of fields, each one a structural
+        // edge, and the node budget was spent on columns before the traversal
+        // ever reached the automation pointing at the object.
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'crowding';
+        d.addNode('sobj:Account', 'SObject', 'Account', 'Account',
+            '{"fieldCount":120}', 'High', 'SCHEMA describe(Account)', 'Salesforce');
+        for (Integer n = 0; n < 120; n++) {
+            String fieldId = 'field:Account.F' + n + '__c';
+            d.addNode(fieldId, 'Field', 'F' + n, 'F' + n + '__c',
+                '{"dataType":"STRING"}', 'Low', 'SCHEMA field', 'Salesforce');
+            d.addEdge('sobj:Account', 'SOBJECT_HAS_FIELD', fieldId, 'describe');
+        }
+        d.addNode('flow:Create_Provider_On_Account', 'Flow',
+            'Create Provider On Account', 'Create_Provider_On_Account',
+            '{"processType":"AutoLaunchedFlow"}', 'High',
+            'METADATA Flow v3', 'Salesforce');
+        d.addEdge('flow:Create_Provider_On_Account', 'FLOW_UPDATES_SOBJECT',
+            'sobj:Account', 'record-triggered on Account');
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+
+        Set<String> reached = new Set<String>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:Account'}, 1, 20)) {
+            reached.add(h.node.id);
+        }
+        System.assert(reached.contains('flow:Create_Provider_On_Account'),
+            'Behaviour must be walked before structure, or 120 columns bury '
+            + 'the one Flow that answers the question. Reached: ' + reached);
+
+        Set<String> behaviourOnly = new Set<String>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:Account'}, 1, 20,
+                new Set<String>{'Field', 'RecordType'})) {
+            behaviourOnly.add(h.node.id);
+        }
+        System.assertEquals(2, behaviourOnly.size(),
+            'Excluded types must not reach the result at all: ' + behaviourOnly);
+        System.assert(behaviourOnly.contains('flow:Create_Provider_On_Account'));
+    }
+
+    @IsTest
+    static void boundaryObjectsKeepAutomationReachable() {
+        // A Flow record-triggered on an object outside the pod used to be
+        // dropped whole, because its target could not be resolved inside the
+        // scope. The object now enters as a boundary node: one node, no
+        // fields, enough for the Flow to hang off and be found.
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'boundary';
+        d.addNode('sobj:Account', 'SObject', 'Account', 'Account',
+            '{"boundary":true}', 'Medium',
+            'SCHEMA Account · outside the pod scope, included because '
+            + 'automation in scope fires on it', 'Salesforce');
+        d.addNode('flow:Acct_Create_Provider', 'Flow', 'Acct Create Provider',
+            'Acct_Create_Provider', '{}', 'High', 'METADATA Flow v1', 'Salesforce');
+        d.addEdge('flow:Acct_Create_Provider', 'FLOW_UPDATES_SOBJECT',
+            'sobj:Account', 'record-triggered on Account');
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+        System.assertEquals(1, g.anchorObject('Account').size(),
+            'A boundary node must still anchor a search.');
+
+        List<AIContextSlice.Finding> findings = new List<AIContextSlice.Finding>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:Account'}, 1, 20)) {
+            findings.add(AIContextSlice.build(h.node.id, h.node.nodeType,
+                h.node.name, h.path, h.hops == 0 ? 'Direct' : 'One Hop',
+                h.node.riskTier, h.node.sourceSystem, h.node.provenance));
+        }
+
+        AIRequestIntent i = AIRequestIntent.parse(
+            'when Account record gets created i want to create '
+            + 'HealthcareProvider record');
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(i, findings);
+
+        System.assertNotEquals(AIReuseAnalyzer.SAFE_TO_CREATE, v.outcome,
+            'The Flow on Account is now visible, so this can never clear.');
+        System.assertEquals(true, v.blocksCreation);
     }
 
     @IsTest

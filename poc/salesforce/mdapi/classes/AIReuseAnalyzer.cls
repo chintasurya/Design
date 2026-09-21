@@ -156,7 +156,19 @@ public with sharing class AIReuseAnalyzer {
             affectedLower.add(o.toLowerCase().replaceAll('[^a-z0-9]', ''));
         }
 
+        // A clearance has to be earned. "No automation was found" only means
+        // "none exists" if the trigger object was actually in the graph being
+        // searched, and the object being absent is exactly what happened when
+        // a Flow on Account was reported as nothing at all.
+        Boolean sawTriggerObject = false;
+        String triggerKey = normalize(intent.triggerObject);
+
         for (AIContextSlice.Finding f : findings) {
+            if (f.nodeType == 'SObject' && triggerKey.length() > 0
+                    && (normalize(f.nodeName) == triggerKey
+                        || normalize(shortId(f.nodeId)) == triggerKey)) {
+                sawTriggerObject = true;
+            }
             if (!AUTOMATION.contains(f.nodeType)) {
                 continue;
             }
@@ -212,10 +224,25 @@ public with sharing class AIReuseAnalyzer {
             return v;
         }
 
+        if (!sawTriggerObject) {
+            v.outcome = NEEDS_CLARITY;
+            v.blocksCreation = true;
+            v.headline = intent.triggerObject + ' is not in the graph, so what '
+                + 'already runs on it cannot be established.';
+            v.detail = 'The graph is scoped to the pod. This object is not in '
+                + 'it, so finding no automation here is not evidence that none '
+                + 'exists, and clearing the request on that basis would be a '
+                + 'guess dressed up as an answer.';
+            v.recommendation = 'Rebuild the graph, or bring ' + intent.triggerObject
+                + ' into the pod scope, then ask again.';
+            return v;
+        }
+
         v.outcome = SAFE_TO_CREATE;
         v.headline = 'No automation currently fires on ' + intent.triggerObject + '.';
         v.detail = 'Nothing in the graph runs on this event, so there is nothing '
-            + 'to duplicate.';
+            + 'to duplicate. ' + intent.triggerObject + ' was found in the graph '
+            + 'and searched, which is what makes that absence meaningful.';
         v.recommendation = 'Approve to generate the change.';
         return v;
     }

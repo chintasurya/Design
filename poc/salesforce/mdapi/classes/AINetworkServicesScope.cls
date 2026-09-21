@@ -16,6 +16,19 @@ public with sharing class AINetworkServicesScope {
     public String matchedProfile;
     public String note;
 
+    /**
+     * Objects the pod's own users can maintain through an assigned permission
+     * set rather than through the profile.
+     *
+     * This exists because the profile reported 18 readable objects in an org
+     * that plainly uses more than 18, which is the signature of access granted
+     * by permission set. Measured on every resolve and always reported, so the
+     * question "is the profile even the right scope signal here" is answered
+     * by the build output instead of by argument.
+     */
+    public Set<String> permissionSetWritable = new Set<String>();
+    public Boolean scopeCameFromPermissionSets = false;
+
     private static Map<String, AINetworkServicesScope> cache =
         new Map<String, AINetworkServicesScope>();
 
@@ -51,9 +64,56 @@ public with sharing class AINetworkServicesScope {
                 s.writable.add(op.SobjectType);
             }
         }
+        s.measurePermissionSets(owned[0].ProfileId);
         s.resolveOwned(key);
         cache.put(key, s);
         return s;
+    }
+
+    /**
+     * What the pod's users can maintain via permission sets, not the profile.
+     *
+     * Two plain queries, bounded, and wrapped because a shortfall in Setup
+     * visibility must degrade the diagnostic rather than fail the export.
+     * Permission sets owned by a profile are excluded: those are the profile,
+     * already counted.
+     */
+    private void measurePermissionSets(Id profileId) {
+        if (profileId == null) {
+            return;
+        }
+        try {
+            List<Id> assignees = new List<Id>();
+            for (User u : [SELECT Id FROM User
+                           WHERE ProfileId = :profileId AND IsActive = true
+                           LIMIT 500]) {
+                assignees.add(u.Id);
+            }
+            if (assignees.isEmpty()) {
+                return;
+            }
+            Set<Id> psIds = new Set<Id>();
+            for (PermissionSetAssignment psa : [
+                    SELECT PermissionSetId FROM PermissionSetAssignment
+                    WHERE AssigneeId IN :assignees
+                    AND PermissionSet.IsOwnedByProfile = false
+                    LIMIT 2000]) {
+                psIds.add(psa.PermissionSetId);
+            }
+            if (psIds.isEmpty()) {
+                return;
+            }
+            for (AggregateResult ar : [
+                    SELECT SobjectType st FROM ObjectPermissions
+                    WHERE ParentId IN :psIds
+                    AND (PermissionsCreate = true OR PermissionsEdit = true)
+                    GROUP BY SobjectType LIMIT 2000]) {
+                permissionSetWritable.add((String) ar.get('st'));
+            }
+        } catch (Exception e) {
+            // A diagnostic that cannot be read is not a reason to stop.
+            permissionSetWritable.clear();
+        }
     }
 
     /**
@@ -68,7 +128,7 @@ public with sharing class AINetworkServicesScope {
     private static List<PermissionSet> findProfile(String wanted,
                                                    AINetworkServicesScope s) {
         List<PermissionSet> exact = [
-            SELECT Id, Profile.Name FROM PermissionSet
+            SELECT Id, ProfileId, Profile.Name FROM PermissionSet
             WHERE IsOwnedByProfile = true AND Profile.Name = :wanted LIMIT 1];
         if (!exact.isEmpty()) {
             s.matchedProfile = exact[0].Profile.Name;
@@ -77,7 +137,7 @@ public with sharing class AINetworkServicesScope {
 
         String target = normalize(wanted);
         List<PermissionSet> all = [
-            SELECT Id, Profile.Name FROM PermissionSet
+            SELECT Id, ProfileId, Profile.Name FROM PermissionSet
             WHERE IsOwnedByProfile = true LIMIT 500];
 
         for (PermissionSet ps : all) {           // case and punctuation only
@@ -125,12 +185,28 @@ public with sharing class AINetworkServicesScope {
         owned.addAll(writable);
         owned.addAll(recordTypeObjects);
 
+        // An org that grants access through permission sets leaves the profile
+        // almost empty, and the old fallback to "everything readable" then
+        // produced a scope that was both wrong and enormous. What the pod's
+        // users can actually maintain is the better answer.
+        if (owned.isEmpty() && !permissionSetWritable.isEmpty()) {
+            owned.addAll(permissionSetWritable);
+            scopeCameFromPermissionSets = true;
+            indexLowercase();
+            note = 'Profile "' + profileName + '" grants no create or edit access '
+                 + 'and no object carries a Network record type, so the scope is '
+                 + 'taken from the ' + permissionSetWritable.size() + ' objects the '
+                 + 'profile\'s users can maintain through assigned permission sets';
+            return;
+        }
+
         if (owned.isEmpty()) {
             owned.addAll(readable);
             indexLowercase();
-            note = 'Profile "' + profileName + '" grants no create or edit access '
-                 + 'and no object carries a Network record type, so the scope '
-                 + 'falls back to all ' + readable.size() + ' readable objects';
+            note = 'Profile "' + profileName + '" grants no create or edit access, '
+                 + 'no object carries a Network record type and no permission set '
+                 + 'assigned to its users grants any either, so the scope falls '
+                 + 'back to all ' + readable.size() + ' readable objects';
             return;
         }
         indexLowercase();
@@ -139,9 +215,16 @@ public with sharing class AINetworkServicesScope {
             ? ' (configured as "' + profileName + '", matched "' + matchedProfile + '")'
             : '';
         note = owned.size() + ' objects owned by "' + shown + '"' + matchNote + ' ('
-             + writable.size() + ' writable, ' + recordTypeObjects.size()
-             + ' with a Network record type) out of ' + readable.size()
-             + ' readable';
+             + writable.size() + ' writable on the profile, '
+             + recordTypeObjects.size() + ' with a Network record type; the count '
+             + 'is the union, so it can exceed either) against '
+             + readable.size() + ' readable on the profile and '
+             + permissionSetWritable.size() + ' writable through permission sets '
+             + 'assigned to its users'
+             + (permissionSetWritable.size() > readable.size()
+                ? '. Permission sets grant more than the profile does here, so the '
+                  + 'profile is the narrower signal and may be the wrong one'
+                : '');
     }
 
     /**

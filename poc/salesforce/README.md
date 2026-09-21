@@ -147,6 +147,13 @@ List<FlowDefinitionView> flows = [SELECT ... FROM FlowDefinitionView LIMIT 200];
 for (FlowDefinitionView f : flows) { ... }
 ```
 
+Which means the cap cannot be raised, so **which** 200 rows come back is the
+thing that matters. The read asks for record-triggered flows first, ordered, so
+a screen flow that can never produce an edge cannot displace one that would.
+That query is dynamic and wrapped: an org that will not filter or sort the view
+falls back to the plain read and says so in the graph notes, rather than failing
+to compile and taking the class with it.
+
 **The profile name must match exactly.** If step 2 reports "Profile not found",
 the search silently widens to the whole org. Check the exact spelling in Setup,
 Profiles, and set `Pod_Profile_Name__c` on `AI_Poc_Config__mdt.Default`.

@@ -40,6 +40,20 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
             graph.anchorObject(intent.targetObject);
         String seedBasis = 'object ' + intent.targetObject;
 
+        // A behaviour question is answered from the trigger object or not at
+        // all. Falling back to keywords here seeds on whatever else the
+        // sentence mentions, finds no automation, and the absence then reads
+        // as a clearance. Say the object is missing instead.
+        if (seeds.isEmpty() && intent.requestShape == 'Behaviour'
+                && String.isNotBlank(intent.triggerObject)) {
+            slice.summary = 'Read: ' + intent.summary
+                + ' · the graph does not hold ' + intent.triggerObject
+                + ', so what already runs on it is unknown. It is outside the '
+                + 'pod scope, or the graph predates it. ' + graph.nodeCount
+                + ' nodes searched · ' + graph.heapNote();
+            return slice;
+        }
+
         if (seeds.isEmpty()) {
             Set<String> terms = new Set<String>(intent.terms);
             if (String.isNotBlank(intent.targetName)) {
@@ -67,7 +81,16 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
         }
 
         Integer hops = intent.action == 'Create' ? 1 : 3;
-        List<AIGraphMemory.Hit> hits = graph.blastRadius(seedIds, hops, MAX_NODES);
+
+        // Columns are not behaviour. Excluded here rather than in relevant()
+        // below, because by then they have already spent the node budget and
+        // the automation that answers the question never entered the walk.
+        Set<String> skipTypes = null;
+        if (intent.requestShape == 'Behaviour') {
+            skipTypes = new Set<String>{ 'Field', 'RecordType' };
+        }
+        List<AIGraphMemory.Hit> hits =
+            graph.blastRadius(seedIds, hops, MAX_NODES, skipTypes);
         Integer beforeFilter = hits.size();
 
         for (AIGraphMemory.Hit h : relevant(hits, intent)) {
