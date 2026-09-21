@@ -4,140 +4,177 @@
  *
  * Paste into Developer Console > Debug > Open Execute Anonymous Window, tick
  * "Open Log", run, then read the USER_DEBUG lines. Read-only: every call is a
- * GET, nothing is created, updated or deleted.
+ * GET. Nothing is created, updated or deleted, in the org or anywhere else.
  *
- * Run this before anything is built on top of the credential. Four
- * assumptions are being made about this API and all four are worth checking
- * rather than trusting:
+ * Run this before anything is built on top of the credential. Five things are
+ * being assumed about this API and all five are worth checking rather than
+ * trusting:
  *
  *   1. the callout authenticates and returns JSON, not a login page
- *   2. Flow.Metadata is readable, which is the whole reason for the setup
- *   3. selecting Metadata really is limited to one record per call
- *   4. MetadataComponentDependency is available to this user
+ *   2. how many active flows there are, which sets the size of the job
+ *   3. a flow's Metadata is readable, which is the whole reason for the setup
+ *   4. whether selecting Metadata really is one record per call
+ *   5. whether MetadataComponentDependency is available to this user
  *
  * Setup instructions: TOOLING_API_SETUP.md
  */
 
-String CREDENTIAL = 'AI_Tooling_API';    // must match the Named Credential name
+// The Named Credential's API name, exactly as it appears in Setup. If you
+// named it something else, change this one line; nothing else reads it yet.
+String CREDENTIAL = 'AI_Tooling_API';
 String API_VERSION = 'v59.0';
 
-// ---------------------------------------------------------------- helper ---
-// Declared as a variable so Execute Anonymous can call it; anonymous blocks
-// cannot declare methods.
-HttpResponse lastResponse;
+String base = 'callout:' + CREDENTIAL + '/services/data/' + API_VERSION;
 
 // ---- 1. does it authenticate at all? --------------------------------------
-String soql = 'SELECT COUNT() FROM Flow WHERE Status = \'Active\'';
-HttpRequest req = new HttpRequest();
-req.setEndpoint('callout:' + CREDENTIAL + '/services/data/' + API_VERSION
-    + '/tooling/query/?q=' + EncodingUtil.urlEncode(soql, 'UTF-8'));
-req.setMethod('GET');
-req.setTimeout(60000);
+// Deliberately the dullest possible query. ApexClass is readable through the
+// Tooling API in every org, so a failure here is the credential, never the
+// query.
+HttpRequest ping = new HttpRequest();
+ping.setEndpoint(base + '/tooling/query/?q='
+    + EncodingUtil.urlEncode('SELECT Id, Name FROM ApexClass LIMIT 1', 'UTF-8'));
+ping.setMethod('GET');
+ping.setTimeout(60000);
 
+Boolean connected = false;
 try {
-    lastResponse = new Http().send(req);
-    System.debug('1. COUNT of active flows · HTTP ' + lastResponse.getStatusCode());
-    String body = lastResponse.getBody();
-    System.debug('   body: ' + body.abbreviate(500));
+    HttpResponse r = new Http().send(ping);
+    String body = r.getBody();
+    System.debug('1. connectivity · HTTP ' + r.getStatusCode());
+    System.debug('   body: ' + body.abbreviate(400));
+    connected = r.getStatusCode() == 200;
     if (body.startsWith('<')) {
         System.debug('   SIGNAL: that is HTML, not JSON. The Named Credential '
             + 'URL is almost certainly test.salesforce.com, which serves login '
-            + 'pages. It must be the My Domain sandbox URL.');
+            + 'pages rather than the API. It must be the My Domain sandbox URL, '
+            + 'ending .sandbox.my.salesforce.com');
+    } else if (r.getStatusCode() == 401) {
+        System.debug('   SIGNAL: 401. The Named Credential exists but is not '
+            + 'authenticated. Open it in Setup: Authentication Status must read '
+            + '"Authenticated as <user>", not Pending.');
+    } else if (r.getStatusCode() == 403) {
+        System.debug('   SIGNAL: 403. Authenticated, but that user lacks API '
+            + 'Enabled or View Setup and Configuration.');
     }
 } catch (Exception e) {
-    System.debug('1. FAILED: ' + e.getMessage());
-    System.debug('   A callout exception here usually means the Named '
-        + 'Credential does not exist under that exact name, or its '
-        + 'Authentication Status is not Authenticated.');
+    System.debug('1. FAILED before any response: ' + e.getMessage());
+    System.debug('   Usually the Named Credential does not exist under the name '
+        + 'in CREDENTIAL above. Check Setup > Named Credentials for the exact '
+        + 'API name.');
 }
 
-// ---- 2. can a flow's internals be read? -----------------------------------
-// This is the question the whole setup exists to answer. Metadata carries
-// recordCreates and recordUpdates, which is what a Flow actually DOES.
-String oneFlow = 'SELECT Id, FullName FROM Flow WHERE Status = \'Active\' LIMIT 1';
-HttpRequest idReq = new HttpRequest();
-idReq.setEndpoint('callout:' + CREDENTIAL + '/services/data/' + API_VERSION
-    + '/tooling/query/?q=' + EncodingUtil.urlEncode(oneFlow, 'UTF-8'));
-idReq.setMethod('GET');
-idReq.setTimeout(60000);
+// Everything below needs step 1 to have worked. Running it anyway just prints
+// the same failure four more times.
+if (!connected) {
+    System.debug('STOPPING: connectivity failed, so the rest would only repeat '
+        + 'the same error. Fix the credential first.');
+} else {
+
+// ---- 2. how big is the job? -----------------------------------------------
+// totalSize on an unlimited query is the honest count of flow bodies that
+// would have to be read, which decides whether this needs chaining at all.
+HttpRequest countReq = new HttpRequest();
+countReq.setEndpoint(base + '/tooling/query/?q='
+    + EncodingUtil.urlEncode(
+        'SELECT Id FROM Flow WHERE Status = \'Active\'', 'UTF-8'));
+countReq.setMethod('GET');
+countReq.setTimeout(60000);
 
 String flowId;
 try {
-    HttpResponse r = new Http().send(idReq);
-    System.debug('2a. one flow id · HTTP ' + r.getStatusCode());
-    Map<String, Object> parsed =
-        (Map<String, Object>) JSON.deserializeUntyped(r.getBody());
-    List<Object> records = (List<Object>) parsed.get('records');
-    if (records != null && !records.isEmpty()) {
-        flowId = (String) ((Map<String, Object>) records[0]).get('Id');
-        System.debug('    flow id: ' + flowId);
+    HttpResponse r = new Http().send(countReq);
+    System.debug('2. active flows · HTTP ' + r.getStatusCode());
+    if (r.getStatusCode() == 200) {
+        Map<String, Object> parsed =
+            (Map<String, Object>) JSON.deserializeUntyped(r.getBody());
+        System.debug('   totalSize: ' + parsed.get('totalSize')
+            + ' · done: ' + parsed.get('done'));
+        List<Object> records = (List<Object>) parsed.get('records');
+        if (records != null && !records.isEmpty()) {
+            flowId = (String) ((Map<String, Object>) records[0]).get('Id');
+            System.debug('   sample flow id: ' + flowId);
+        }
     } else {
-        System.debug('    no active flows returned: ' + r.getBody().abbreviate(300));
+        System.debug('   body: ' + r.getBody().abbreviate(400));
     }
 } catch (Exception e) {
-    System.debug('2a. FAILED: ' + e.getMessage());
+    System.debug('2. FAILED: ' + e.getMessage());
 }
 
+// ---- 3. can a flow's internals be read? -----------------------------------
+// This is the question the whole setup exists to answer. Retrieving a single
+// flow returns its Metadata, which carries recordCreates and recordUpdates:
+// what the flow actually DOES, rather than merely that it exists.
 if (flowId != null) {
     HttpRequest metaReq = new HttpRequest();
-    metaReq.setEndpoint('callout:' + CREDENTIAL + '/services/data/' + API_VERSION
-        + '/tooling/sobjects/Flow/' + flowId);
+    metaReq.setEndpoint(base + '/tooling/sobjects/Flow/' + flowId);
     metaReq.setMethod('GET');
     metaReq.setTimeout(60000);
     try {
         HttpResponse r = new Http().send(metaReq);
         String body = r.getBody();
-        System.debug('2b. flow metadata · HTTP ' + r.getStatusCode()
+        System.debug('3. flow metadata · HTTP ' + r.getStatusCode()
             + ' · ' + body.length() + ' characters');
-        System.debug('    mentions recordCreates: ' + body.contains('recordCreates'));
-        System.debug('    mentions recordUpdates: ' + body.contains('recordUpdates'));
-        System.debug('    mentions subflows: ' + body.contains('subflows'));
-        System.debug('    first 800: ' + body.abbreviate(800));
+        System.debug('   mentions recordCreates: ' + body.contains('recordCreates'));
+        System.debug('   mentions recordUpdates: ' + body.contains('recordUpdates'));
+        System.debug('   mentions recordLookups: ' + body.contains('recordLookups'));
+        System.debug('   mentions subflows:      ' + body.contains('subflows'));
+        System.debug('   first 900 characters: ' + body.abbreviate(900));
     } catch (Exception e) {
-        System.debug('2b. FAILED: ' + e.getMessage());
+        System.debug('3. FAILED: ' + e.getMessage());
     }
+} else {
+    System.debug('3. skipped: no active flow id came back from step 2.');
 }
 
-// ---- 3. is Metadata really one record per call? ---------------------------
-// If this returns several records, the flow reader does not need to be a
-// chained Queueable and the whole job gets much smaller.
-String manyMeta = 'SELECT Id, Metadata FROM Flow WHERE Status = \'Active\' LIMIT 5';
+// ---- 4. is Metadata really one record per call? ---------------------------
+// If several records come back, the flow reader does not need to be a chained
+// Queueable and the whole job gets much smaller. Worth one call to find out.
 HttpRequest manyReq = new HttpRequest();
-manyReq.setEndpoint('callout:' + CREDENTIAL + '/services/data/' + API_VERSION
-    + '/tooling/query/?q=' + EncodingUtil.urlEncode(manyMeta, 'UTF-8'));
+manyReq.setEndpoint(base + '/tooling/query/?q='
+    + EncodingUtil.urlEncode(
+        'SELECT Id, Metadata FROM Flow WHERE Status = \'Active\' LIMIT 5',
+        'UTF-8'));
 manyReq.setMethod('GET');
 manyReq.setTimeout(60000);
 try {
     HttpResponse r = new Http().send(manyReq);
-    System.debug('3. SELECT Metadata with LIMIT 5 · HTTP ' + r.getStatusCode());
-    System.debug('   body: ' + r.getBody().abbreviate(600));
+    System.debug('4. SELECT Metadata, LIMIT 5 · HTTP ' + r.getStatusCode());
+    System.debug('   body: ' + r.getBody().abbreviate(500));
     if (r.getStatusCode() == 200) {
         System.debug('   SIGNAL: several records came back with Metadata '
-            + 'selected. The one-record-per-call constraint may not apply '
-            + 'here, which makes the flow reader far simpler.');
+            + 'selected, so the one-record-per-call rule does not apply here. '
+            + 'That makes the flow reader far simpler.');
+    } else {
+        System.debug('   As expected: Metadata is one record per call, so '
+            + 'reading every flow needs a chained Queueable across '
+            + 'transactions.');
     }
 } catch (Exception e) {
-    System.debug('3. FAILED: ' + e.getMessage());
+    System.debug('4. FAILED: ' + e.getMessage());
 }
 
-// ---- 4. is the dependency API available? ----------------------------------
-String deps = 'SELECT MetadataComponentName, RefMetadataComponentName '
-            + 'FROM MetadataComponentDependency LIMIT 5';
+// ---- 5. is the dependency API available? ----------------------------------
 HttpRequest depReq = new HttpRequest();
-depReq.setEndpoint('callout:' + CREDENTIAL + '/services/data/' + API_VERSION
-    + '/tooling/query/?q=' + EncodingUtil.urlEncode(deps, 'UTF-8'));
+depReq.setEndpoint(base + '/tooling/query/?q='
+    + EncodingUtil.urlEncode(
+        'SELECT MetadataComponentName, RefMetadataComponentName '
+        + 'FROM MetadataComponentDependency LIMIT 5', 'UTF-8'));
 depReq.setMethod('GET');
 depReq.setTimeout(60000);
 try {
     HttpResponse r = new Http().send(depReq);
-    System.debug('4. MetadataComponentDependency · HTTP ' + r.getStatusCode());
-    System.debug('   body: ' + r.getBody().abbreviate(600));
+    System.debug('5. MetadataComponentDependency · HTTP ' + r.getStatusCode());
+    System.debug('   body: ' + r.getBody().abbreviate(500));
     if (r.getStatusCode() != 200) {
-        System.debug('   This usually means the named principal lacks View '
-            + 'All Data. Real dependency edges need it; flow internals do not.');
+        System.debug('   Usually means the named principal lacks View All Data. '
+            + 'Real dependency edges need it; flow internals do not, so this '
+            + 'failing on its own is not a blocker.');
     }
 } catch (Exception e) {
-    System.debug('4. FAILED: ' + e.getMessage());
+    System.debug('5. FAILED: ' + e.getMessage());
+}
+
 }
 
 System.debug('callouts used: ' + Limits.getCallouts()

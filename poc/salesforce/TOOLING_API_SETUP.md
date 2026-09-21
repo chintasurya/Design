@@ -183,35 +183,52 @@ drop dependency edges and keep the rest — flow internals do not need it.
 
 ---
 
-## 6. Point the POC at it
+## 6. Record the credential name in config — optional today
 
-**Setup → Custom Metadata Types → AI POC Config → Manage Records → Default**
+**Setup → Custom Metadata Types → AI POC Config → Manage Records → Default →
+Edit → Tooling Named Credential = `AI_Tooling_API` → Save.**
 
-| Field | Value |
-|---|---|
-| Tooling Named Credential | `AI_Tooling_API` |
+If no `Default` record exists, click **New** and fill in that one field.
 
-If no `Default` record exists, create one, or deploy `stage/03-config.zip`.
+**Be clear about what this does: nothing, yet.** No Apex reads
+`Tooling_Named_Credential__c` at the moment. The field exists so the flow
+reader has somewhere to look when it is built, and so that a differently named
+credential does not mean a code change later. Step 7 does not depend on it and
+neither does anything deployed today.
+
+If your Named Credential is named exactly `AI_Tooling_API`, you can skip this
+step entirely and lose nothing.
 
 ---
 
 ## 7. Verify before anything is built on it
 
-Run `tools/verify_tooling_api.apex` in **Developer Console → Execute
-Anonymous**, with Open Log ticked. Read-only: it queries and prints.
+This is the step that matters.
 
-It answers the four things that decide how the flow reader has to be written:
+Run `tools/verify_tooling_api.apex` in **Developer Console → Debug → Open
+Execute Anonymous Window**, tick **Open Log**, press **Execute**. Read-only:
+five GET callouts, nothing written anywhere.
 
-1. does the callout authenticate at all, and what does it return;
-2. can `Flow.Metadata` be read, which is what makes HFN generation in Flow
-   visible;
-3. is it really one record per call, which decides whether reading ~200 flows
-   needs a chained Queueable across transactions;
-4. is `MetadataComponentDependency` available, which decides whether real
-   dependency edges replace the current text-scan heuristics.
+If your credential is named something other than `AI_Tooling_API`, change the
+`CREDENTIAL` value on the first line of the script. That string, not the custom
+metadata record, is what the script uses.
 
-Send the log. Nothing gets built against this until that output exists, because
-every assumption in the paragraph above is worth checking rather than trusting.
+### What each line of the output means
+
+| Line | Good result | What a bad one means |
+|---|---|---|
+| **1. connectivity** | `HTTP 200` and a JSON body | `HTTP 401` → the credential is not authenticated; open it in Setup and check it says *Authenticated as &lt;user&gt;*. `HTTP 403` → that user lacks API Enabled or View Setup and Configuration. A body starting `<` → it is an HTML login page, so the Named Credential URL is test.salesforce.com instead of My Domain. A callout exception before any response → no credential by that name. |
+| **2. active flows** | `totalSize: <n>` | That number is the size of the job: how many flow bodies have to be read to see what the flows do. |
+| **3. flow metadata** | `mentions recordCreates: true` | This is the whole point of the setup. `true` means HFN generation done in Flow becomes visible. `false` on a flow that does create records would mean the retrieve is not returning what we expect. |
+| **4. SELECT Metadata, LIMIT 5** | either answer is useful | `200` means several flows can be read per call and the reader is simple. A non-200 confirms one-per-call, so reading every flow needs a chained Queueable across transactions. |
+| **5. dependency API** | `HTTP 200` | Non-200 usually means no View All Data. **Not a blocker on its own** — flow internals do not need it. It only costs real dependency edges. |
+
+The script stops after step 1 if connectivity fails, rather than printing the
+same error five times.
+
+**Send me the whole log.** Nothing gets built against this until that output
+exists: every assumption in the table above is worth checking rather than
+trusting, and line 4 in particular changes how much work the flow reader is.
 
 ---
 
