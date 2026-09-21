@@ -90,7 +90,10 @@ def para(runs, align="l", space_after=0, line=None, bullet=False, indent=0.0):
     if space_after:
         ppr += '<a:spcAft><a:spcPts val="%d"/></a:spcAft>' % int(space_after * 100)
     if line:
-        ppr += '<a:lnSpc><a:spcPct val="%d"/></a:lnSpc>' % int(line * 1000)
+        # spcPct is thousandths of a percent: 100% is 100000, not 1000.
+        # Emitting 1250 for a 1.25 multiple set line height to 1.25% and
+        # stacked every wrapped line on top of the one before it.
+        ppr += '<a:lnSpc><a:spcPct val="%d"/></a:lnSpc>' % int(line * 100000)
     if bullet:
         ppr += '<a:buFont typeface="Arial"/><a:buChar char="•"/>'
     else:
@@ -165,6 +168,10 @@ def kicker(text, x=0.4, y=1.06, color=TEAL):
                    [para([run(text.upper(), 7, color, TEXT_SB, bold=True)])])
 
 
+# Stamped into every generated slide so a re-run can find and replace its own
+# work instead of appending a second copy of it.
+MARKER = "<!-- AI-CHANGE-CONSOLE-POC-SLIDE -->"
+
 SLIDE_HEAD = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
     '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
@@ -183,7 +190,11 @@ SLIDE_TAIL = (
 
 
 def slide(body, ground=GROUND):
-    return SLIDE_HEAD % ground + body + SLIDE_TAIL
+    # The marker goes after the XML declaration, never before it: a comment
+    # ahead of "<?xml ...?>" is not well-formed and the validator says so.
+    head = SLIDE_HEAD % ground
+    cut = head.index("?>") + 2
+    return head[:cut] + MARKER + head[cut:] + body + SLIDE_TAIL
 
 
 # ============================================================ SLIDE CONTENT ==
@@ -826,12 +837,36 @@ slides.append(slide(b))
 def merge(src, out, new_slides):
     zin = zipfile.ZipFile(src)
     names = zin.namelist()
-    existing = [n for n in names if re.match(r"ppt/slides/slide\d+\.xml$", n)]
-    start = max(int(re.search(r"(\d+)\.xml$", n).group(1)) for n in existing) + 1
 
     pres = zin.read("ppt/presentation.xml").decode("utf8")
     prels = zin.read("ppt/_rels/presentation.xml.rels").decode("utf8")
     ctypes = zin.read("[Content_Types].xml").decode("utf8")
+
+    # Drop anything a previous run of this script added, so running it twice
+    # replaces those slides rather than appending a second set.
+    drop = set()
+    for n in names:
+        if re.match(r"ppt/slides/slide\d+\.xml$", n):
+            if MARKER.encode("utf8") in zin.read(n):
+                drop.add(n)
+    for n in sorted(drop):
+        num = re.search(r"(\d+)\.xml$", n).group(1)
+        rel = re.search(
+            r'<Relationship Id="(rId\d+)"[^>]*Target="slides/slide%s\.xml"/>' % num,
+            prels)
+        if rel:
+            prels = prels.replace(rel.group(0), "")
+            pres = re.sub(
+                r'<p:sldId id="\d+" r:id="%s"/>' % rel.group(1), "", pres)
+        ctypes = re.sub(
+            r'<Override PartName="/ppt/slides/slide%s\.xml"[^>]*/>' % num,
+            "", ctypes)
+    skip = drop | {n.replace("slides/", "slides/_rels/") + ".rels" for n in drop}
+
+    existing = [n for n in names
+                if re.match(r"ppt/slides/slide\d+\.xml$", n) and n not in drop]
+    start = (max(int(re.search(r"(\d+)\.xml$", n).group(1)) for n in existing) + 1
+             if existing else 1)
 
     next_rid = max(int(x) for x in re.findall(r'Id="rId(\d+)"', prels)) + 1
     next_sid = max(int(x) for x in re.findall(r'<p:sldId id="(\d+)"', pres)) + 1
@@ -866,6 +901,8 @@ def merge(src, out, new_slides):
     tmp = out + ".tmp"
     zout = zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED)
     for item in zin.infolist():
+        if item.filename in skip:
+            continue
         if item.filename == "ppt/presentation.xml":
             zout.writestr(item, pres.encode("utf8"))
         elif item.filename == "ppt/_rels/presentation.xml.rels":

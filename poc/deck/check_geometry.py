@@ -48,7 +48,11 @@ def shapes(xml):
             "x": x, "y": y, "w": w, "h": h,
             "text": text,
             "size": max(sizes) if sizes else 0,
+            # spcPct is thousandths of a percent. Read it as written rather
+            # than clamping it: a collapsed value is the defect itself, and
+            # clamping it to 1.0 is precisely what hid one.
             "line": (int(line.group(1)) / 100000.0) if line else 1.0,
+            "line_raw": int(line.group(1)) if line else None,
             "is_text": bool(IS_TEXTBOX.search(sp)) and bool(text),
         })
     return out
@@ -63,7 +67,7 @@ def fits(s):
     need = 0
     for block in s["text"].split(" "):
         need += max(1, -(-len(block) // per_line))
-    line_h = s["size"] * LINE_FACTOR * max(s["line"], 1.0) / 72.0
+    line_h = s["size"] * LINE_FACTOR * s["line"] / 72.0
     avail = max(1, int((s["h"] + 0.012) / line_h))
     return need <= avail, need, avail
 
@@ -104,6 +108,11 @@ def main():
                               % (s["y"] + s["h"], s["text"][:34] or "shape"))
             if s["is_text"] and s["x"] < MARGIN:
                 issues.append("text inside the left margin at x=%.2f\"" % s["x"])
+            if s["is_text"] and s["line_raw"] is not None and s["line_raw"] < 50000:
+                issues.append(
+                    'line spacing collapsed to %.2f%% — wrapped lines will '
+                    'sit on top of each other: "%s"'
+                    % (s["line_raw"] / 1000.0, s["text"][:44]))
             if s["is_text"]:
                 ok, need, avail = fits(s)
                 if not ok:

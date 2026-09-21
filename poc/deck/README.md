@@ -7,14 +7,19 @@ measured in the sandbox.
 
 ## Regenerating the POC slides
 
-`add_poc_slides.py` **appends** slides to the deck. Running it twice adds them
-twice, so restore the eight-slide original from git first:
+Safe to run repeatedly. Every generated slide carries a marker comment, and a
+run removes its own previous slides before writing new ones, so the count does
+not grow and the original eight are never touched.
 
 ```bash
-git checkout -- "../Ascension Network Services Knowledge Graph.pptx"   # only if slides 9+ exist
 python3 add_poc_slides.py
 python3 check_geometry.py "../Ascension Network Services Knowledge Graph.pptx" 9
+python3 <skill>/scripts/office/validate.py \
+    "../Ascension Network Services Knowledge Graph.pptx" --original <pristine 8-slide copy>
 ```
+
+Pass `--original`. The deck ships a `revisionInfo.xml` the XSD rejects on its
+own terms; without a baseline that pre-existing error reads as a regression.
 
 The generated slides reference `slideLayout1` and nothing else, which is what
 slides 5, 6 and 8 of the original do. No media, notes or theme parts are
@@ -46,7 +51,21 @@ slide, no text box overlaps another, margins hold, and every text box is large
 enough for the text in it.
 
 **These slides have not been looked at.** LibreOffice cannot load any file in
-the environment they were generated in, so rendering to images was impossible
-and the usual visual pass did not happen. The geometry check is an arithmetic
-substitute for it: it catches overflow, overlap and off-slide shapes, but it
-cannot judge whether a slide *looks* right. Open the deck before presenting it.
+the environment they were generated in — including a freshly generated empty
+one — so rendering to images was impossible and the usual visual pass did not
+happen. The geometry check is an arithmetic substitute: it catches overflow,
+overlap, off-slide shapes and collapsed line spacing, but it cannot judge
+whether a slide *looks* right. Open the deck before presenting it.
+
+### What the first version got wrong, and why the check missed it
+
+Every wrapped paragraph rendered with its lines on top of each other. In
+OOXML, `<a:spcPct val="..."/>` is thousandths of a percent, so 100% is
+`100000`. The generator emitted `1250` for a 1.25 line multiple, setting line
+height to 1.25% and stacking every line at the same position.
+
+`check_geometry.py` read that value correctly and then threw it away, taking
+`max(line, 1.0)` on the reasonable-sounding grounds that spacing below single
+made no sense. It made the defect invisible to the one check that should have
+caught it. The clamp is gone, and a line-spacing value under 50% is now
+reported as an error in its own right rather than normalised into silence.
