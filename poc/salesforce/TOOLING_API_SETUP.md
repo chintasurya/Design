@@ -449,9 +449,28 @@ Save.
 
 **External Client App Manager → `AI Tooling API` → Policies → Edit**
 
-If the Policies screen looks empty, or shows no OAuth section, look for an
-**Enable OAuth Policies** toggle and turn it on first. A new app's policies are
-unconfigured, and the OAuth section only renders once they exist.
+**Click Edit before looking for anything.** The Policies tab opens read-only,
+and read-only here means every field is greyed out — Permitted Users, IP
+Relaxation, Apex Plugin Class, Refresh Token Validity Unit and the Enable
+Client Credentials Flow checkbox all at once. That looks exactly like a
+feature the org does not have, and it is not: it is a form waiting for the
+Edit button.
+
+The tell is that **everything** is grey. A genuinely unavailable setting is
+greyed on its own, with a note beside it like *"To change this required
+setting, contact Support"* — which is what PKCE looks like on the Settings
+tab. A whole panel greyed together is just view mode.
+
+**Run As renders only after the checkbox is ticked**, not before, so the order
+is: Edit → tick Enable Client Credentials Flow → the Run As lookup appears →
+choose the user → Save.
+
+If the Policies screen looks empty, or shows no OAuth section at all, look for
+an **Enable OAuth Policies** toggle and turn it on first. A new app's policies
+are unconfigured, and the OAuth section only renders once they exist.
+
+If the checkbox stays greyed **in edit mode**, the Settings-tab flow enablement
+has not propagated yet. Wait ten minutes and reload.
 
 | Setting | Value |
 |---|---|
