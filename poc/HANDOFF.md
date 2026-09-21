@@ -346,7 +346,21 @@ the Queueable, then the status bar shows node/edge/KB counts.
 
    **Still to do: run `tools/probe_flow_missing.apex` and report the output.**
    It confirms which cause was real and whether the fix took.
-2. **The scope note is now measured rather than suspected.** Every resolve also
+2. **Scope resolved, and the declared pod was the right call.** Measured
+   2026-09-21: **49 objects in scope — 13 declared, 12 writable on the
+   "Network Services" profile, 24 carrying a Network Services record type.**
+   All **13 declared objects resolved**, so the API names in
+   `AINetworkServicesPod` are correct as written. Account, HealthcareProvider
+   and HealthcareFacility are all in scope.
+
+   The permission-set diagnostic settles the old argument in the opposite
+   direction to the one expected: permission sets assigned to that profile's
+   users grant write on **1,319 objects**. That is not a pod, it is most of the
+   org, and scoping from it would blow the 220-object export guard instantly.
+   Permission sets are the wrong scope signal here, not the right one — the
+   declared pod is what makes this work, and using it is not a shortcut.
+
+3. **The scope note is now measured rather than suspected.** Every resolve also
    counts the objects writable through **permission sets assigned to the
    profile's users**, and the note prints it next to the profile's own numbers.
    If permission sets grant more than the profile does, the note says outright
@@ -356,13 +370,13 @@ the Queueable, then the status bar shows node/edge/KB counts.
    record types are not filtered by profile readability. The note now says that.
    When the profile grants nothing at all, the scope falls back to the
    permission-set objects rather than to every readable object.
-3. **Nobody has ever seen the scoped object list.** The scope reported counts
+4. **Nobody has ever seen the scoped object list.** The scope reported counts
    and never names, which is why "is Account in scope?" could not be answered
    from anything in the repo. `tools/print_scope.apex` prints the list with the
    reason each object qualified, and the exporter now writes the names into the
    graph notes so every graph file says what it covered. Neither is a
    substitute for running it: the scope is live org state.
-4. The graph can see *that* a flow exists but not *what it does*. Reading
+5. The graph can see *that* a flow exists but not *what it does*. Reading
    `recordCreates` / `recordUpdates` needs the Tooling API (section 8).
 
 ---
@@ -479,6 +493,24 @@ rather than an auth error. The verify script calls this out by name.
 Apex then calls `callout:AI_Tooling_API/services/data/v59.0/tooling/query?q=...`
 with no Remote Site Setting needed.
 
+### Measured against the org, 2026-09-21, not assumed
+
+Everything below came back from `tools/verify_tooling_session.apex` against the
+sandbox. It replaces the guesses this section used to carry.
+
+| Question | Answer |
+|---|---|
+| Is `Flow.Metadata` readable? | **Yes.** A retrieve of one flow returned 8,445 characters carrying `recordCreates`, `recordUpdates`, `recordLookups` **and** `subflows`. Flow internals and flow-to-subflow chains are both reachable. |
+| How many active flows? | **495.** `FlowDefinitionView` caps at 200 in one batch and cannot page, so the current exporter sees at most 40% of them. |
+| Can Tooling read all 495 ids at once? | **Yes**, `SELECT Id FROM Flow WHERE Status = 'Active'` returned `totalSize: 495, done: true` in a single call. The Tooling API removes the 200-flow cap as a side effect. |
+| Is `Metadata` one record per call? | **Confirmed.** `SELECT Id, Metadata ... LIMIT 5` returns HTTP 400 `MALFORMED_QUERY`: *"the query qualifications must specify no more than one row for retrieval"*. So 495 retrieves against a 100-callout limit per transaction: **a chained Queueable across at least five transactions**, persisting progress between them. |
+| Is `MetadataComponentDependency` available? | **Yes**, HTTP 200. Real dependency edges are on the table, replacing the Apex body text scan. |
+
+**The client credentials token endpoint must be My Domain**, not
+`test.salesforce.com`. The login host rejects the flow with `invalid_grant` and
+*request not supported on this domain*, which reads like a bad client id and is
+not one.
+
 | Query | What it gives |
 |---|---|
 | `Flow.Metadata` | what a flow **does** — `recordCreates`, `recordUpdates` and their targets. The real fix for the Account case |
@@ -486,11 +518,13 @@ with no Remote Site Setting needed.
 | `ValidationRule`, `LightningComponentBundle` | two component types the graph cannot see at all today |
 | `ApexCodeCoverageAggregate` | coverage, needed for the deploy gate later |
 
-**Constraint to plan around:** Tooling API queries selecting `Metadata` or
-`FullName` return **one record per call**. With ~200 active flows that is 200
-callouts against a 100-per-transaction limit, so flow internals must be read in
-a chained Queueable across several transactions. Confirm this on the first real
-call rather than taking it on trust.
+**Constraint, now confirmed rather than assumed:** Tooling API queries selecting
+`Metadata` or `FullName` return **one record per call**. With 495 active flows
+that is 495 callouts against a 100-per-transaction limit, so flow internals must
+be read in a chained Queueable across at least five transactions, persisting
+progress between them. Only the extracted facts can be kept — a flow body is
+~8 KB, and 495 of them is roughly 4 MB before parsing, which the heap will not
+hold.
 
 ---
 

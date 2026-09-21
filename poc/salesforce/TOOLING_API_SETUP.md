@@ -558,11 +558,32 @@ problem with the form; it is the order.
 | Name | `AI_Tooling_Cred` |
 | Authentication Protocol | **OAuth 2.0** |
 | Authentication Flow Type | **Client Credentials with Client Secret** |
-| Identity Provider URL (token endpoint) | `https://test.salesforce.com/services/oauth2/token` |
+| Identity Provider URL (token endpoint) | `https://<mydomain>--<sandbox>.sandbox.my.salesforce.com/services/oauth2/token` — **My Domain, not test.salesforce.com** |
 | Scope | `api` |
 
-This is the one place `test.salesforce.com` is correct in this appendix: it is
-the token endpoint, a login host doing what login hosts do.
+**The client credentials flow is not served by the generic login host.**
+`test.salesforce.com` and `login.salesforce.com` reject it with:
+
+```
+Unable to fetch the OAuth token. Error: invalid_grant.
+Error description: request not supported on this domain.
+```
+
+That message is easy to misread as a bad client id or a revoked grant. It is
+neither: it is the host saying this flow does not live here. The token endpoint
+must be the org's own My Domain URL.
+
+So in this appendix, **every URL is My Domain**. The authorization code flow in
+section 2 is the opposite — its authorize and token endpoints are the login
+host — which is exactly how the wrong value gets carried across from one to the
+other.
+
+| Object | URL |
+|---|---|
+| External Credential, token endpoint | `https://<mydomain>--<sandbox>.sandbox.my.salesforce.com/services/oauth2/token` |
+| Named Credential, callout target | `https://<mydomain>--<sandbox>.sandbox.my.salesforce.com` |
+
+Same host, different paths. Neither is `test.salesforce.com`.
 
 Save.
 
@@ -715,4 +736,5 @@ returns a token-backed `HTTP 200` or it does not.
 | `HTTP 401 INVALID_SESSION_ID` | The permission set grant in A4 is missing, or not assigned to you |
 | `HTTP 403` | The **Run As** user lacks API Enabled or View Setup and Configuration |
 | Body starts with `<` | The Named Credential URL is a login host, not My Domain |
+| Callout exception naming `invalid_grant` and *request not supported on this domain* | The External Credential's token endpoint is `test.salesforce.com`. Client credentials is only served by My Domain. See A2. |
 | Callout exception | No Named Credential by that name |
