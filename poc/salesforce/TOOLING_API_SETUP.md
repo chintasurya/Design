@@ -525,6 +525,29 @@ Copy the **Consumer Key** and **Consumer Secret** from
 **Settings → OAuth Settings → Consumer Key and Secret**, and wait about ten
 minutes before A2 so they propagate.
 
+## A2 and A5 are two different objects. This is the part that trips everyone.
+
+They live on two tabs of the same Setup page, both are created with a button
+called **New**, both ask for a **URL**, and the two URLs are different. Putting
+the token endpoint on the Named Credential is the single easiest mistake to
+make here.
+
+| | **External Credential** (A2) | **Named Credential** (A5) |
+|---|---|---|
+| Answers | *how do I get a token* | *where do I send the request* |
+| Created at | Named Credentials → **External Credentials** tab → New | Named Credentials → **Named Credentials** tab → New |
+| Label / Name | `AI Tooling Cred` / `AI_Tooling_Cred` | `AI Tooling API` / `AI_Tooling_API` |
+| URL | the **token endpoint**: `https://test.salesforce.com/services/oauth2/token` | the **API host**: `https://<mydomain>--<sandbox>.sandbox.my.salesforce.com` |
+| Holds | the flow type, and the principal with the client id and secret | the External Credential lookup, and Generate Authorization Header |
+
+The Named Credential form has a required **External Credential** field. It
+cannot be filled until A2 exists, so **A2 is built first, always.** A New Named
+Credential form that will not save because that field is empty is not a
+problem with the form; it is the order.
+
+`AI_Tooling_API` is the name the probe scripts call. That name belongs to the
+**Named Credential**, never to the External Credential.
+
 ## A2. External Credential
 
 **Setup → Named Credentials → External Credentials tab → New**
