@@ -1,6 +1,7 @@
 /* Clinical Network Knowledge Graph: concept deck.
    Type: Trenda IG Display / Trenda IG Text (each weight is its own Windows family).
-   4 slides: nine layer architecture, scenario catalogue, graph model, feasibility. */
+   5 slides: nine layer architecture, scenario catalogue, appointments and
+   extensibility, graph model, feasibility. */
 
 const pptxgen = require("pptxgenjs");
 const path = require("path");
@@ -147,7 +148,7 @@ const layers = [
       ["EHR and clinical", ["Encounters and diagnoses", "ADT admit and discharge", "Orders, results, problems"]],
       ["Credentialing", ["Licence and board certs", "Privileges by procedure", "Expirables and sanctions"]],
       ["Directory and MDM", ["Individual and org NPI", "NUCC taxonomy and sub", "Locations, TIN, panel"]],
-      ["Scheduling and access", ["Templates and sessions", "Booked against bookable", "Third next available"]],
+      ["Booking and access", ["Bookings and cancellations", "Arrivals and no-shows", "Waitlist and reminders"]],
       ["Claims, referrals, geo", ["CPT, ICD-10, place of service", "Referring to receiving", "Drive time and tracts"]],
     ],
   },
@@ -188,10 +189,10 @@ const layers = [
     c: C.l5, n: "LAYER 5", t: "Domain Model", cap: "CareNetworkContext",
     wyg: "A typed, bitemporal model of the network",
     secs: [
-      ["Entities", ["providers[], facilities[]", "serviceLines[], capabilities[]", "geographies[], payers[]"]],
-      ["Relationship objects", ["Affiliation, Privilege", "Coverage, Referral", "Attribution, Contract"]],
+      ["Entities", ["providers[], facilities[]", "serviceLines[], capabilities[]", "appointments[], careIntent[]"]],
+      ["Relationship objects", ["Affiliation, Privilege", "Coverage, Referral, Contract"]],
       ["Service line spec", ["requiredSpecialties[]", "requiredCapabilities[]", "coverageWindow, minVolume"]],
-      ["Demand and access", ["patients, encounters, trend", "acuityMix, payerMix", "slots, thirdNextAvailable"]],
+      ["Appointment and demand", ["status, cancelledBy, leadTime", "patients, encounters, trend", "slots, thirdNextAvailable"]],
       ["Bitemporal by default", ["validFrom, validTo", "recordedAt, supersededAt"]],
     ],
   },
@@ -228,7 +229,7 @@ const layers = [
     secs: [
       ["Derived edges", ["SERVES geo to site", "REQUIRES line to specialty", "COVERS provider to line", "SUBSTITUTE_FOR pairs"]],
       ["Constraint evaluation", ["Spec run against graph", "Unsatisfied means a gap", "New line is a spec row"]],
-      ["Indices", ["inflow, capacity, coverage", "leakage, adequacy, depth", "outcome O over E, shrunk", "concentration and SPOF"]],
+      ["Indices", ["inflow, capacity, coverage", "leakage, adequacy, depth", "no-show and slot recovery", "outcome O over E, shrunk"]],
       ["Guardrails", ["Minimum volume to rank", "Peer group by case mix", "Interval with every value"]],
     ],
   },
@@ -237,20 +238,22 @@ const layers = [
     wyg: "Gap, blast radius and what-if in under a second",
     secs: [
       ["Graph runtime", ["Typed nodes and edges", "Weights: time, volume", "As-of views on any date"]],
-      ["Traversals", ["coverage_path(geo, svc)", "missing_edge(dmd, sup)", "blast_radius(prv)", "k_nearest(geo, k)"]],
+      ["Traversals", ["coverage_path(geo, svc)", "missing_edge(dmd, sup)", "blast_radius(prv)"]],
       ["Vector plane", ["Embeddings per type", "Substitutability search", "Anchor symbolic, rank vector"]],
       ["Shadow graph", ["Copy on write namespace", "Insert hypothetical nodes", "Diff against base"]],
-      ["Analytics", ["Centrality, components", "Referral communities", "Set cover: fewest hires"]],
+      ["Prediction plane", ["Model registry per target", "Calibrated score plus reasons", "Written back as a signal"]],
+      ["Analytics", ["Set cover: fewest hires"]],
     ],
   },
   {
     c: C.l9, n: "LAYER 9", t: "Gap Engines and API", cap: "Twelve scenarios, one engine",
     wyg: "Ranked, explainable gaps with the action attached",
     secs: [
-      ["Gap engines", ["access_gap()", "idle_supply_gap()", "credential_gap()", "line_completeness()", "leakage_gap()", "adequacy_gap()", "failure_point()"]],
-      ["Query API", ["graph.query, gap.rank", "whatif.simulate", "cohort.build, asof(date)"]],
+      ["Gap engines", ["access_gap()", "idle_supply_gap()", "credential_gap()", "line_completeness()", "leakage_gap()"]],
+      ["Query API", ["graph.query, gap.rank", "appointment.risk(id)", "slot.backfill(), whatif.simulate", "cohort.build, asof(date)"]],
       ["Policy at query time", ["Purpose of use required", "Minimum necessary compiled", "k-anonymity pre-return"]],
-      ["Output contract", ["Ranked gap, evidence path", "Patients and volume", "Action, owner, cohort"]],
+      ["Feature packs", ["Declare entities and spec", "Declare signals and gaps", "Campaigns come for free"]],
+      ["Output contract", ["Ranked gap, evidence path", "Action, owner, cohort"]],
     ],
   },
 ];
@@ -484,7 +487,202 @@ txt(s2, "Each scenario returns the same four things: the evidence path, the pati
   fontFace: F.txt, valign: "middle",
 });
 
-/* ==================== SLIDE 3: THE GRAPH MODEL ==================== */
+/* ============ SLIDE 3: APPOINTMENTS AND EXTENSIBILITY ============ */
+const sA = pres.addSlide();
+sA.background = { color: C.white };
+box(sA, 0, 0, W, 0.95, C.ink);
+txt(sA, "APPOINTMENTS, AND THE NEXT FEATURE AFTER THAT", {
+  x: 0.5, y: 0.15, w: 9.0, h: 0.21, fontSize: 10.5, charSpacing: 1.2,
+  color: C.mint, fontFace: F.dspSemi,
+});
+txt(sA, "Booking, cancellation, no-show risk, and how anything new plugs in", {
+  x: 0.5, y: 0.4, w: 10.0, h: 0.38, fontSize: 22, color: C.white, fontFace: F.dspBold,
+});
+txt(sA, "A booking is a lifecycle,\nnot a row.", {
+  x: 10.9, y: 0.24, w: 2.1, h: 0.5, fontSize: 9, color: "A9B4C2",
+  fontFace: F.txtLight, lineSpacingMultiple: 1.08,
+});
+
+const CX = [0.12, 4.53, 8.94], CWA = 4.27;
+
+/* ---- column 1: the lifecycle ---- */
+box(sA, CX[0], 1.08, CWA, 4.7, C.panel, C.rule);
+dot(sA, CX[0] + 0.2, 1.31, C.l6, 0.1);
+txt(sA, "The booking lifecycle", {
+  x: CX[0] + 0.4, y: 1.22, w: CWA - 0.6, h: 0.3, fontSize: 14, color: C.text, fontFace: F.dspBold,
+});
+txt(sA, "THE PATH WE WANT", {
+  x: CX[0] + 0.2, y: 1.64, w: CWA - 0.4, h: 0.16, fontSize: 7, charSpacing: 0.6,
+  color: C.grey, fontFace: F.txtSemi,
+});
+const states = ["Requested", "Scheduled", "Confirmed", "Reminded", "Arrived", "Completed"];
+states.forEach((st, i) => {
+  const col = i % 3, row = Math.floor(i / 3);
+  const x = CX[0] + 0.2 + col * 1.3, y = 1.85 + row * 0.42;
+  box(sA, x, y, 1.2, 0.32, C.white, C.rule);
+  txt(sA, st, {
+    x: x, y: y, w: 1.2, h: 0.32, fontSize: 8.5, color: C.text,
+    fontFace: F.txtSemi, align: "center", valign: "middle",
+  });
+  if (col < 2) txt(sA, "›", {
+    x: x + 1.2, y: y, w: 0.1, h: 0.32, fontSize: 10, color: C.grey,
+    fontFace: F.txt, align: "center", valign: "middle",
+  });
+});
+txt(sA, "WHERE IT BREAKS, AND WHY THE DIFFERENCE MATTERS", {
+  x: CX[0] + 0.2, y: 2.78, w: CWA - 0.4, h: 0.16, fontSize: 7, charSpacing: 0.6,
+  color: C.grey, fontFace: F.txtSemi,
+});
+const exits = [
+  [C.l6, "Cancelled by the patient", "Lead time decides whether the slot is recoverable at all"],
+  [C.l7, "Cancelled by the clinic", "Provider absence or template churn, often logged as the patient\u2019s"],
+  [C.l4, "Rescheduled", "A new appointment, the same care intent. Not a second failure"],
+  [C.l5, "No-show", "The slot is gone and the care gap stays open"],
+];
+exits.forEach((e, i) => {
+  const y = 2.99 + i * 0.52;
+  box(sA, CX[0] + 0.2, y, CWA - 0.4, 0.46, C.white, C.rule);
+  dot(sA, CX[0] + 0.32, y + 0.09, e[0], 0.08);
+  txt(sA, e[1], {
+    x: CX[0] + 0.46, y: y + 0.04, w: CWA - 0.7, h: 0.17, fontSize: 9.5,
+    color: C.text, fontFace: F.txtSemi,
+  });
+  txt(sA, e[2], {
+    x: CX[0] + 0.46, y: y + 0.22, w: CWA - 0.72, h: 0.22, fontSize: 8.2,
+    color: C.grey, fontFace: F.txt, lineSpacingMultiple: 0.98,
+  });
+});
+box(sA, CX[0] + 0.2, 5.14, CWA - 0.4, 0.54, C.ink);
+txt(sA, "One care intent can hold four bookings and three cancellations. Count appointments and the patient looks non compliant. Count care intents and you see one person who got seen, after three rounds of friction.", {
+  x: CX[0] + 0.34, y: 5.2, w: CWA - 0.68, h: 0.44, fontSize: 8, color: "D8DEE6",
+  fontFace: F.txt, lineSpacingMultiple: 1.0,
+});
+
+/* ---- column 2: the prediction ---- */
+box(sA, CX[1], 1.08, CWA, 4.7, C.panel, C.rule);
+dot(sA, CX[1] + 0.2, 1.31, C.l8, 0.1);
+txt(sA, "What we predict, and how", {
+  x: CX[1] + 0.4, y: 1.22, w: CWA - 0.6, h: 0.3, fontSize: 14, color: C.text, fontFace: F.dspBold,
+});
+const predSecs = [
+  [C.l8, "The target, defined properly", [
+    "Three outcomes, not two: attended, cancelled, no-show",
+    "A cancellation three weeks out is a recovered slot. Two hours out is a no-show with extra steps",
+    "So the model returns attendance probability and slot recovery probability",
+  ]],
+  [C.l1, "Features the graph already holds", [
+    "Lead time from booking to visit, usually the strongest single signal",
+    "Patient history, shrunk for low counts",
+    "Drive time and travel burden, already an edge",
+    "Reminder delivered, and engaged with",
+    "Times the clinic cancelled on this patient",
+  ]],
+  [C.l4, "The output contract", [
+    "A calibrated probability, not a rank",
+    "Reason codes traced back to graph evidence",
+    "Written back as a signal node, with its model version",
+  ]],
+];
+let py = 1.66;
+predSecs.forEach((sec) => {
+  dot(sA, CX[1] + 0.2, py + 0.05, sec[0], 0.08);
+  txt(sA, sec[1], {
+    x: CX[1] + 0.36, y: py, w: CWA - 0.56, h: 0.2, fontSize: 10,
+    color: C.text, fontFace: F.dspBold,
+  });
+  py += 0.24;
+  let h = 0.1;
+  sec[2].forEach((b) => { h += nLines(b, F.txt, 8.3, CWA - 0.56) * lineH(F.txt, 8.3) + 3 / 72; });
+  bullets(sA, sec[2], {
+    x: CX[1] + 0.22, y: py, w: CWA - 0.44, h: h, fontSize: 8.3, color: C.text,
+    fontFace: F.txt, gap: 3, lineSpacingMultiple: 1.0, bulletIndent: 8,
+  });
+  py += h + 0.06;
+});
+box(sA, CX[1] + 0.2, 5.04, CWA - 0.4, 0.7, C.l7);
+txt(sA, "The rule that keeps it defensible", {
+  x: CX[1] + 0.34, y: 5.09, w: CWA - 0.68, h: 0.18, fontSize: 9, color: "FFD9DC", fontFace: F.txtSemi,
+});
+txt(sA, "Use the score to add support, never to remove access. A model that downgrades a slot punishes the patients with the worst transport and the least flexible work.", {
+  x: CX[1] + 0.34, y: 5.27, w: CWA - 0.68, h: 0.42, fontSize: 8.3, color: C.white,
+  fontFace: F.txt, lineSpacingMultiple: 1.0,
+});
+
+/* ---- column 3: extensibility ---- */
+box(sA, CX[2], 1.08, CWA, 4.7, C.ink);
+dot(sA, CX[2] + 0.2, 1.31, C.mint, 0.1);
+txt(sA, "Extending the framework", {
+  x: CX[2] + 0.4, y: 1.22, w: CWA - 0.6, h: 0.3, fontSize: 14, color: C.white, fontFace: F.dspBold,
+});
+txt(sA, "A new feature declares five things. The engine does not change.", {
+  x: CX[2] + 0.2, y: 1.6, w: CWA - 0.4, h: 0.2, fontSize: 8.8, color: "A9B4C2", fontFace: F.txt,
+});
+const packs = [
+  ["Entities and edges", "Added to the ontology as shapes: bitemporal, evidence bearing", "Appointment, CareIntent, Slot, Waitlist"],
+  ["A specification", "What good looks like: targets, thresholds, windows", "Utilisation target, recovery window, max lead time"],
+  ["Signals", "Computed indices promoted to traversals", "No-show risk, recovery probability, utilisation"],
+  ["Gap engines", "Constraints that, unsatisfied, are gaps", "idle_slot_gap(), lead_time_gap(), churn_gap()"],
+  ["Cohorts and actions", "Handed to the activation layer that already exists", "Backfill list, support outreach, overbook policy"],
+];
+let qy = 1.88;
+packs.forEach((pk, i) => {
+  box(sA, CX[2] + 0.2, qy, 0.26, 0.26, C.mint);
+  txt(sA, String(i + 1), {
+    x: CX[2] + 0.2, y: qy, w: 0.26, h: 0.26, fontSize: 9, color: C.ink,
+    fontFace: F.dspBold, align: "center", valign: "middle",
+  });
+  txt(sA, pk[0], {
+    x: CX[2] + 0.54, y: qy + 0.02, w: CWA - 0.76, h: 0.18, fontSize: 9.8,
+    color: C.white, fontFace: F.txtSemi,
+  });
+  txt(sA, pk[1], {
+    x: CX[2] + 0.54, y: qy + 0.21, w: CWA - 0.76, h: 0.22, fontSize: 8.2,
+    color: "A9B4C2", fontFace: F.txt, lineSpacingMultiple: 0.98,
+  });
+  txt(sA, pk[2], {
+    x: CX[2] + 0.54, y: qy + 0.41, w: CWA - 0.76, h: 0.22, fontSize: 8.2,
+    color: C.mint, fontFace: F.txtSemi, lineSpacingMultiple: 0.98,
+  });
+  qy += 0.66;
+});
+box(sA, CX[2] + 0.2, 5.24, CWA - 0.4, 0.44, "16202C");
+txt(sA, "Never touched: identity, the privacy boundary, storage, the traversal engine, the campaign machinery.", {
+  x: CX[2] + 0.34, y: 5.29, w: CWA - 0.68, h: 0.36, fontSize: 8.2, color: "D8DEE6",
+  fontFace: F.txt, lineSpacingMultiple: 1.0,
+});
+
+/* ---- new scenarios this unlocks ---- */
+txt(sA, "SIX MORE SCENARIOS, NO ENGINE CHANGE", {
+  x: 0.12, y: 5.9, w: 5.0, h: 0.16, fontSize: 7.5, charSpacing: 0.6,
+  color: C.grey, fontFace: F.txtSemi,
+});
+const more = [
+  ["13", "Idle slot recovery", "Late cancellations that never refill"],
+  ["14", "Chronic no-show", "With open care gaps: support, not sanction"],
+  ["15", "Clinic cancelled it", "The cause that hides in the data"],
+  ["16", "Lead time loop", "Long waits cause no-shows cause longer waits"],
+  ["17", "Waitlist backfill", "Best fit patient for a freed slot"],
+  ["18", "Reminder channel lift", "Measured against a holdout"],
+];
+more.forEach((m, i) => {
+  const x = 0.12 + i * 2.198;
+  box(sA, x, 6.12, 2.098, 0.5, C.white, C.rule);
+  txt(sA, m[0] + "  " + m[1], {
+    x: x + 0.11, y: 6.17, w: 1.9, h: 0.17, fontSize: 8.2, color: C.l6, fontFace: F.txtSemi,
+  });
+  txt(sA, m[2], {
+    x: x + 0.11, y: 6.34, w: 1.9, h: 0.24, fontSize: 7.4, color: C.grey,
+    fontFace: F.txt, lineSpacingMultiple: 0.96,
+  });
+});
+box(sA, 0.12, 6.74, W - 0.24, 0.54, C.ink);
+dot(sA, 0.3, 6.93, C.mint, 0.1);
+txt(sA, "Register the feature, and the gaps, the agent answers and the campaigns follow. That is the difference between an application and a framework.", {
+  x: 0.5, y: 6.74, w: 12.6, h: 0.54, fontSize: 11, color: C.white,
+  fontFace: F.txt, valign: "middle",
+});
+
+/* ==================== SLIDE 4: THE GRAPH MODEL ==================== */
 const s3 = pres.addSlide();
 s3.background = { color: C.white };
 box(s3, 0, 0, W, 0.95, C.ink);
@@ -579,7 +777,7 @@ txt(s3, "None of this is exotic. It is the difference between a graph that store
   fontFace: F.txt, valign: "middle",
 });
 
-/* ==================== SLIDE 4: FEASIBILITY ==================== */
+/* ==================== SLIDE 5: FEASIBILITY ==================== */
 const s4 = pres.addSlide();
 s4.background = { color: C.white };
 box(s4, 0, 0, W, 0.95, C.ink);

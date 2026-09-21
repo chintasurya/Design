@@ -3,7 +3,7 @@
 **Idea:** one knowledge graph over providers, facilities, service lines, credentials, geography and patient demand, so that the mismatches between them become computable instead of anecdotal.
 
 **Status:** concept for discussion. Not a solution design.
-**Deck:** `docs/clinical-network-graph-concept.pptx` (4 slides: nine layer architecture, scenario catalogue, graph model, feasibility).
+**Deck:** `docs/clinical-network-graph-concept.pptx` (5 slides: nine layer architecture, scenario catalogue, appointments and extensibility, graph model, feasibility).
 **Type:** Trenda IG Display and Trenda IG Text. The font files live at `deck/fonts/` on branch `claude/peaceful-mendel-76r18m`; they must be installed locally for the deck to render as designed.
 
 ---
@@ -56,7 +56,63 @@ A star schema answers "how many cardiologists are in this county". It cannot ans
 | 11 | Inflow high, outcome weak | Top decile volume with risk adjusted O over E above the peer benchmark | Quality campaign, and steer volume to the strong sites |
 | 12 | Hire and site simulation | Insert a hypothetical provider or site, re-run every traversal, diff the result | Patients gaining access and leakage recaptured, before spending |
 
+### E. Appointments, added by the feature pack below
+
+| # | Scenario | In the graph | Action |
+|---|---|---|---|
+| 13 | Idle slot recovery | Late cancellations whose slots never refill | Backfill from the waitlist, shorten the recovery window |
+| 14 | Chronic no-show with open care gaps | Repeated non-attendance on a patient who also has overdue measures | Support outreach, never a downgraded slot |
+| 15 | Clinic-initiated cancellation | The clinic is the cancelling party, through provider absence or template churn | Fix the template, and stop counting it against the patient |
+| 16 | Lead time feedback loop | Long waits push bookings further out, longer lead times raise no-shows, no-shows lengthen waits | Break the loop at the template, not at the patient |
+| 17 | Waitlist backfill matching | A freed slot, and the best fit waiting patient by specialty, urgency and drive time | Automated offer, ranked |
+| 18 | Reminder channel lift | Which channel actually moves attendance | Measured against a holdout, then standardised |
+
 Every scenario is the same query shape and returns the same four things: the evidence path, the patients affected, the recommended action, and a cohort ready to activate.
+
+---
+
+## Appointments: booking, cancellation and attendance risk
+
+### A booking is a lifecycle, not a row
+
+States: requested, scheduled, confirmed, reminded, arrived, completed. The exits are what carry the information, and they are not interchangeable:
+
+| Exit | Why it is distinct |
+|---|---|
+| Cancelled by the patient | Lead time decides whether the slot is recoverable at all |
+| Cancelled by the clinic | Provider absence or template churn. Frequently recorded as though the patient cancelled, which quietly blames the patient for the clinic's problem |
+| Rescheduled | A new appointment against the same care intent. Not a second failure |
+| No-show | The slot is gone and the care gap stays open |
+
+**Care intent is the unit that matters.** One care intent can hold four bookings and three cancellations. Count appointments and the patient looks non-compliant. Count care intents and you see one person who eventually got seen, after three rounds of friction. Most reporting gets this wrong, and the bitemporal edges already in the model make the reschedule chain reconstructable.
+
+### What the prediction actually predicts
+
+**Define the target properly first.** Three outcomes, not two: attended, cancelled, no-show. And a cancellation three weeks out is a recovered slot, while a cancellation two hours out is a no-show with extra steps. So the model returns **attendance probability** and **slot recovery probability**, because those are the two numbers an operation can act on.
+
+**Features the graph already holds:** lead time from booking to visit (usually the strongest single signal), patient history shrunk for low counts, drive time and travel burden (already an edge), reminder delivered and engaged with, the number of times the clinic previously cancelled on this patient, appointment type, specialty and slot time, open care gaps, coverage status.
+
+**Output contract:** a calibrated probability rather than a rank, reason codes traced back to graph evidence, the model version and validity window, and the score written back as a signal node so every layer above can read it. Calibration matters more than discrimination here: if the model says thirty percent and the truth is fifty, every overbooking decision taken on it is wrong.
+
+> **The rule that keeps it defensible: use the score to add support, never to remove access.** A no-show model that downgrades a slot, refuses a booking or double-books aggressively will penalise the patients with the worst transport, the least flexible work and the most caring responsibilities. The same score, pointed the other way, buys them a phone call, a transport offer or a telehealth alternative. Choose that direction deliberately, and write it into the specification rather than leaving it to whoever builds the screen.
+
+---
+
+## Extending the framework: the feature pack
+
+A new feature declares five things. The engine does not change.
+
+| # | Declaration | Appointments as the worked example |
+|---|---|---|
+| 1 | **Entities and edges**, added to the ontology as shapes: bitemporal, evidence bearing | Appointment, CareIntent, Slot, Waitlist |
+| 2 | **A specification**, what good looks like: targets, thresholds, windows | Utilisation target, recovery window, maximum lead time |
+| 3 | **Signals**, computed indices promoted to traversals | No-show risk, recovery probability, utilisation |
+| 4 | **Gap engines**, constraints that, unsatisfied, are gaps | `idle_slot_gap()`, `lead_time_gap()`, `churn_gap()` |
+| 5 | **Cohorts and actions**, handed to the activation layer that already exists | Backfill list, support outreach, overbook policy |
+
+What a feature pack never touches: identity resolution, the privacy boundary, storage, the traversal engine, the campaign machinery. Predictions plug in the same way, through a model registry: any model registers as *(entity type, target, horizon)* and returns a calibrated score with reason codes and a validity window, written back as a signal. Adding a prediction is registering a model, not rebuilding a pipeline.
+
+This is what makes the difference between an application and a framework. Register the feature, and the gaps, the agent answers and the campaigns follow.
 
 ---
 
@@ -64,15 +120,15 @@ Every scenario is the same query shape and returns the same four things: the evi
 
 | Layer | Purpose |
 |---|---|
-| L1 Source systems | EHR, credentialing, provider directory, scheduling, claims, referrals, geography |
+| L1 Source systems | EHR, credentialing, provider directory, booking and scheduling, claims, referrals, geography |
 | L2 Source connectors | Read only, hashed, replayable. No writes anywhere |
 | **L3 Trust and privacy boundary** | **De-identification at ingress, three data planes, keys, re-identification defence** |
 | L4 Ingest and identity | EMPI for patients, NPI, TIN and CCN for providers and places, with provenance |
-| L5 Domain model | CareNetworkContext: providers, facilities, service lines, demand, access, flows |
+| L5 Domain model | CareNetworkContext: providers, facilities, service lines, appointments, care intents, demand, flows |
 | L6 Graph storage | Bitemporal, content addressed, immutable snapshots |
 | L7 Derived edge engine | SERVES, REQUIRES, COVERS, SUBSTITUTE_FOR, plus the dated indices |
-| L8 Network ContextGraph | Traversals, vector plane, shadow graph, network analytics |
-| L9 Gap engines and API | The twelve scenarios, the query surface, policy at query time |
+| L8 Network ContextGraph | Traversals, vector plane, prediction plane, shadow graph, network analytics |
+| L9 Gap engines and API | The scenario library, feature pack registration, the query surface, policy at query time |
 
 ### Layer 3 in detail: how patient and provider data stays safe
 
