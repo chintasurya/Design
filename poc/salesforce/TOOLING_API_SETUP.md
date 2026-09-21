@@ -425,21 +425,53 @@ the wrong place.
 
 ## A1. External Client App
 
-**Settings → OAuth → Flow Enablement**
+**An External Client App has two separate screens and they do different jobs.
+Everything in this step is on the second one.**
+
+| Screen | What lives there |
+|---|---|
+| **Settings** | *Flow Enablement* and *Security*. Declares which flows the app is capable of. **No Run As field exists here** — if you are looking at a page with the Security checkboxes on it, you are on the wrong tab. |
+| **Policies** | *OAuth Policies*. Declares how the app behaves at runtime, including **Run As**. |
+
+### First, on Settings
+
+**External Client App Manager → `AI Tooling API` → Settings → OAuth →
+Flow Enablement**
 
 | Setting | Value |
 |---|---|
 | Enable Client Credentials Flow | **checked** |
 | Enable Authorization Code and Credentials Flow | not needed |
 
-**Policies → OAuth Policies → Edit**
+Save.
+
+### Then, on Policies — this is where Run As is
+
+**External Client App Manager → `AI Tooling API` → Policies → Edit**
+
+If the Policies screen looks empty, or shows no OAuth section, look for an
+**Enable OAuth Policies** toggle and turn it on first. A new app's policies are
+unconfigured, and the OAuth section only renders once they exist.
 
 | Setting | Value |
 |---|---|
-| Enable Client Credentials Flow | **checked** — a second switch, as with OAuth itself |
+| Enable Client Credentials Flow | **checked** — a second switch with the same name as the Settings one, doing a different job |
 | **Run As** | the user the callouts should run as |
 | Permitted Users | if *Admin approved users are pre-authorized*, the Run As user must have the app assigned through their profile or a permission set |
 | IP Relaxation | **Relax IP restrictions** |
+
+Save.
+
+**If Run As still does not appear** after saving Settings and enabling OAuth
+policies: reload the page rather than navigating back to it, since the section
+is rendered from the saved flow enablement, and give it a few minutes. The same
+propagation delay that affects a new Consumer Key applies here.
+
+**If it never appears**, the flow cannot be completed and the remaining option
+that avoids PKCE is **JWT Bearer** — also in the Flow Enablement list. It names
+its user through the JWT subject rather than a Run As field, at the cost of
+needing a certificate. Say so and that path gets written up; do not spend an
+afternoon hunting for a field that this release may simply not render.
 
 **The Run As user is the identity every callout uses.** It needs **API
 Enabled**, **View Setup and Configuration**, and **View All Data** if
