@@ -497,6 +497,30 @@ Enabled**, **View Setup and Configuration**, and **View All Data** if
 dependency edges are wanted. Pick a user whose access you are happy to have
 the graph build read with, because it will read exactly that and nothing more.
 
+### The warning Salesforce shows when you tick this
+
+> *Anyone with the consumer key and consumer secret can access your org on
+> behalf of the selected user.*
+
+That is not boilerplate, it is the honest security property of this flow, and
+it is the price of not needing a browser. The key and secret together are a
+**bearer credential**: whoever holds both can obtain a token as the Run As
+user, with no login, no MFA and no human in the loop. There is no second
+factor to fall back on.
+
+Click OK, then contain it:
+
+| Do | Why |
+|---|---|
+| **Sandbox only.** Never build the equivalent app in production. | Everything in this POC is sandbox-scoped by rule. This is the step where breaking that rule would cost the most. |
+| **Use a dedicated integration user**, not a person's login | Revoking it later breaks nothing a human depends on, and the audit trail says "the graph build did this" rather than naming someone who was asleep at the time |
+| **Grant the minimum.** API Enabled and View Setup and Configuration are required. **View All Data is not** | It is needed only for `MetadataComponentDependency`. Drop it and the only thing lost is real dependency edges; flow internals, which are the point, do not need it |
+| **Never put the secret in git, a ticket, a chat or this conversation** | It is Setup-to-Setup only. The POC never reads it and never needs it |
+| **Delete the External Client App when the POC ends** | A standing bearer credential with no owner is the thing that turns up in an audit two years later |
+
+If View All Data is not acceptable in your org, say so rather than granting it
+quietly. The graph loses dependency edges and keeps everything else.
+
 Copy the **Consumer Key** and **Consumer Secret** from
 **Settings → OAuth Settings → Consumer Key and Secret**, and wait about ten
 minutes before A2 so they propagate.
