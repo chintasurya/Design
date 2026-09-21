@@ -637,6 +637,32 @@ the new model is what External Credentials plug into).
 | Allow Formulas in HTTP Header | unchecked |
 | Allow Formulas in HTTP Body | unchecked |
 
+## A5b. "Authentication Status: Pending" — what it means here
+
+**Client credentials has no interactive authentication step.** There is no
+browser redirect, no approval screen and no Authenticate button to press. A
+token is fetched on the first callout and not before. So a status stuck at
+*Pending* is never something to wait out or click through: it means something
+in the chain is still configured for the browser flow.
+
+Find which, by where the word appears.
+
+| Where *Pending* is shown | What it means | Fix |
+|---|---|---|
+| On the **Named Credential** detail page, as **Authentication Status**, next to fields called *Authentication Protocol* and *Authentication Provider* | This is a **Legacy** named credential. Legacy holds its own OAuth and cannot use an External Credential, so it is running the browser flow — the one PKCE blocks in this org. | Delete it. Create a standard Named Credential (A5) whose **External Credential** field points at `AI Tooling Cred`. |
+| On the **External Credential → Principals** row | The External Credential's **Authentication Flow Type** is **Browser Flow**, not **Client Credentials with Client Secret**. Browser flow is what shows a status and offers an Authenticate action, and that action will fail on PKCE. | Edit the External Credential, set the flow type to **Client Credentials with Client Secret**, set the token endpoint to `https://test.salesforce.com/services/oauth2/token`, and make sure the principal carries the **Client ID** and **Client Secret**. |
+
+### Do not chase the label. Run the callout.
+
+Once the flow type is client credentials, the status field is either absent or
+meaningless, because there is no interactive step for it to describe. Status
+labels in this area differ between releases and several of them are misleading.
+
+**The only test that means anything is whether a request comes back with a
+token.** Run A6. An `HTTP 200` is a working credential no matter what any
+screen says about it, and a `401` is a broken one no matter how reassuring the
+status looks.
+
 ## A6. Verify
 
 Run `tools/verify_tooling_api.apex`. There is no authentication status to
