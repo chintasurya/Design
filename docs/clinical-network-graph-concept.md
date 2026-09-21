@@ -3,7 +3,8 @@
 **Idea:** one knowledge graph over providers, facilities, service lines, credentials, geography and patient demand, so that the mismatches between them become computable instead of anecdotal.
 
 **Status:** concept for discussion. Not a solution design.
-**Deck:** `docs/clinical-network-graph-concept.pptx` (3 slides: architecture, scenario catalogue, feasibility).
+**Deck:** `docs/clinical-network-graph-concept.pptx` (4 slides: nine layer architecture, scenario catalogue, graph model, feasibility).
+**Type:** Trenda IG Display and Trenda IG Text. The font files live at `deck/fonts/` on branch `claude/peaceful-mendel-76r18m`; they must be installed locally for the deck to render as designed.
 
 ---
 
@@ -15,7 +16,7 @@ A gap is a missing path, not a missing row.
 - **Supply path:** facility offers service line, staffed by a credentialed provider holding the required specialty, reachable inside a drive time band.
 - **A gap** is where the demand path exists and the supply path does not. The shape of the break says which gap it is.
 
-A star schema answers "how many cardiologists are in this county". It cannot answer "which counties have demand for a service line whose required specialty has no privileged provider within thirty minutes, and which three existing providers could cover it with one added session". That is variable depth traversal across seven entity types where the answer is an absent edge.
+A star schema answers "how many cardiologists are in this county". It cannot answer "which counties have demand for a service line whose required specialty has no privileged provider within thirty minutes, and which three existing providers could cover it with one added session". That is variable depth traversal across nine entity types where the answer is an absent edge.
 
 **The modelling decision that makes it work:** `(ServiceLine)-[:REQUIRES]->(Specialty | Capability)`. Once a service line declares what it needs, every facility, every credential and every patient flow can be tested against it automatically. Most provider data models never encode this, which is why gap analysis stays manual.
 
@@ -59,18 +60,48 @@ Every scenario is the same query shape and returns the same four things: the evi
 
 ---
 
-## The eight layers
+## The nine layers
 
 | Layer | Purpose |
 |---|---|
 | L1 Source systems | EHR, credentialing, provider directory, scheduling, claims, referrals, geography |
-| L2 Source connectors | Read only, PHI safe at the boundary, hashed and replayable |
-| L3 Ingestors and identity | EMPI for patients, NPI, TIN and CCN for providers and places, with provenance |
-| L4 Domain model | CareNetworkContext: providers, facilities, service lines, demand, access, flows |
-| L5 Graph storage | Vendor neutral JSON snapshot, versioned, de-identified by default |
-| L6 Derived edge engine | SERVES, REQUIRES, COVERS, SUBSTITUTE_FOR, plus the dated indices |
-| L7 Network ContextGraph | Traversals, network analytics, what-if simulation |
-| L8 Gap engines and API | The twelve scenarios, the query surface, the output contract |
+| L2 Source connectors | Read only, hashed, replayable. No writes anywhere |
+| **L3 Trust and privacy boundary** | **De-identification at ingress, three data planes, keys, re-identification defence** |
+| L4 Ingest and identity | EMPI for patients, NPI, TIN and CCN for providers and places, with provenance |
+| L5 Domain model | CareNetworkContext: providers, facilities, service lines, demand, access, flows |
+| L6 Graph storage | Bitemporal, content addressed, immutable snapshots |
+| L7 Derived edge engine | SERVES, REQUIRES, COVERS, SUBSTITUTE_FOR, plus the dated indices |
+| L8 Network ContextGraph | Traversals, vector plane, shadow graph, network analytics |
+| L9 Gap engines and API | The twelve scenarios, the query surface, policy at query time |
+
+### Layer 3 in detail: how patient and provider data stays safe
+
+Security is a layer rather than a footnote, because the data is PHI and because a graph is a sharper re-identification instrument than a table.
+
+| Control | What it does |
+|---|---|
+| De-identify at ingress | Safe Harbor identifiers removed, MRN replaced by an HMAC token per realm, dates shifted by a consistent per-patient offset, geography truncated to census tract |
+| Three data planes | **Analytic**: tokenised and k-anonymous, the default. **Operational**: limited data set under BAA, for outreach only. **Identified**: enclave access, break glass, logged |
+| Keys and crypto | Keys held in KMS or HSM and never in the application, envelope encryption per snapshot, salt rotated by market and period, TLS 1.3 in transit and AES-256 at rest |
+| Re-identification defence | k-anonymity floor on every published cell, suppression where a rare specialty meets a small geography, differential privacy noise on published counts, a query budget per user |
+| Policy at query time (L9) | Purpose of use required on every call, minimum necessary compiled into the query rather than filtered after, k-anonymity checked before the result is returned |
+| Assurance | HIPAA, HITRUST and SOC 2 controls mapped, immutable WORM audit log, quarterly re-identification risk review |
+
+**The threat model, with the control for each.** Re-identification from rare attribute combinations: k-anonymity at the query compiler. Insider browsing: purpose of use required per query. PHI reaching a model endpoint: aggregates only unless the endpoint is BAA covered. Vendor sprawl through copies: no copies leave the boundary.
+
+---
+
+## Seven decisions that make the graph model more than a directory
+
+1. **Bitemporal by default.** Every edge carries two clocks: when it was true in the world, and when we learned it. Claims arrive ninety days late and credentials move, so without both clocks a real change cannot be told apart from a late arrival. It lets you ask what was true in March, and separately what we believed in March.
+2. **Relationships are nodes.** Affiliation, Privilege and Coverage are objects rather than plain edges, so each carries its own dates, confidence, evidence and scope, and other edges can point at them. A coverage claim disputed by claims data keeps both sides.
+3. **Assertion plane and evidence plane.** Every assertion resolves to evidence nodes: source, extract, row, hash. No evidence path means no publication, enforced by the engine rather than by habit.
+4. **Capability algebra.** A service line is a specification: required specialties, required capabilities, coverage window, minimum volume. Gap detection becomes constraint satisfaction over the graph instead of a library of hand written queries, so a new service line is a specification row rather than new code.
+5. **Symbolic plus vector.** Typed traversal handles the hard constraints, embeddings handle likeness: who could substitute, which site is comparable. Anchor symbolically and rank by vector, never the reverse, so similarity never overrules a credential.
+6. **Shadow graph for counterfactuals.** Hypothetical providers and sites are written into a copy on write namespace. Traversals run against base plus shadow and the diff is the answer. The base graph never mutates, so the hire can be simulated before it is funded.
+7. **Private by construction.** Patient nodes are tokenised and degree limited, and the cohort is the queryable unit. A graph is itself a re-identification vector: a rare specialty plus a rare condition plus a small geography identifies a person. k-anonymity belongs in the query compiler, not the dashboard.
+
+Each is cheap to build in at the start and expensive to retrofit. Bitemporality in particular cannot be added after the fact, because the second clock was never recorded.
 
 ---
 
@@ -80,7 +111,7 @@ Every scenario is the same query shape and returns the same four things: the evi
 2. **Privileging data is usually the weakest source,** often a separate and stale system. Scenario 3 depends on it entirely.
 3. **Bookable against booked supply.** If scheduling exposes only booked appointments, the capacity index degrades to a proxy and "no slots" cannot be separated from "bad template".
 4. **Attribution.** Whose patient is it. One versioned rule per service line, agreed before build.
-5. **PHI governance.** Three identities: de-identified analytic graph, limited data set under BAA for outreach, identified access role gated at the query layer.
+5. **Re-identification risk is a design constraint, not a review step.** It decides what the graph is allowed to hold, which is why Layer 3 exists before the graph is built rather than after.
 
 None are blockers. All five are decisions to take in week one rather than discoveries to make in month three.
 
@@ -90,9 +121,11 @@ None are blockers. All five are decisions to take in week one rather than discov
 
 | Weeks | Scope |
 |---|---|
-| 1 to 3 | One market, two service lines. Source inventory, attribution rule, required specialty map agreed |
-| 4 to 7 | Identity resolution and the graph loaded. Match rate published as the first deliverable |
+| 1 to 3 | One market, two service lines. Source inventory, attribution rule, required specialty map, privacy boundary design |
+| 4 to 7 | Privacy boundary and identity resolution live. Match rate and k-anonymity floor published as the first deliverable |
 | 8 to 11 | Two gap engines live (scenarios 1 and 3), reviewed by a clinical SME |
 | 12 to 13 | One what-if simulation, and a gap list that a clinical leader and a network leader both sign |
 
 Rebuild the deck with `node scripts/build-clinical-network-deck.js docs/clinical-network-graph-concept.pptx` (requires `pptxgenjs`).
+
+The poster slide sizes itself: `scripts/trenda-widths.json` holds real Trenda advance widths and line heights, and the generator wraps every string against them to pick the largest uniform type size at which all nine columns still fit. It currently settles on 7.25pt body with 8.25pt section headings. Change the content and the size re-solves on the next build.
