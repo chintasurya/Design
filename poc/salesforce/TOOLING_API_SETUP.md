@@ -571,6 +571,36 @@ Principal Access → Edit → add `AI_Tooling_Cred - Tooling` → Save.**
 Assign that permission set to **yourself** (so the probe scripts work) and to
 whoever or whatever triggers the graph build.
 
+### If that section shows zero records
+
+It is listing **principals**, and a permission set can only grant a principal
+that already exists. Check these in order.
+
+**1. Does the External Credential have a Principal at all?**
+
+Setup → Named Credentials → **External Credentials** tab → `AI Tooling Cred` →
+the **Principals** section should contain a row named `Tooling`. If it is
+empty, A3 has not been done and there is nothing to grant. Create the principal
+first; this section will stay empty forever otherwise.
+
+This is the most common cause, because A4 reads like the next click after A2
+and it is easy to pass straight over A3.
+
+**2. Are you looking at the granted list rather than the picker?**
+
+That section shows what is **already enabled**, which is legitimately zero on a
+new permission set. The available principals only appear once you click
+**Edit**, in the usual two-box Available / Enabled picker. Zero records in view
+mode means nothing has been granted yet, not that nothing can be.
+
+**3. Did you create an External Credential, or a Legacy Named Credential?**
+
+Legacy named credentials hold their own authentication and have no principals,
+so nothing about them ever appears here. If the credential you made had
+**Authentication Protocol** and **Authentication Provider** fields on the same
+screen as the URL, it is the legacy one. Client credentials needs the
+**External Credential** plus **Named Credential** pair from A2 and A5.
+
 ## A5. Named Credential
 
 **Setup → Named Credentials → New** (the standard one this time, not Legacy —
