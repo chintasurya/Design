@@ -225,5 +225,119 @@ dot(s7, 0.32, 6.53, C["mint"], 0.1)
 txt(s7, "The framework is open by construction. Every vendor named here is an example, not a dependency.",
     0.54, 6.32, 12.5, 0.62, size=11, face=F["txt"], color=C["white"], anchor=MSO_ANCHOR.MIDDLE)
 
+# ------------------------------------------------- slide 1: the problem
+sP = prs.slides.add_slide(prs.slide_layouts[0])
+box(sP, 0, 0, W, 7.5, C["white"])
+box(sP, 0, 0, W, 0.95, C["ink"])
+txt(sP, "THE UNIVERSAL PROBLEM", 0.5, 0.15, 9.0, 0.24,
+    size=10.5, face=F["dspSemi"], color=C["mint"], spacing=1.2)
+txt(sP, "Every business can count what it has. Almost none can see what is missing.",
+    0.5, 0.4, 11.0, 0.42, size=22, face=F["dspBold"], color=C["white"])
+txt(sP, "True in every industry\nwe have looked at.", 11.7, 0.24, 1.5, 0.5,
+    size=9, face=F["txtLight"], color=C["dim"], line_mult=1.08)
+
+CXP = [0.12, 4.53, 8.94]
+CWP = 4.27
+
+# --- column 1: why it stays invisible
+box(sP, CXP[0], 1.08, CWP, 5.0, C["panel"], C["rule"])
+dot(sP, CXP[0] + 0.2, 1.31, C["red"], 0.1)
+txt(sP, "Why the gap stays invisible", CXP[0] + 0.4, 1.22, CWP - 0.6, 0.3,
+    size=14, face=F["dspBold"], color=C["text"])
+
+# small diagram: the edge that is not there
+box(sP, CXP[0] + 0.24, 1.68, 1.45, 0.46, C["white"], C["rule"])
+txt(sP, "DEMAND", CXP[0] + 0.24, 1.68, 1.45, 0.46, size=9, face=F["txtSemi"],
+    color=C["text"], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+box(sP, CXP[0] + 2.58, 1.68, 1.45, 0.46, C["white"], C["rule"])
+txt(sP, "SUPPLY", CXP[0] + 2.58, 1.68, 1.45, 0.46, size=9, face=F["txtSemi"],
+    color=C["text"], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+dot(sP, CXP[0] + 1.76, 1.87, C["red"], 0.07)
+dot(sP, CXP[0] + 2.44, 1.87, C["red"], 0.07)
+txt(sP, "?", CXP[0] + 1.69, 1.68, 0.89, 0.46, size=15, face=F["dspBold"],
+    color=C["red"], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+txt(sP, "The answer is the edge that is not there, and no table has a row for it.",
+    CXP[0] + 0.24, 2.44, CWP - 0.48, 0.34, size=9, face=F["txtSemi"],
+    color=C["red"], line_mult=1.0)
+
+invis = [
+    ("The evidence is split", "Six or eight systems that were never designed to be joined. Demand in one, supply in another, capability in a third, geography in a fourth."),
+    ("Reports count rows", "A dashboard shows you forty one specialists. It cannot show you the territory where there are none."),
+    ("Every function sees one slice", "Sales sees demand, operations sees capacity, HR sees credentials, finance sees the leak. Nobody holds the join."),
+    ("So gaps are found the expensive way", "The customer leaves, the regulator asks, or the asset sits idle for a year."),
+]
+iy = 2.94
+for t, b in invis:
+    txt(sP, t, CXP[0] + 0.24, iy, CWP - 0.48, 0.2, size=10, face=F["txtSemi"], color=C["text"])
+    n = n_lines(b, F["txt"], 8.8, CWP - 0.5)
+    txt(sP, b, CXP[0] + 0.24, iy + 0.21, CWP - 0.48,
+        n * line_h(F["txt"], 8.8) + 0.04, size=8.8, face=F["txt"],
+        color=C["grey"], line_mult=1.0)
+    iy += 0.28 + n * line_h(F["txt"], 8.8) + 0.1
+
+# --- column 2: what it costs
+box(sP, CXP[1], 1.08, CWP, 5.0, C["panel"], C["rule"])
+dot(sP, CXP[1] + 0.2, 1.31, C["pack"], 0.1)
+txt(sP, "What it costs, in any industry", CXP[1] + 0.4, 1.22, CWP - 0.6, 0.3,
+    size=14, face=F["dspBold"], color=C["text"])
+costs = [
+    ("Demand you cannot serve", "Someone arrives and nobody qualified is within reach"),
+    ("Supply that earns nothing", "Capacity paid for, sitting idle, in the wrong place"),
+    ("Assets stranded", "The equipment or licence is there. The person permitted to use it is not"),
+    ("Value leaking out", "It flows to a competitor along a path nobody traces"),
+    ("Commitments that evaporate", "Bookings cancelled, orders lost, installations missed"),
+    ("Decisions made on anecdote", "Where to hire, where to open, who to fix. Argued, not computed"),
+]
+cy2 = 1.68
+for i, (t, b) in enumerate(costs):
+    box(sP, CXP[1] + 0.2, cy2, CWP - 0.4, 0.66, C["white"], C["rule"])
+    dot(sP, CXP[1] + 0.34, cy2 + 0.13, C["pack"], 0.08)
+    txt(sP, t, CXP[1] + 0.48, cy2 + 0.07, CWP - 0.72, 0.2, size=10, face=F["txtSemi"], color=C["text"])
+    txt(sP, b, CXP[1] + 0.48, cy2 + 0.28, CWP - 0.7, 0.34, size=8.8, face=F["txt"],
+        color=C["grey"], line_mult=1.0)
+    cy2 += 0.71
+
+# --- column 3: why the usual answers miss, and what we do
+box(sP, CXP[2], 1.08, CWP, 5.0, C["panel"], C["rule"])
+dot(sP, CXP[2] + 0.2, 1.31, C["blue"], 0.1)
+txt(sP, "Why the usual answers miss", CXP[2] + 0.4, 1.22, CWP - 0.6, 0.3,
+    size=14, face=F["dspBold"], color=C["text"])
+misses = [
+    ("Another dashboard", "Counts what exists. An absence has no row to count"),
+    ("A data warehouse", "Joins tables, not paths. It answers how many, never what is missing within thirty minutes"),
+    ("A consulting study", "True the day it lands, stale a quarter later, and not repeatable"),
+    ("A chatbot over documents", "Fluent, ungrounded, and impossible to audit"),
+]
+my = 1.72
+for t, b in misses:
+    txt(sP, t, CXP[2] + 0.2, my, CWP - 0.4, 0.2, size=10, face=F["txtSemi"], color=C["blue"])
+    n = n_lines(b, F["txt"], 8.8, CWP - 0.42)
+    txt(sP, b, CXP[2] + 0.2, my + 0.21, CWP - 0.4,
+        n * line_h(F["txt"], 8.8) + 0.04, size=8.8, face=F["txt"],
+        color=C["grey"], line_mult=1.0)
+    my += 0.28 + n * line_h(F["txt"], 8.8) + 0.08
+
+box(sP, CXP[2] + 0.2, 3.62, CWP - 0.4, 2.3, C["ink"])
+dot(sP, CXP[2] + 0.36, 3.84, C["mint"], 0.09)
+txt(sP, "What we do instead", CXP[2] + 0.54, 3.76, CWP - 0.7, 0.26,
+    size=12.5, face=F["dspBold"], color=C["white"])
+bullets(sP, [
+    "Connect demand, supply, capability and reachability as one graph",
+    "Make every offering declare what it requires, so a gap is computed rather than argued",
+    "Return the missing path with its evidence, so it survives the meeting it is shown in",
+    "Re-run it every period, and simulate the fix before anyone spends",
+], CXP[2] + 0.36, 4.14, CWP - 0.66, size=9, color=C["dim2"], gap=7)
+
+box(sP, 0.12, 6.22, W - 0.24, 0.62, C["ink"])
+dot(sP, 0.32, 6.43, C["mint"], 0.1)
+txt(sP, "Everything after this slide is one idea: make the absence computable, and make the answer provable.",
+    0.54, 6.22, 12.5, 0.62, size=11, face=F["txt"], color=C["white"], anchor=MSO_ANCHOR.MIDDLE)
+
+# move it to the front
+sld_lst = prs.slides._sldIdLst
+ids = list(sld_lst)
+sld_lst.remove(ids[-1])
+sld_lst.insert(0, ids[-1])
+
 prs.save(OUT)
 print("wrote", OUT, "slides:", len(prs.slides.__iter__.__self__._sldIdLst))

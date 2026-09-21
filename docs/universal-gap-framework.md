@@ -132,17 +132,32 @@ Rebuild the deck with `node scripts/build-universal-deck.js docs/universal-gap-f
 
 ## 7. The combined deck, and the questions that follow it
 
-`docs/universal-gap-framework-combined.pptx` is the presentation order: the three universal slides, a transition, the two worked architectures, and a closing slide on platform and technology.
+`docs/universal-gap-framework-combined.pptx` is the presentation order: the problem, the three universal slides, a transition, the two worked architectures, and a closing slide on platform and technology.
 
 | # | Slide |
 |---|---|
-| 1 | Core and pack: what stays the same, what every industry declares |
-| 2 | The same model, four industries |
-| 3 | Fit, limits and technology |
-| 4 | **Transition:** one framework, two solutions, for reference |
-| 5 | Sample architecture: engineering delivery |
-| 6 | Sample architecture: clinical network |
-| 7 | **Platform:** where it runs, what it is written in, which model |
+| 1 | **The problem:** every business can count what it has, almost none can see what is missing |
+| 2 | Core and pack: what stays the same, what every industry declares |
+| 3 | The same model, four industries |
+| 4 | Fit, limits and technology |
+| 5 | **Transition:** one framework, two solutions, for reference |
+| 6 | Sample architecture: engineering delivery |
+| 7 | Sample architecture: clinical network |
+| 8 | **Platform:** where it runs, what it is written in, which model |
+
+### Slide 1, in text
+
+The deck opens on the problem rather than the answer, because core against pack is a reply to a question the room has not asked yet.
+
+**The hook:** your systems can only count what exists, and the expensive problems are all absences. The answer is the edge that is not there, and no table has a row for it.
+
+**Why the gap stays invisible.** The evidence is split across six or eight systems that were never designed to be joined, with demand in one, supply in another, capability in a third and geography in a fourth. Reports count rows: a dashboard shows forty one specialists but cannot show the territory where there are none. Every function sees one slice, so sales sees demand, operations sees capacity, HR sees credentials and finance sees the leak, and nobody holds the join. Gaps therefore get found the expensive way, when the customer leaves, the regulator asks, or the asset sits idle for a year.
+
+**What it costs, in any industry.** Demand that cannot be served. Supply that earns nothing. Assets stranded, where the equipment or licence is present and the person permitted to use it is not. Value leaking to a competitor along a path nobody traces. Commitments that evaporate through cancellations, lost orders and missed installations. Decisions on where to hire, where to open and who to fix, argued rather than computed.
+
+**Why the usual answers miss.** Another dashboard counts what exists, and an absence has no row to count. A warehouse joins tables rather than paths, so it answers how many and never what is missing within thirty minutes. A consulting study is true the day it lands, stale a quarter later, and not repeatable. A chatbot over documents is fluent, ungrounded and impossible to audit.
+
+**What we do instead.** Connect demand, supply, capability and reachability as one graph. Make every offering declare what it requires, so a gap is computed rather than argued. Return the missing path with its evidence, so it survives the meeting it is shown in. Re-run it every period, and simulate the fix before anyone spends.
 
 ### Slide 7, in text
 
