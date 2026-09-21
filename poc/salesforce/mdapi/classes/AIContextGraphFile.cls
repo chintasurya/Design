@@ -40,6 +40,23 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
             graph.anchorObject(intent.targetObject);
         String seedBasis = 'object ' + intent.targetObject;
 
+        // The parser only finds an object in phrasings it was taught. Ask the
+        // graph what objects the sentence actually names, which works for any
+        // object in the pod and needs no new rule per phrasing.
+        if (seeds.isEmpty()) {
+            seeds = graph.objectsNamedIn(request.Request_Text__c);
+            if (!seeds.isEmpty()) {
+                List<String> named = new List<String>();
+                for (AIGraphDocument.GraphNode n : seeds) {
+                    named.add(n.name);
+                }
+                seedBasis = 'the object'
+                    + (seeds.size() == 1 ? ' named in the request: '
+                                         : 's named in the request: ')
+                    + String.join(named, ', ');
+            }
+        }
+
         // A behaviour question is answered from the trigger object or not at
         // all. Falling back to keywords here seeds on whatever else the
         // sentence mentions, finds no automation, and the absence then reads
@@ -93,7 +110,7 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
             graph.blastRadius(seedIds, hops, MAX_NODES, skipTypes);
         Integer beforeFilter = hits.size();
 
-        for (AIGraphMemory.Hit h : relevant(hits, intent)) {
+        for (AIGraphMemory.Hit h : inReadingOrder(relevant(hits, intent))) {
             slice.findings.add(AIContextSlice.build(
                 h.node.id, h.node.nodeType, h.node.name, h.path,
                 impactOf(h.hops), h.node.riskTier, h.node.sourceSystem,
@@ -102,12 +119,12 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
         Integer dropped = beforeFilter - slice.findings.size();
 
         slice.summary = 'Read: ' + intent.summary
-            + ' · traversed ' + hops + ' hop' + (hops == 1 ? '' : 's')
-            + ' from ' + seedBasis
-            + ' across ' + graph.nodeCount + ' nodes and ' + graph.edgeCount
-            + ' edges · ' + slice.findings.size() + ' relevant'
-            + (dropped > 0 ? ' (' + dropped + ' unrelated hidden)' : '')
-            + ' · ' + graph.heapNote();
+            + ' · searched from ' + seedBasis
+            + ' · ' + slice.findings.size() + ' component'
+            + (slice.findings.size() == 1 ? '' : 's') + ' touch this'
+            + (dropped > 0 ? ', ' + dropped + ' unrelated hidden' : '')
+            + ' · out of ' + graph.nodeCount + ' components in the Network '
+            + 'Services graph · ' + graph.heapNote();
         return slice;
     }
 
@@ -163,6 +180,44 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
             }
         }
         return keep;
+    }
+
+    /**
+     * The order the answer should be read in, not the order the walk produced.
+     *
+     * Someone asking "what happens when this is terminated" wants the
+     * automation first: the trigger and the flows that run, then the classes
+     * those call, then the object and its columns as context. Traversal order
+     * is whatever the adjacency maps happened to hold, which puts a test data
+     * factory above the flow that answers the question.
+     *
+     * Within each band, fewer hops first, because closer is more relevant.
+     */
+    private static List<AIGraphMemory.Hit> inReadingOrder(
+            List<AIGraphMemory.Hit> hits) {
+        List<String> bands = new List<String>{
+            'ApexTrigger', 'Flow', 'ApexClass', 'ValidationRule',
+            'SObject', 'RecordType', 'TestClass', 'Field'
+        };
+        List<AIGraphMemory.Hit> ordered = new List<AIGraphMemory.Hit>();
+        for (String band : bands) {
+            for (Integer hop = 0; hop <= 4; hop++) {
+                for (AIGraphMemory.Hit h : hits) {
+                    if (h.node.nodeType == band && h.hops == hop) {
+                        ordered.add(h);
+                    }
+                }
+            }
+        }
+        // Anything with a node type not listed above still belongs in the
+        // answer; a band list is a preference, not a filter.
+        Set<String> known = new Set<String>(bands);
+        for (AIGraphMemory.Hit h : hits) {
+            if (!known.contains(h.node.nodeType)) {
+                ordered.add(h);
+            }
+        }
+        return ordered;
     }
 
     private static String impactOf(Integer hops) {

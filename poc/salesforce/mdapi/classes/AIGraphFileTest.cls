@@ -560,6 +560,130 @@ private class AIGraphFileTest {
     }
 
     @IsTest
+    static void aSecondObjectIsADestinationNotACorridor() {
+        // Reported verbatim: "terminate HealthcareFacilityNetwork when due
+        // date is exceeded" returned 55 components, every one of them reached
+        // via "-> sobj:account". The walk passed THROUGH Account, which
+        // carries seventy Apex references, and fanned out across all of them.
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'hub';
+        d.addNode('sobj:HealthcareFacilityNetwork', 'SObject',
+            'Healthcare Facility Network', 'HealthcareFacilityNetwork',
+            '{}', 'High', 'SCHEMA', 'Salesforce');
+        d.addNode('sobj:Account', 'SObject', 'Account', 'Account', '{}',
+            'High', 'SCHEMA', 'Salesforce');
+        d.addNode('apex:HFNTerminationService', 'ApexClass',
+            'HFNTerminationService', 'HFNTerminationService', '{}', 'High',
+            'METADATA', 'Salesforce');
+        d.addEdge('apex:HFNTerminationService', 'APEX_REFERENCES_SOBJECT',
+            'sobj:HealthcareFacilityNetwork', 'body');
+        d.addEdge('apex:HFNTerminationService', 'APEX_REFERENCES_SOBJECT',
+            'sobj:Account', 'body');
+        // Account's other seventy callers, which must not arrive.
+        for (Integer n = 0; n < 70; n++) {
+            d.addNode('apex:Unrelated' + n, 'ApexClass', 'Unrelated' + n,
+                'Unrelated' + n, '{}', 'Medium', 'METADATA', 'Salesforce');
+            d.addEdge('apex:Unrelated' + n, 'APEX_REFERENCES_SOBJECT',
+                'sobj:Account', 'body');
+        }
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+        Set<String> reached = new Set<String>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:HealthcareFacilityNetwork'}, 3, 60)) {
+            reached.add(h.node.id);
+        }
+
+        System.assert(reached.contains('apex:HFNTerminationService'),
+            'The class that touches the object is the answer.');
+        System.assert(reached.contains('sobj:Account'),
+            'That Account is involved is worth reporting.');
+        System.assertEquals(0, countUnrelated(reached),
+            'Account is a destination, not a corridor. Nothing reached only '
+            + 'by passing through it belongs in the answer: ' + reached.size()
+            + ' nodes came back.');
+    }
+
+    private static Integer countUnrelated(Set<String> reached) {
+        Integer n = 0;
+        for (String id : reached) {
+            if (id.startsWith('apex:Unrelated')) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    @IsTest
+    static void theObjectIsFoundEvenInPhrasingsNobodyTaughtTheParser() {
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'naming';
+        d.addNode('sobj:HealthcareFacilityNetwork', 'SObject',
+            'Healthcare Facility Network', 'HealthcareFacilityNetwork',
+            '{}', 'High', 'SCHEMA', 'Salesforce');
+        d.addNode('sobj:Widget__c', 'SObject', 'Widget', 'Widget__c', '{}',
+            'Low', 'SCHEMA', 'Salesforce');
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+
+        // The phrasing that returned nothing: no "on", no "for", no "in".
+        List<AIGraphDocument.GraphNode> hit = g.objectsNamedIn(
+            'terminate HealthcareFacilityNetwork when due date is exceeded');
+        System.assertEquals(1, hit.size(), 'Expected one object, got ' + hit);
+        System.assertEquals('sobj:HealthcareFacilityNetwork', hit[0].id);
+
+        System.assertEquals(1,
+            g.objectsNamedIn('close the Healthcare Facility Network').size(),
+            'The label spelled with spaces is the same object.');
+        System.assertEquals(1, g.objectsNamedIn('add a field to Widget').size(),
+            'A custom object is found without its __c suffix.');
+        System.assertEquals(0,
+            g.objectsNamedIn('make the due date required').size(),
+            'No object named means no anchor, not a guess.');
+    }
+
+    @IsTest
+    static void relationshipsReadAsSentencesNotEdgeTypes() {
+        // The same row is read by whoever asked for the change and by whoever
+        // will build it. "apex:X -[APEX_REFERENCES_SOBJECT]-> sobj:account"
+        // serves neither of them.
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'readable';
+        d.addNode('sobj:HealthcareFacilityNetwork', 'SObject',
+            'Healthcare Facility Network', 'HealthcareFacilityNetwork', '{}',
+            'High', 'SCHEMA', 'Salesforce');
+        d.addNode('flow:NS_HFN_Terminate', 'Flow', 'NS HFN Terminate',
+            'NS_HFN_Terminate', '{}', 'High', 'METADATA', 'Salesforce');
+        d.addEdge('flow:NS_HFN_Terminate', 'FLOW_UPDATES_SOBJECT',
+            'sobj:HealthcareFacilityNetwork', 'record-triggered');
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:HealthcareFacilityNetwork'}, 1, 20)) {
+            if (h.node.id == 'flow:NS_HFN_Terminate') {
+                System.assert(!h.path.contains('FLOW_UPDATES_SOBJECT'),
+                    'No edge type names in a row people read: ' + h.path);
+                System.assert(h.path.contains('Healthcare Facility Network'),
+                    'It must say which object: ' + h.path);
+            }
+        }
+    }
+
+    @IsTest
+    static void terminateIsAChangeNotAnUnknownAction() {
+        System.assertEquals('Update', AIRequestIntent.parse(
+            'terminate HealthcareFacilityNetwork when due date is exceeded')
+            .action, 'An unrecognised verb falls back to Analyze, which is '
+            + 'the widest possible search.');
+        System.assertEquals('Update',
+            AIRequestIntent.parse('deactivate the provider record').action);
+        System.assertEquals('Create',
+            AIRequestIntent.parse('generate an HFN for each facility').action);
+    }
+
+    @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphFile);

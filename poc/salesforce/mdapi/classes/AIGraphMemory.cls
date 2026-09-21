@@ -118,6 +118,58 @@ public with sharing class AIGraphMemory {
     }
 
     /**
+     * Every object the request actually names, found by matching the text
+     * against the graph's own SObject nodes.
+     *
+     * The regex parser can only spot an object in phrasings it was taught,
+     * like "on Account" or "for HealthcareProvider". "terminate
+     * HealthcareFacilityNetwork when due date is exceeded" names its object
+     * plainly and matches none of those shapes, so the parser returned
+     * nothing, the search fell back to keywords, and "due" and "date" dragged
+     * in half the org.
+     *
+     * The graph knows what its objects are called. Asking it is both simpler
+     * and correct for objects nobody thought to write a rule for.
+     */
+    public List<AIGraphDocument.GraphNode> objectsNamedIn(String text) {
+        List<AIGraphDocument.GraphNode> found =
+            new List<AIGraphDocument.GraphNode>();
+        if (String.isBlank(text)) {
+            return found;
+        }
+        Set<String> tokens = new Set<String>();
+        for (String w : text.split('[^A-Za-z0-9_]+')) {
+            if (w.length() > 2) {
+                tokens.add(flatten(w));
+            }
+        }
+        // Two-word runs too, so "Healthcare Facility Network" is found as
+        // readily as HealthcareFacilityNetwork.
+        List<String> words = text.split('[^A-Za-z0-9_]+');
+        for (Integer n = 0; n < words.size() - 1; n++) {
+            tokens.add(flatten(words[n] + words[n + 1]));
+            if (n < words.size() - 2) {
+                tokens.add(flatten(words[n] + words[n + 1] + words[n + 2]));
+            }
+        }
+
+        for (AIGraphDocument.GraphNode node : nodesById.values()) {
+            if (node.nodeType != 'SObject') {
+                continue;
+            }
+            String api = flatten(node.apiName);
+            String label = flatten(node.name);
+            String bare = api.endsWith('C') && api.length() > 1
+                ? api.substring(0, api.length() - 1) : api;
+            if (tokens.contains(api) || tokens.contains(label)
+                    || tokens.contains(bare)) {
+                found.add(node);
+            }
+        }
+        return found;
+    }
+
+    /**
      * Split a name into whole words, including camel case boundaries, so that
      * matching can respect word edges.
      *
@@ -223,6 +275,7 @@ public with sharing class AIGraphMemory {
         Set<String> visited = new Set<String>(seedIds);
         Set<String> skipped = new Set<String>();
         Set<String> frontier = new Set<String>(seedIds);
+        Set<String> anchors = new Set<String>(seedIds);
         Map<String, Integer> hopOf = new Map<String, Integer>();
         Map<String, String> pathOf = new Map<String, String>();
         for (String s : seedIds) {
@@ -245,10 +298,18 @@ public with sharing class AIGraphMemory {
                         skipped.add(other);
                         continue;
                     }
-                    next.add(other);
+                    // An object that is not what was asked about is a
+                    // destination, never a corridor. Account carries seventy
+                    // APEX_REFERENCES edges, so expanding through it turned
+                    // one question about HealthcareFacilityNetwork into
+                    // fifty-five components, every one of them reached via
+                    // "-> sobj:account". Record that the link exists; do not
+                    // walk out the other side of it.
+                    if (!isHub(other, anchors)) {
+                        next.add(other);
+                    }
                     hopOf.put(other, hop);
-                    pathOf.put(other,
-                        e.fromId + ' -[' + e.edgeType + ']-> ' + e.toId);
+                    pathOf.put(other, describeEdge(e, current, other));
                     if (visited.size() - skipped.size() >= maxNodes) {
                         break;
                     }
@@ -272,10 +333,93 @@ public with sharing class AIGraphMemory {
             h.node = n;
             h.hops = hopOf.containsKey(nodeId) ? hopOf.get(nodeId) : 0;
             h.path = pathOf.containsKey(nodeId)
-                   ? pathOf.get(nodeId) : 'Matched the request directly';
+                   ? pathOf.get(nodeId) : 'The object the request names';
             hits.add(h);
         }
         return hits;
+    }
+
+    /**
+     * True for a node that may be reported but must not be traversed through.
+     *
+     * Only objects other than the ones the request named. Everything else —
+     * triggers, flows, classes — has a handful of edges and expanding it is
+     * how a call chain gets followed, which is the point.
+     */
+    private Boolean isHub(String nodeId, Set<String> anchors) {
+        if (anchors.contains(nodeId)) {
+            return false;
+        }
+        AIGraphDocument.GraphNode n = nodesById.get(nodeId);
+        return n != null && n.nodeType == 'SObject';
+    }
+
+    /**
+     * How this node connects, in a sentence.
+     *
+     * The old form was "apex:AHC_TestDataFactory -[APEX_REFERENCES_SOBJECT]->
+     * sobj:account", which is readable by whoever wrote the exporter and
+     * nobody else. The same row has to make sense to the person asking for
+     * the change and to the person who will build it, and neither of them
+     * should have to learn the edge vocabulary first.
+     */
+    private String describeEdge(AIGraphDocument.GraphEdge e, String fromId,
+                                String toId) {
+        // toId is the node being described. subject is where we came from, so
+        // every sentence reads "this node, in relation to that one".
+        String subject = nameOf(fromId);
+        Boolean describingSource = (toId == e.fromId);
+
+        if (e.edgeType == 'TRIGGER_FIRES_ON_SOBJECT') {
+            return describingSource
+                ? 'Apex trigger that runs when ' + subject + ' records change'
+                : 'Changed by the trigger ' + subject;
+        }
+        if (e.edgeType == 'FLOW_UPDATES_SOBJECT') {
+            return describingSource
+                ? 'Flow that runs when ' + subject + ' records change'
+                : 'Changed by the flow ' + subject;
+        }
+        if (e.edgeType == 'APEX_REFERENCES_SOBJECT') {
+            return describingSource
+                ? 'Apex that reads or writes ' + subject
+                : 'Read or written by ' + subject;
+        }
+        if (e.edgeType == 'TRIGGER_CALLS_APEX') {
+            return describingSource
+                ? 'Trigger that calls ' + subject
+                : 'Called by the trigger ' + subject;
+        }
+        if (e.edgeType == 'APEX_CALLS_APEX') {
+            return describingSource ? 'Calls ' + subject : 'Called by ' + subject;
+        }
+        if (e.edgeType == 'SOBJECT_HAS_FIELD') {
+            return describingSource
+                ? 'Object holding the field ' + subject
+                : 'Field on ' + subject;
+        }
+        if (e.edgeType == 'SOBJECT_HAS_RECORDTYPE') {
+            return describingSource
+                ? 'Object holding the record type ' + subject
+                : 'Record type on ' + subject;
+        }
+        if (e.edgeType == 'SOBJECT_RELATES_TO_SOBJECT') {
+            return 'Related to ' + subject + ' through a lookup';
+        }
+        if (e.edgeType == 'TEST_COVERS_COMPONENT') {
+            return describingSource
+                ? 'Test covering ' + subject
+                : 'Covered by the test ' + subject;
+        }
+        return e.edgeType.toLowerCase().replace('_', ' ') + ' ' + subject;
+    }
+
+    private String nameOf(String nodeId) {
+        AIGraphDocument.GraphNode n = nodesById.get(nodeId);
+        if (n == null) {
+            return nodeId == null ? '' : nodeId.substringAfter(':');
+        }
+        return String.isBlank(n.name) ? n.apiName : n.name;
     }
 
     /** Edges that describe an object's shape rather than its behaviour. */

@@ -618,6 +618,37 @@ hold.
   `FlowDefinitionView` on `TriggerObjectOrEventLabel` falls back to the plain
   read and writes a note, instead of taking the whole class down at deploy.
 
+### Search relevance traps
+
+- **A second object is a destination, not a corridor.** *"Terminate
+  HealthcareFacilityNetwork when due date is exceeded"* returned **55
+  components**, every one of them reached via `-> sobj:account`. The walk
+  passed **through** Account, which carries ~70 `APEX_REFERENCES_SOBJECT`
+  edges, and fanned out across all of them. An SObject that is not what the
+  request named is now reported as a finding but **never expanded through**.
+  Triggers, flows and classes still expand, which is what follows a call chain.
+- **The parser only finds objects in phrasings it was taught.** `OBJECT_CLAUSE`
+  wants `on|in|to|for <Object>` at the end of the sentence. "terminate
+  HealthcareFacilityNetwork when due date is exceeded" names its object
+  plainly and matches none of those, so the anchor was empty and the search
+  fell back to keywords, where "due" and "date" pulled in half the org.
+  `AIGraphMemory.objectsNamedIn()` now matches the text against the graph's own
+  SObject nodes — including labels written with spaces and custom objects
+  without `__c` — which works for every object in the pod without a rule per
+  phrasing.
+- **An unknown verb is the widest possible search.** `terminate` was not in
+  `ACTIONS`, so the action fell back to `Analyze`, which traverses three hops
+  and produces a directory rather than an answer. The pod's real vocabulary is
+  now listed: terminate, expire, deactivate, close, cancel, archive, suspend,
+  renew, generate, populate, prevent and friends.
+- **Rows are read by both audiences.**
+  `apex:AHC_TestDataFactory -[APEX_REFERENCES_SOBJECT]-> sobj:account` is
+  legible to whoever wrote the exporter and to nobody else. Findings now carry
+  a sentence — *"Apex that reads or writes Healthcare Facility Network"*,
+  *"Called by the trigger AHC_AccountTrigger"* — and are ordered automation
+  first, then code it calls, then the object and its columns, so the answer
+  reads top down instead of in adjacency-map order.
+
 ### Matching and parsing traps
 
 - `"UPDATE".contains("DATE")` is true. Substring matching returned six unrelated

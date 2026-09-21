@@ -36,7 +36,16 @@ public with sharing class AIRequestIntent {
         'INTRODUCE' => 'Create', 'BUILD' => 'Create',
         'UPDATE' => 'Update', 'CHANGE' => 'Update', 'MODIFY' => 'Update',
         'FIX' => 'Update', 'AMEND' => 'Update', 'ADJUST' => 'Update',
-        'DELETE' => 'Delete', 'REMOVE' => 'Delete', 'RETIRE' => 'Delete'
+        'DELETE' => 'Delete', 'REMOVE' => 'Delete', 'RETIRE' => 'Delete',
+        // Verbs this pod actually uses. "terminate HealthcareFacilityNetwork
+        // when due date is exceeded" read as Analyze, which is the widest
+        // possible search, because none of these were listed.
+        'TERMINATE' => 'Update', 'EXPIRE' => 'Update', 'DEACTIVATE' => 'Update',
+        'INACTIVATE' => 'Update', 'CLOSE' => 'Update', 'CANCEL' => 'Update',
+        'ARCHIVE' => 'Update', 'END' => 'Update', 'SUSPEND' => 'Update',
+        'REACTIVATE' => 'Update', 'RENEW' => 'Update', 'EXTEND' => 'Update',
+        'GENERATE' => 'Create', 'POPULATE' => 'Create', 'ASSIGN' => 'Update',
+        'STOP' => 'Update', 'PREVENT' => 'Update'
     };
 
     // Longest phrases first, so "validation rule" wins over "rule".
