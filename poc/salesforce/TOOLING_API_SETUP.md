@@ -623,8 +623,25 @@ against a different release.
 
 ## A5. Named Credential
 
-**Setup → Named Credentials → New** (the standard one this time, not Legacy —
-the new model is what External Credentials plug into).
+**Setup → Named Credentials → New** — the button labelled plain **New**, not
+**New Legacy**. They sit next to each other and produce different objects. The
+legacy form is the one with *Authentication Protocol*, *Authentication
+Provider* and *Authentication Status* on it; the new form has an **External
+Credential** lookup instead and no status field at all, because there is
+nothing interactive to report.
+
+**A legacy credential cannot be converted.** If one already exists under the
+name you want, delete it first: the name `AI_Tooling_API` is what the probe
+scripts call, and two credentials cannot share it.
+
+Deleting it is safe. It holds no token — that is what *Pending* means — and
+nothing in the POC references it yet. The `AI Tooling Auth` Auth. Provider can
+stay; it is unused by the client credentials flow and harmless.
+
+**Leave no trailing slash on the URL.** The scripts append
+`/services/data/v59.0/...`, so a URL ending in `/` produces a double slash in
+the path. It is usually tolerated and occasionally is not, and it costs
+nothing to avoid.
 
 | Field | Value |
 |---|---|
