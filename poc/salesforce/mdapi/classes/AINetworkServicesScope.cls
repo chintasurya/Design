@@ -29,6 +29,22 @@ public with sharing class AINetworkServicesScope {
     public Set<String> permissionSetWritable = new Set<String>();
     public Boolean scopeCameFromPermissionSets = false;
 
+    /**
+     * The objects declared on AINetworkServicesPod that this org actually has,
+     * and the declared names that resolved to nothing.
+     *
+     * The declared list is the authority. The profile is a second opinion,
+     * because several pod objects are written only by automation and the
+     * profile has no create permission on them: using create access as the
+     * ownership test is what hid HealthcareFacilityNetwork, the object most
+     * questions are about.
+     */
+    public Set<String> declaredObjects = new Set<String>();
+    public List<String> unresolvedDeclarations = new List<String>();
+
+    /** Why each object is in scope, for the note and the scope printout. */
+    public Map<String, String> reasonOf = new Map<String, String>();
+
     private static Map<String, AINetworkServicesScope> cache =
         new Map<String, AINetworkServicesScope>();
 
@@ -65,9 +81,45 @@ public with sharing class AINetworkServicesScope {
             }
         }
         s.measurePermissionSets(owned[0].ProfileId);
+        s.resolveDeclaredPod();
         s.resolveOwned(key);
         cache.put(key, s);
         return s;
+    }
+
+    /**
+     * Match the declared pod objects against the org.
+     *
+     * Normalized on both sides, so a declared "Credentialing Application"
+     * finds Credentialing_Application__c and a declared
+     * "HealthcareFacilityNetwork" finds either the standard object or a custom
+     * one of that name, whichever this org has. Keys only from
+     * getGlobalDescribe(): describing ~1,400 objects to read their labels
+     * would spend CPU the export needs.
+     */
+    private void resolveDeclaredPod() {
+        Map<String, String> byName = new Map<String, String>();
+        for (String apiName : Schema.getGlobalDescribe().keySet()) {
+            String flat = AINetworkServicesPod.normalize(apiName);
+            if (!byName.containsKey(flat)) {
+                byName.put(flat, apiName);
+            }
+            if (apiName.endsWith('__c')) {
+                String bare = AINetworkServicesPod.normalize(
+                    apiName.removeEnd('__c'));
+                if (!byName.containsKey(bare)) {
+                    byName.put(bare, apiName);
+                }
+            }
+        }
+        Map<String, String> resolved =
+            AINetworkServicesPod.resolveObjects(byName);
+        declaredObjects.addAll(resolved.values());
+        for (String declared : AINetworkServicesPod.OBJECTS) {
+            if (!resolved.containsKey(declared)) {
+                unresolvedDeclarations.add(declared);
+            }
+        }
     }
 
     /**
@@ -176,14 +228,20 @@ public with sharing class AINetworkServicesScope {
         for (RecordType rt : [
                 SELECT SobjectType, DeveloperName FROM RecordType
                 WHERE IsActive = true LIMIT 2000]) {
-            String name = (rt.DeveloperName == null ? '' : rt.DeveloperName)
-                          .toLowerCase().replaceAll('[^a-z0-9]', '');
-            if (name.contains('network')) {
+            // "Network Services" and "Network Services TX CIN", not the bare
+            // word "network", which would also catch an unrelated Network
+            // Partner or Network Ops record type.
+            if (AINetworkServicesPod.podRecordType(rt.DeveloperName)) {
                 recordTypeObjects.add(rt.SobjectType);
             }
         }
+        // Declared first, because it is the authority. An object written only
+        // by automation has no create permission behind it and would never
+        // arrive through the profile.
+        owned.addAll(declaredObjects);
         owned.addAll(writable);
         owned.addAll(recordTypeObjects);
+        recordReasons();
 
         // An org that grants access through permission sets leaves the profile
         // almost empty, and the old fallback to "everything readable" then
@@ -214,17 +272,53 @@ public with sharing class AINetworkServicesScope {
         String matchNote = (matchedProfile != null && matchedProfile != profileName)
             ? ' (configured as "' + profileName + '", matched "' + matchedProfile + '")'
             : '';
-        note = owned.size() + ' objects owned by "' + shown + '"' + matchNote + ' ('
-             + writable.size() + ' writable on the profile, '
-             + recordTypeObjects.size() + ' with a Network record type; the count '
-             + 'is the union, so it can exceed either) against '
-             + readable.size() + ' readable on the profile and '
-             + permissionSetWritable.size() + ' writable through permission sets '
-             + 'assigned to its users'
-             + (permissionSetWritable.size() > readable.size()
-                ? '. Permission sets grant more than the profile does here, so the '
-                  + 'profile is the narrower signal and may be the wrong one'
-                : '');
+        note = owned.size() + ' objects in the Network Services pod: '
+             + declaredObjects.size() + ' declared, '
+             + writable.size() + ' writable on "' + shown + '"' + matchNote + ', '
+             + recordTypeObjects.size() + ' carrying a Network Services record '
+             + 'type. The count is the union, so it can exceed any of them. '
+             + 'For reference the profile reads ' + readable.size()
+             + ' objects and permission sets assigned to its users grant write '
+             + 'on ' + permissionSetWritable.size() + '.'
+             + (unresolvedDeclarations.isEmpty()
+                ? ''
+                : ' DECLARED BUT NOT FOUND IN THIS ORG: '
+                  + String.join(unresolvedDeclarations, ', ')
+                  + ' — check the API names on AINetworkServicesPod.');
+    }
+
+    /** One line per object saying which signal put it in scope. */
+    private void recordReasons() {
+        for (String o : owned) {
+            List<String> why = new List<String>();
+            if (declaredObjects.contains(o)) {
+                // The declared names are logical; "o" is the API name they
+                // resolved to, which may carry a __c. Compare normalized or
+                // the automation note silently never appears.
+                Boolean automated = false;
+                for (String a : AINetworkServicesPod.CREATED_BY_AUTOMATION) {
+                    if (AINetworkServicesPod.normalize(a)
+                            == AINetworkServicesPod.normalize(
+                                o.endsWith('__c') ? o.removeEnd('__c') : o)) {
+                        automated = true;
+                        break;
+                    }
+                }
+                why.add(automated
+                    ? 'declared (created by automation, not by people)'
+                    : 'declared');
+            }
+            if (writable.contains(o)) {
+                why.add('profile create or edit');
+            }
+            if (recordTypeObjects.contains(o)) {
+                why.add('Network Services record type');
+            }
+            if (permissionSetWritable.contains(o) && !writable.contains(o)) {
+                why.add('permission set');
+            }
+            reasonOf.put(o, String.join(why, ' + '));
+        }
     }
 
     /**

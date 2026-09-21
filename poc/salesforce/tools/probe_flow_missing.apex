@@ -79,12 +79,15 @@ try {
 }
 
 try {
-    for (FlowDefinitionView f : [
-            SELECT ApiName, Label, ProcessType, TriggerType,
-                   TriggerObjectOrEventLabel, VersionNumber
-            FROM FlowDefinitionView
-            WHERE IsActive = true AND TriggerObjectOrEventLabel = 'Account'
-            LIMIT 50]) {
+    // List assignment, never a SOQL for-loop: a for-loop opens a cursor and
+    // FlowDefinitionView rejects queryMore().
+    List<FlowDefinitionView> accountFlows = [
+        SELECT ApiName, Label, ProcessType, TriggerType,
+               TriggerObjectOrEventLabel, VersionNumber
+        FROM FlowDefinitionView
+        WHERE IsActive = true AND TriggerObjectOrEventLabel = 'Account'
+        LIMIT 50];
+    for (FlowDefinitionView f : accountFlows) {
         System.debug('ACCOUNT FLOW: ' + f.ApiName + ' | ' + f.Label
             + ' | ' + f.ProcessType + ' | ' + f.TriggerType);
     }

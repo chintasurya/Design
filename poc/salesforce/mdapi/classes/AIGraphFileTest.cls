@@ -455,6 +455,111 @@ private class AIGraphFileTest {
     }
 
     @IsTest
+    static void theDeclaredPodIsTheAuthorityNotTheProfile() {
+        // Several pod objects are created by automation, never by people, so
+        // the pod profile has no create permission on them. Deriving scope
+        // from create access is what hid HealthcareFacilityNetwork, which is
+        // the object most questions are actually about.
+        Set<String> declared = new Set<String>(AINetworkServicesPod.OBJECTS);
+        for (String automated : AINetworkServicesPod.CREATED_BY_AUTOMATION) {
+            System.assert(declared.contains(automated),
+                automated + ' is created by automation and must still be '
+                + 'declared, or it never reaches the graph: ' + declared);
+        }
+    }
+
+    @IsTest
+    static void podNamingRecognisesTheConventionsInUse() {
+        System.assert(AINetworkServicesPod.namedForPod('AHC_AccountTrigger'));
+        System.assert(AINetworkServicesPod.namedForPod('AHC_LeadTriggerHandler'));
+        System.assert(AINetworkServicesPod.namedForPod('NS_HFN_Generation'));
+        System.assert(AINetworkServicesPod.namedForPod(
+            'Network Services HFN Generation'));
+        System.assert(!AINetworkServicesPod.namedForPod('AccountTriggerHandler'),
+            'A class with no pod prefix is not the pod\'s by name. It can '
+            + 'still enter the graph by being called, which is the point of '
+            + 'the call edges.');
+
+        System.assert(AINetworkServicesPod.podRecordType('Network_Services'));
+        System.assert(AINetworkServicesPod.podRecordType('Network_Services_TX_CIN'));
+        System.assert(!AINetworkServicesPod.podRecordType('Network_Partner'),
+            'Matching the bare word "network" would have caught this.');
+    }
+
+    @IsTest
+    static void aHandlersHandlerIsReachableFromTheObject() {
+        // "How is an HFN generated" is answered by walking from the object to
+        // the trigger, to its handler, to the class the handler delegates to.
+        // Without call edges the chain stops at the trigger and the answer is
+        // the name of a file that contains two lines.
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'chain';
+        d.addNode('sobj:Account', 'SObject', 'Account', 'Account',
+            '{}', 'High', 'SCHEMA describe(Account)', 'Salesforce');
+        d.addNode('trigger:AHC_AccountTrigger', 'ApexTrigger',
+            'AHC_AccountTrigger', 'AHC_AccountTrigger', '{"pod":true}', 'High',
+            'METADATA ApexTrigger on Account', 'Salesforce');
+        d.addNode('apex:AHC_AccountTriggerHandler', 'ApexClass',
+            'AHC_AccountTriggerHandler', 'AHC_AccountTriggerHandler',
+            '{"pod":true}', 'High', 'METADATA ApexClass', 'Salesforce');
+        d.addNode('apex:HFNGenerationService', 'ApexClass',
+            'HFNGenerationService', 'HFNGenerationService', '{"pod":false}',
+            'High', 'METADATA ApexClass', 'Salesforce');
+        d.addEdge('trigger:AHC_AccountTrigger', 'TRIGGER_FIRES_ON_SOBJECT',
+            'sobj:Account', 'TableEnumOrId');
+        d.addEdge('trigger:AHC_AccountTrigger', 'TRIGGER_CALLS_APEX',
+            'apex:AHC_AccountTriggerHandler', 'class name in body');
+        d.addEdge('apex:AHC_AccountTriggerHandler', 'APEX_CALLS_APEX',
+            'apex:HFNGenerationService', 'class name in body');
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+        Map<String, Integer> hopOf = new Map<String, Integer>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:Account'}, 3, 50)) {
+            hopOf.put(h.node.id, h.hops);
+        }
+        System.assertEquals(1, hopOf.get('trigger:AHC_AccountTrigger'));
+        System.assertEquals(2, hopOf.get('apex:AHC_AccountTriggerHandler'),
+            'The handler is two hops from the object, through the trigger.');
+        System.assertEquals(3, hopOf.get('apex:HFNGenerationService'),
+            'The class that does the work is three hops out, and it shares no '
+            + 'name with the object. A keyword search cannot reach it.');
+    }
+
+    @IsTest
+    static void callEdgesAreWalkedBeforeColumns() {
+        // The same crowding problem as fields, now that a class can carry many
+        // call edges: behaviour has to be walked first or the budget is spent
+        // before the chain is followed.
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'ordering';
+        d.addNode('sobj:Account', 'SObject', 'Account', 'Account', '{}', 'High',
+            'SCHEMA', 'Salesforce');
+        for (Integer n = 0; n < 80; n++) {
+            d.addNode('field:Account.F' + n, 'Field', 'F' + n, 'F' + n,
+                '{}', 'Low', 'SCHEMA field', 'Salesforce');
+            d.addEdge('sobj:Account', 'SOBJECT_HAS_FIELD',
+                'field:Account.F' + n, 'describe');
+        }
+        d.addNode('trigger:AHC_AccountTrigger', 'ApexTrigger',
+            'AHC_AccountTrigger', 'AHC_AccountTrigger', '{}', 'High',
+            'METADATA', 'Salesforce');
+        d.addEdge('trigger:AHC_AccountTrigger', 'TRIGGER_FIRES_ON_SOBJECT',
+            'sobj:Account', 'TableEnumOrId');
+
+        AIGraphMemory g = AIGraphMemory.fromDocument(d);
+        Set<String> reached = new Set<String>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:Account'}, 1, 10)) {
+            reached.add(h.node.id);
+        }
+        System.assert(reached.contains('trigger:AHC_AccountTrigger'),
+            'Eighty columns must not bury the trigger: ' + reached);
+    }
+
+    @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;
         System.assert(AIServiceFactory.contextGraph() instanceof AIContextGraphFile);

@@ -12,8 +12,9 @@
  *
  * Every object is printed with the reason it qualified:
  *
+ *   [declared]  named on AINetworkServicesPod, which is the authority
  *   [profile]   the pod profile can create or edit it
- *   [recordtype] it carries an active record type with "network" in the name
+ *   [recordtype] it carries an active Network Services record type
  *   [permset]   only a permission set assigned to the pod's users grants it
  *   [dropped]   in scope, but the exporter skips it (history, share, feed,
  *               tag and change event objects are never graph nodes)
@@ -45,6 +46,18 @@ Set<String> recordTypeLower = new Set<String>();
 for (String o : scope.recordTypeObjects) { recordTypeLower.add(o.toLowerCase()); }
 Set<String> permsetLower = new Set<String>();
 for (String o : scope.permissionSetWritable) { permsetLower.add(o.toLowerCase()); }
+Set<String> declaredLower = new Set<String>();
+for (String o : scope.declaredObjects) { declaredLower.add(o.toLowerCase()); }
+
+System.debug('=== DECLARED POD (AINetworkServicesPod) ===');
+System.debug('declared names resolved to objects in this org: '
+    + scope.declaredObjects.size() + ' of '
+    + AINetworkServicesPod.OBJECTS.size());
+if (!scope.unresolvedDeclarations.isEmpty()) {
+    System.debug('NOT FOUND IN THIS ORG, fix the API names on '
+        + 'AINetworkServicesPod.OBJECTS: '
+        + String.join(scope.unresolvedDeclarations, ', '));
+}
 
 List<String> ordered = new List<String>(scope.owned);
 ordered.sort();
@@ -54,6 +67,7 @@ Integer graphable = 0;
 for (String apiName : ordered) {
     String key = apiName.toLowerCase();
     List<String> why = new List<String>();
+    if (declaredLower.contains(key))   { why.add('declared'); }
     if (writableLower.contains(key))   { why.add('profile'); }
     if (recordTypeLower.contains(key)) { why.add('recordtype'); }
     if (permsetLower.contains(key) && !writableLower.contains(key)) {
@@ -127,4 +141,46 @@ if (!permsetOnly.isEmpty()) {
     System.debug('SIGNAL: these are maintained by the pod\'s users but are not '
         + 'in the graph. If the pod owns any of them, the profile is the wrong '
         + 'scope signal for this org.');
+}
+
+
+// ---- record types and automation the pod claims ---------------------------
+System.debug('=== RECORD TYPES MATCHING THE POD ===');
+for (RecordType rt : [SELECT SobjectType, DeveloperName, Name
+                      FROM RecordType WHERE IsActive = true LIMIT 2000]) {
+    if (AINetworkServicesPod.podRecordType(rt.DeveloperName)) {
+        System.debug('  ' + rt.SobjectType + '.' + rt.DeveloperName
+            + '  ("' + rt.Name + '")');
+    }
+}
+
+System.debug('=== APEX NAMED FOR THE POD ===');
+for (ApexClass c : [SELECT Name FROM ApexClass
+                    WHERE NamespacePrefix = null ORDER BY Name LIMIT 400]) {
+    if (AINetworkServicesPod.namedForPod(c.Name)) {
+        System.debug('  class ' + c.Name);
+    }
+}
+for (ApexTrigger t : [SELECT Name, TableEnumOrId FROM ApexTrigger
+                      WHERE NamespacePrefix = null ORDER BY Name LIMIT 200]) {
+    System.debug('  trigger ' + t.Name + ' on ' + t.TableEnumOrId
+        + (AINetworkServicesPod.namedForPod(t.Name) ? '  [pod]' : ''));
+}
+
+System.debug('=== FLOWS NAMED FOR THE POD ===');
+try {
+    // List assignment, never a SOQL for-loop: a for-loop opens a cursor and
+    // FlowDefinitionView rejects queryMore().
+    List<FlowDefinitionView> activeFlows = [
+        SELECT ApiName, Label, ProcessType, TriggerObjectOrEventLabel
+        FROM FlowDefinitionView WHERE IsActive = true LIMIT 200];
+    for (FlowDefinitionView f : activeFlows) {
+        if (AINetworkServicesPod.namedForPod(f.ApiName)
+                || AINetworkServicesPod.namedForPod(f.Label)) {
+            System.debug('  flow ' + f.ApiName + ' | ' + f.ProcessType
+                + ' | trigger object: ' + f.TriggerObjectOrEventLabel);
+        }
+    }
+} catch (Exception e) {
+    System.debug('flow read failed: ' + e.getMessage());
 }

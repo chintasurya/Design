@@ -32,6 +32,17 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
      */
     private static final Integer MAX_BOUNDARY_OBJECTS = 150;
 
+    /** Apex read limits. Bodies are fetched in chunks so heap stays bounded. */
+    private static final Integer MAX_CLASSES = 400;
+    private static final Integer BODY_CHUNK = 25;
+
+    /**
+     * Where the Apex scan gives up, of the 60,000 ms an async transaction has.
+     * Stopping early and saying so beats a LimitException that loses the whole
+     * export, and beats finishing quietly with chains half walked.
+     */
+    private static final Integer CPU_BUDGET_MS = 40000;
+
     public class ScopeTooWideException extends Exception {}
 
     public void execute(QueueableContext ctx) {
@@ -87,9 +98,10 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         Map<String, String> orgByName = orgIndex();
         Set<String> boundaryIds = new Set<String>();
 
-        addTriggers(doc, known, labelToApi, orgByName, boundaryIds);
+        Map<String, Set<String>> triggerCalls =
+            addTriggers(doc, known, labelToApi, orgByName, boundaryIds);
         addFlows(doc, known, labelToApi, orgByName, boundaryIds);
-        addApexClasses(doc, known);
+        addApexClasses(doc, known, triggerCalls);
 
         if (!boundaryIds.isEmpty()) {
             doc.notes.add(boundaryIds.size() + ' object'
@@ -187,10 +199,10 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         }
 
         Integer n = 0;
-        for (String fieldName : fields.keySet()) {
+        for (String fieldName : fieldOrder(fields, apiName)) {
             if (n++ >= MAX_FIELDS_PER_OBJECT) {
                 doc.notes.add('Fields truncated at ' + MAX_FIELDS_PER_OBJECT
-                    + ' for ' + apiName);
+                    + ' for ' + apiName + ', custom fields kept first');
                 break;
             }
             Schema.DescribeFieldResult fd = fields.get(fieldName).getDescribe();
@@ -226,12 +238,54 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         }
     }
 
-    private static void addTriggers(AIGraphDocument doc, Set<String> known,
-                                    Map<String, String> labelToApi,
-                                    Map<String, String> orgByName,
-                                    Set<String> boundaryIds) {
+    /**
+     * Which fields to take, and in what order, when there are too many.
+     *
+     * Account, Contact, Lead, Opportunity, Case and Task carry hundreds of
+     * fields each and most belong to other pods. The pod's own data is in its
+     * custom fields, so those go first and standard fields fill what is left.
+     *
+     * This is a proxy for what was actually wanted, which is the fields a
+     * Network Services record type can see. Record type to field visibility
+     * runs through page layout assignments, and describe() does not expose
+     * those, so it needs the Metadata API. A proxy that admits to being one
+     * is worth more than a filter claiming a precision it does not have.
+     */
+    private static List<String> fieldOrder(
+            Map<String, Schema.SObjectField> fields, String apiName) {
+        List<String> ordered = new List<String>(fields.keySet());
+        if (!AINetworkServicesPod.TRIM_FIELDS_ON.contains(apiName.toLowerCase())
+                || fields.size() <= MAX_FIELDS_PER_OBJECT) {
+            return ordered;
+        }
+        List<String> custom = new List<String>();
+        List<String> standard = new List<String>();
+        for (String fieldName : ordered) {
+            if (fields.get(fieldName).getDescribe().isCustom()) {
+                custom.add(fieldName);
+            } else {
+                standard.add(fieldName);
+            }
+        }
+        custom.addAll(standard);
+        return custom;
+    }
+
+    /**
+     * Triggers, and the classes they hand off to.
+     *
+     * A trigger body is almost always two lines that call a handler, so the
+     * trigger alone answers nothing. The handler names are returned for the
+     * Apex scan to turn into edges, which is what makes AHC_AccountTrigger the
+     * start of a chain rather than a dead end.
+     */
+    private static Map<String, Set<String>> addTriggers(
+            AIGraphDocument doc, Set<String> known,
+            Map<String, String> labelToApi, Map<String, String> orgByName,
+            Set<String> boundaryIds) {
+        Map<String, Set<String>> handlerNames = new Map<String, Set<String>>();
         List<ApexTrigger> triggers = [
-            SELECT Name, TableEnumOrId, Status, ApiVersion
+            SELECT Name, Body, TableEnumOrId, Status, ApiVersion
             FROM ApexTrigger WHERE NamespacePrefix = null LIMIT 200];
         for (ApexTrigger t : triggers) {
             String onObject = resolveAnywhere(
@@ -243,13 +297,30 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
                     && !addBoundaryObject(doc, onObject, boundaryIds)) {
                 continue;
             }
+            Boolean pod = AINetworkServicesPod.namedForPod(t.Name);
             String id = 'trigger:' + t.Name;
             doc.addNode(id, 'ApexTrigger', t.Name, t.Name,
-                '{"status":"' + t.Status + '"}', 'High',
-                'METADATA ApexTrigger on ' + onObject, 'Salesforce');
+                '{"status":"' + t.Status + '","pod":' + pod + '}', 'High',
+                'METADATA ApexTrigger on ' + onObject
+                    + (pod ? ' · Network Services entry point' : ''),
+                'Salesforce');
             doc.addEdge(id, 'TRIGGER_FIRES_ON_SOBJECT', 'sobj:' + onObject,
                 'ApexTrigger.TableEnumOrId');
+
+            if (t.Body != null) {
+                // Every identifier in the body, lowercased. Which of them
+                // are real classes is not knowable here; the Apex scan holds
+                // that map and resolves them, which also fixes the casing.
+                Set<String> called = new Set<String>();
+                for (String token : t.Body.split('[^A-Za-z0-9_]+')) {
+                    if (token.length() > 3) {
+                        called.add(token.toLowerCase());
+                    }
+                }
+                handlerNames.put(t.Name, called);
+            }
         }
+        return handlerNames;
     }
 
     private static void addFlows(AIGraphDocument doc, Set<String> known,
@@ -283,11 +354,14 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
                 unresolved++;      // boundary budget spent
                 continue;
             }
+            Boolean pod = AINetworkServicesPod.namedForPod(f.ApiName)
+                       || AINetworkServicesPod.namedForPod(f.Label);
             String id = 'flow:' + f.ApiName;
             doc.addNode(id, 'Flow', f.Label, f.ApiName,
                 '{"processType":"' + f.ProcessType + '","version":'
-                    + f.VersionNumber + '}', 'High',
-                'METADATA Flow ' + f.ApiName + ' v' + f.VersionNumber,
+                    + f.VersionNumber + ',"pod":' + pod + '}', 'High',
+                'METADATA Flow ' + f.ApiName + ' v' + f.VersionNumber
+                    + (pod ? ' · Network Services automation' : ''),
                 'Salesforce');
             doc.addEdge(id, 'FLOW_UPDATES_SOBJECT', 'sobj:' + target,
                 'record-triggered on ' + f.TriggerObjectOrEventLabel);
@@ -362,42 +436,177 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         return read;
     }
 
-    private static void addApexClasses(AIGraphDocument doc, Set<String> known) {
-        List<ApexClass> classes = [
-            SELECT Name, Body, ApiVersion, LengthWithoutComments
+    /**
+     * Apex classes, what they touch, and what they call.
+     *
+     * Two changes from reading bodies for object names alone, both of which a
+     * question like "how is an HFN generated" depends on:
+     *
+     * Whole identifiers, not substrings. body.contains('Account') is true of a
+     * class that only mentions AccountingCode, which is the same fault that
+     * made "UPDATE" match the term "DATE". The body is split into identifier
+     * tokens once and matched against a map, which is both correct and cheaper
+     * than one contains() per object per class.
+     *
+     * Call edges. A trigger handler is useless on its own: the logic lives in
+     * the class it delegates to, and in the class that one delegates to. Those
+     * chains are now edges, so a traversal that starts at an object reaches
+     * the handler that writes it and then the classes behind that handler.
+     */
+    private static void addApexClasses(AIGraphDocument doc, Set<String> known,
+                                       Map<String, Set<String>> triggerCalls) {
+        // Headers first, bodies in chunks. Selecting several hundred bodies in
+        // one query puts megabytes of source on the heap before a single one
+        // has been read, and the heap is the binding constraint here.
+        List<ApexClass> headers = [
+            SELECT Id, Name, ApiVersion, LengthWithoutComments
             FROM ApexClass
             WHERE NamespacePrefix = null AND LengthWithoutComments < 40000
-            ORDER BY Name LIMIT 150];
-        Integer linked = 0;
-        for (ApexClass c : classes) {
-            if (c.Body == null) {
-                continue;
+            ORDER BY Name LIMIT :MAX_CLASSES];
+
+        Map<String, ApexClass> headerOf = new Map<String, ApexClass>();
+        Map<String, String> classByLower = new Map<String, String>();
+        List<Id> classIds = new List<Id>();
+        for (ApexClass c : headers) {
+            headerOf.put(c.Name, c);
+            classByLower.put(c.Name.toLowerCase(), c.Name);
+            classIds.add(c.Id);
+        }
+        Map<String, String> objectByLower = new Map<String, String>();
+        for (String apiName : known) {
+            objectByLower.put(apiName.toLowerCase(), apiName);
+        }
+
+        Map<String, Set<String>> objectRefs = new Map<String, Set<String>>();
+        Map<String, Set<String>> callRefs = new Map<String, Set<String>>();
+        Integer scanned = 0;
+        Boolean ranOut = false;
+
+        for (Integer offset = 0; offset < classIds.size(); offset += BODY_CHUNK) {
+            if (Limits.getCpuTime() > CPU_BUDGET_MS
+                    || Limits.getHeapSize() > Limits.getLimitHeapSize() / 2) {
+                ranOut = true;
+                break;
             }
-            List<String> references = new List<String>();
-            for (String apiName : known) {
-                if (c.Body.contains(apiName)) {
-                    references.add(apiName);
+            List<Id> chunk = new List<Id>();
+            for (Integer n = offset;
+                    n < classIds.size() && n < offset + BODY_CHUNK; n++) {
+                chunk.add(classIds[n]);
+            }
+            for (ApexClass c : [SELECT Id, Name, Body FROM ApexClass
+                                WHERE Id IN :chunk]) {
+                if (c.Body == null) {
+                    continue;
+                }
+                Set<String> objectsHit = new Set<String>();
+                Set<String> callsHit = new Set<String>();
+                String self = c.Name.toLowerCase();
+                for (String token : c.Body.split('[^A-Za-z0-9_]+')) {
+                    String key = token.toLowerCase();
+                    if (objectByLower.containsKey(key)) {
+                        objectsHit.add(objectByLower.get(key));
+                    } else if (classByLower.containsKey(key) && key != self) {
+                        callsHit.add(classByLower.get(key));
+                    }
+                }
+                c.Body = null;       // release heap before the next class
+                scanned++;
+                if (!objectsHit.isEmpty()) {
+                    objectRefs.put(c.Name, objectsHit);
+                }
+                if (!callsHit.isEmpty()) {
+                    callRefs.put(c.Name, callsHit);
                 }
             }
-            c.Body = null;    // release heap before the next class
-            if (references.isEmpty()) {
-                continue;     // unreachable by traversal, so not worth a node
-            }
-            Boolean isTest = c.Name.endsWithIgnoreCase('Test')
-                          || c.Name.startsWithIgnoreCase('Test');
-            String id = 'apex:' + c.Name;
-            doc.addNode(id, isTest ? 'TestClass' : 'ApexClass', c.Name, c.Name,
-                '{"apiVersion":' + c.ApiVersion + ',"test":' + isTest + '}',
-                c.LengthWithoutComments > 5000 ? 'High' : 'Medium',
-                'METADATA ApexClass ' + c.Name, 'Salesforce');
-            for (String apiName : references) {
-                doc.addEdge(id, 'APEX_REFERENCES_SOBJECT', 'sobj:' + apiName,
-                    'API name found in ApexClass.Body');
-            }
-            linked++;
         }
-        doc.notes.add(linked + ' of ' + classes.size() + ' Apex classes reference '
-            + 'a scoped object; the rest are omitted as unreachable');
+
+        // A node still has to earn its place with an edge, so work out what is
+        // touched before emitting anything. A class nothing calls and which
+        // touches nothing is unreachable by traversal and therefore noise.
+        Map<String, Set<String>> resolvedTriggerCalls =
+            new Map<String, Set<String>>();
+        for (String triggerName : triggerCalls.keySet()) {
+            Set<String> real = new Set<String>();
+            for (String candidate : triggerCalls.get(triggerName)) {
+                if (classByLower.containsKey(candidate)) {
+                    real.add(classByLower.get(candidate));
+                }
+            }
+            if (!real.isEmpty()) {
+                resolvedTriggerCalls.put(triggerName, real);
+            }
+        }
+
+        Set<String> touched = new Set<String>();
+        touched.addAll(objectRefs.keySet());
+        touched.addAll(callRefs.keySet());
+        for (Set<String> called : callRefs.values()) {
+            touched.addAll(called);
+        }
+        for (Set<String> called : resolvedTriggerCalls.values()) {
+            touched.addAll(called);
+        }
+
+        Integer emitted = 0;
+        for (String name : touched) {
+            ApexClass c = headerOf.get(name);
+            if (c == null) {
+                continue;
+            }
+            emitted++;
+            Boolean isTest = name.endsWithIgnoreCase('Test')
+                          || name.startsWithIgnoreCase('Test');
+            Boolean pod = AINetworkServicesPod.namedForPod(name);
+            doc.addNode('apex:' + name, isTest ? 'TestClass' : 'ApexClass',
+                name, name,
+                '{"apiVersion":' + c.ApiVersion + ',"test":' + isTest
+                    + ',"pod":' + pod + '}',
+                c.LengthWithoutComments > 5000 ? 'High' : 'Medium',
+                'METADATA ApexClass ' + name
+                    + (pod ? ' · named for the Network Services pod' : ''),
+                'Salesforce');
+        }
+
+        Integer callEdges = 0;
+        for (String name : objectRefs.keySet()) {
+            if (!touched.contains(name) || headerOf.get(name) == null) {
+                continue;
+            }
+            for (String apiName : objectRefs.get(name)) {
+                doc.addEdge('apex:' + name, 'APEX_REFERENCES_SOBJECT',
+                    'sobj:' + apiName, 'identifier in ApexClass.Body');
+            }
+        }
+        for (String name : callRefs.keySet()) {
+            if (headerOf.get(name) == null) {
+                continue;
+            }
+            for (String called : callRefs.get(name)) {
+                if (headerOf.get(called) == null) {
+                    continue;
+                }
+                doc.addEdge('apex:' + name, 'APEX_CALLS_APEX',
+                    'apex:' + called, 'class name in ApexClass.Body');
+                callEdges++;
+            }
+        }
+        for (String triggerName : resolvedTriggerCalls.keySet()) {
+            for (String called : resolvedTriggerCalls.get(triggerName)) {
+                doc.addEdge('trigger:' + triggerName, 'TRIGGER_CALLS_APEX',
+                    'apex:' + called, 'class name in ApexTrigger.Body');
+                callEdges++;
+            }
+        }
+
+        doc.notes.add(emitted + ' Apex classes reachable from a scoped '
+            + 'object or a call chain, out of ' + scanned + ' scanned of '
+            + headers.size() + ' readable; ' + callEdges + ' call edges, which '
+            + 'is what lets a handler\'s handler be found');
+        if (ranOut) {
+            doc.notes.add('The Apex scan stopped early on CPU or heap after '
+                + scanned + ' classes. Call chains past that point are absent '
+                + 'from this graph rather than known to be empty');
+        }
     }
 
     // ----------------------------------------------------------------- helpers

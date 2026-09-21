@@ -87,6 +87,39 @@ deploy to sandbox → run tests → Jira status moves to QA / Testing
 
 ---
 
+## 2a. The Network Services pod, as the pod owner defined it
+
+Declared in `AINetworkServicesPod`, not inferred. The profile was never going
+to express this: several of these objects are written only by automation, so
+the pod profile has no create permission on them and they fell out of scope
+while being what the questions are about.
+
+**Objects.** The generation chain — Account (a child Account is an Account)
+→ HealthcareProvider → HealthcareFacility → HealthcarePractitionerFacility
+→ CareProviderFacilitySpecialty → ContractPaymentAgreement — plus
+HealthcareFacilityNetwork (HFN), Lead, Contact, Opportunity, Task, Case and
+Credentialing Application.
+
+**Created by automation, never typed:** HFN, HealthcarePractitionerFacility,
+CareProviderFacilitySpecialty, ContractPaymentAgreement.
+
+**Record types:** `Network Services` and `Network Services TX CIN`, on Lead and
+Account and on most pod objects. Matched on `networkservices`, not the bare
+word `network`, which would also catch an unrelated Network Partner.
+
+**Automation naming:** flows and Apex are prefixed `Network Services`, `NS` or
+`AHC`. Entry triggers are `AHC_AccountTrigger` and `AHC_LeadTrigger`.
+
+**HFN generation** is the question most often asked. It happens in Apex in some
+scenarios and in Flow in others. The Apex half is readable today and its call
+chains are now edges. **The Flow half is not readable at all without the
+Tooling API** — see section 8, which is now the blocking item rather than a
+nice-to-have.
+
+The declared names are logical, not API names: resolution ignores case, spaces,
+underscores and a trailing `__c`. Anything that does not resolve is **named in
+the scope note and in `tools/print_scope.apex`**, never dropped silently.
+
 ## 3. Architecture
 
 ### The eight layers (the agreed design)
@@ -135,9 +168,14 @@ AIGraphDocument
 Field names are deliberate: `nodeType` not `type`, `fromId`/`toId` not
 `from`/`to`, `sourceSystem` not `system` — all reserved words in Apex.
 
-Six edge types are emitted today:
+Eight edge types are emitted today:
 `SOBJECT_HAS_FIELD`, `SOBJECT_HAS_RECORDTYPE`, `SOBJECT_RELATES_TO_SOBJECT`,
-`TRIGGER_FIRES_ON_SOBJECT`, `FLOW_UPDATES_SOBJECT`, `APEX_REFERENCES_SOBJECT`.
+`TRIGGER_FIRES_ON_SOBJECT`, `FLOW_UPDATES_SOBJECT`, `APEX_REFERENCES_SOBJECT`,
+`TRIGGER_CALLS_APEX`, `APEX_CALLS_APEX`.
+
+The last two are what make a handler's handler reachable. A trigger body is two
+lines that call a handler, so without them a question about what happens to an
+Account returns the name of a file containing nothing.
 
 Nodes with no edge are dropped — an unreachable node is noise.
 
@@ -199,7 +237,8 @@ poc/
 | `AIGraphFileStore` | ContentVersion persistence; `save/load/describe`; 2.5 MB cap |
 | `AIGraphMemory` | Layer 7 in-memory graph; `anchorObject`, `seeds`, `blastRadius`; measures heap |
 | `AIGraphSalesforceExport` | Queueable exporter; caps at 220 objects / 200 fields each |
-| `AINetworkServicesScope` | Pod footprint from profile object access + record types |
+| `AINetworkServicesPod` | **The pod, declared.** Objects, record type tokens, automation name prefixes, entry triggers. The authority |
+| `AINetworkServicesScope` | Resolves the declared pod against the org, with the profile and record types as corroboration |
 | `AIRequestIntent` | Rule-based request parser (action, type, name, object, data type, shape) |
 | `AIReuseAnalyzer` | Verdicts: Already Exists / Safe to Create / Impact Assessed / Needs Clarification / Likely Already Handled / Needs Review |
 | `AIContextGraphFile` | Layer 8 adapter — object-anchored seeding, keyword fallback |
@@ -376,9 +415,13 @@ The console should open with two doors:
 Status arc to implement: Ticket Created → In Progress → generate → deploy → QA.
 If the ticket is not in the current sprint it goes to the next sprint.
 
-### P4 — Tooling API connection
-Unlocks flow internals, real dependency edges, validation rules, LWC bundles and
-code coverage. Setup steps in section 8.
+### P4 — Tooling API connection — NOW BLOCKING, not optional
+It was ranked fourth when the open question was reuse of fields and objects. It
+is now the thing standing between this POC and the questions the pod actually
+asks, because "how is an HFN generated" is answered half in Apex and half in
+Flow, and **Flow internals cannot be read without it**. Apex bodies are plain
+SOQL and their call chains are already edges; flows are opaque beyond their
+trigger object. Setup steps in section 8, roughly 15 minutes with Setup access.
 
 ### P5 — Jira and Confluence write services
 Ticket creation and page creation. Credential fields already exist on
