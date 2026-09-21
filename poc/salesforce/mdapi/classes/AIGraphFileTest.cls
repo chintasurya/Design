@@ -683,6 +683,151 @@ private class AIGraphFileTest {
             AIRequestIntent.parse('generate an HFN for each facility').action);
     }
 
+    /** An object with more fields than the traversal budget can hold. */
+    private static AIGraphDocument crowdedObject() {
+        AIGraphDocument d = new AIGraphDocument();
+        d.source = 'SALESFORCE';
+        d.snapshotId = 'crowded';
+        d.addNode('sobj:HealthcareFacility', 'SObject', 'Healthcare Facility',
+            'HealthcareFacility', '{"fieldCount":135}', 'High',
+            'SCHEMA describe(HealthcareFacility) · 135 fields', 'Salesforce');
+        // The field the request will ask for, buried among 134 others.
+        d.addNode('field:HealthcareFacility.Effective_From_Date__c', 'Field',
+            'Effective From Date', 'Effective_From_Date__c',
+            '{"dataType":"DATE","custom":true}', 'Low', 'SCHEMA field · DATE',
+            'Salesforce');
+        d.addEdge('sobj:HealthcareFacility', 'SOBJECT_HAS_FIELD',
+            'field:HealthcareFacility.Effective_From_Date__c', 'describe');
+        for (Integer n = 0; n < 134; n++) {
+            String id = 'field:HealthcareFacility.Filler' + n + '__c';
+            d.addNode(id, 'Field', 'Filler ' + n, 'Filler' + n + '__c',
+                '{"dataType":"STRING"}', 'Low', 'SCHEMA field', 'Salesforce');
+            d.addEdge('sobj:HealthcareFacility', 'SOBJECT_HAS_FIELD', id,
+                'describe');
+        }
+        for (Integer n = 0; n < 17; n++) {
+            String id = 'apex:Unrelated' + n;
+            d.addNode(id, 'ApexClass', 'Unrelated' + n, 'Unrelated' + n, '{}',
+                'Medium', 'METADATA ApexClass', 'Salesforce');
+            d.addEdge(id, 'APEX_REFERENCES_SOBJECT', 'sobj:HealthcareFacility',
+                'identifier in ApexClass.Body');
+        }
+        d.addNode('flow:NS_HF_Effective_Dates', 'Flow',
+            'Network Services SFL Healthcare Facility - Effective Dates',
+            'NS_HF_Effective_Dates', '{"pod":true}', 'High',
+            'METADATA Flow v1 · Network Services automation', 'Salesforce');
+        d.addEdge('flow:NS_HF_Effective_Dates', 'FLOW_UPDATES_SOBJECT',
+            'sobj:HealthcareFacility', 'record-triggered');
+        return d;
+    }
+
+    @IsTest
+    static void existenceIsNotDecidedByTheTraversalBudget() {
+        // Reported verbatim: "Create Effective From Date field in
+        // Healthcarefacility object" returned Safe to Create while the field
+        // was in the graph. The walk stops at a node budget, the field did not
+        // fit inside it, and the duplicate check searched the survivors.
+        AIGraphMemory g = AIGraphMemory.fromDocument(crowdedObject());
+
+        Set<String> walked = new Set<String>();
+        for (AIGraphMemory.Hit h : g.blastRadius(
+                new List<String>{'sobj:HealthcareFacility'}, 1, 60)) {
+            walked.add(h.node.id);
+        }
+        System.assert(walked.size() <= 60,
+            'The budget is the point of this test: ' + walked.size());
+
+        // Whether the field survives the budget is incidental. Whether the
+        // direct lookup finds it is not.
+        List<AIGraphDocument.GraphNode> found = g.attachedMatches(
+            'sobj:HealthcareFacility', 'Effective From Date', 'Field');
+        System.assertEquals(1, found.size(),
+            'The field is attached to the object, so it must be found '
+            + 'regardless of what the traversal had room for: ' + found);
+        System.assertEquals('field:HealthcareFacility.Effective_From_Date__c',
+            found[0].id);
+    }
+
+    @IsTest
+    static void anExistingFieldIsFoundHoweverTheRequestSpellsIt() {
+        AIGraphMemory g = AIGraphMemory.fromDocument(crowdedObject());
+        for (String spelling : new List<String>{
+                'Effective From Date', 'effective from date',
+                'Effective_From_Date__c', 'EffectiveFromDate'}) {
+            System.assertEquals(1,
+                g.attachedMatches('sobj:HealthcareFacility', spelling, 'Field')
+                    .size(),
+                'Spelling must not decide the answer: "' + spelling + '"');
+        }
+        System.assertEquals(0,
+            g.attachedMatches('sobj:HealthcareFacility', 'Termination Reason',
+                              'Field').size(),
+            'A field that is genuinely absent must stay absent.');
+    }
+
+    @IsTest
+    static void theReportedFalseClearanceIsNowRefused() {
+        // The whole path, as the console runs it: graph file, request record,
+        // adapter, analyser.
+        AIServiceFactory.graphOverride = null;
+        AIGraphFileStore.save(AIGraphFileStore.COMBINED, crowdedObject());
+
+        AI_Change_Request__c req = AIChangeRequestService.create(
+            'Create Effective From Date field in Healthcarefacility object');
+
+        Test.startTest();
+        AIContextSlice slice = new AIContextGraphFile().query(req);
+        Test.stopTest();
+
+        AIRequestIntent intent = AIRequestIntent.parse(req.Request_Text__c);
+        AIReuseAnalyzer.Verdict v = AIReuseAnalyzer.assess(intent, slice.findings);
+
+        System.assertEquals(AIReuseAnalyzer.ALREADY_EXISTS, v.outcome,
+            'The field is on the object. Nothing may clear this: ' + v.outcome
+            + ' · ' + v.headline);
+        System.assertEquals(true, v.blocksCreation);
+
+        Boolean citesTheField = false;
+        for (String e : v.evidence) {
+            if (e.contains('Effective_From_Date__c')) {
+                citesTheField = true;
+            }
+        }
+        System.assert(citesTheField,
+            'It must name the field it found: ' + v.evidence);
+    }
+
+    @IsTest
+    static void addingAColumnDoesNotListEveryClassTouchingTheObject() {
+        AIServiceFactory.graphOverride = null;
+        AIGraphFileStore.save(AIGraphFileStore.COMBINED, crowdedObject());
+
+        AI_Change_Request__c req = AIChangeRequestService.create(
+            'Create Termination Reason field in Healthcarefacility object');
+
+        Test.startTest();
+        AIContextSlice slice = new AIContextGraphFile().query(req);
+        Test.stopTest();
+
+        Integer classes = 0;
+        Boolean sawTheFlow = false;
+        for (AIContextSlice.Finding f : slice.findings) {
+            if (f.nodeType == 'ApexClass' || f.nodeType == 'TestClass') {
+                classes++;
+            }
+            if (f.nodeId == 'flow:NS_HF_Effective_Dates') {
+                sawTheFlow = true;
+            }
+        }
+        System.assertEquals(0, classes,
+            'Adding a column is not a code change. A class that merely '
+            + 'mentions the object is further away than the question reaches, '
+            + 'and listing them buries the answer.');
+        System.assert(sawTheFlow,
+            'Automation that RUNS on the object is what needs regression, so '
+            + 'it stays.');
+    }
+
     @IsTest
     static void factoryUsesTheFileBackedGraph() {
         AIServiceFactory.graphOverride = null;

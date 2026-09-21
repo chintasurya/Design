@@ -97,12 +97,16 @@ public with sharing class AIReuseAnalyzer {
                 v.evidence.add(f.nodeId + ' · ' + f.provenance);
             }
         }
-        Integer automationCount = countTypes(all, AUTOMATION);
-        v.recommendation = automationCount == 0
+        // Count what is actually on screen. Saying "17 automation components"
+        // over a list showing four is the kind of small dishonesty that makes
+        // someone stop trusting the rest of it.
+        Integer runsOnIt = countTypes(all,
+            new Set<String>{ 'Flow', 'ApexTrigger', 'ValidationRule' });
+        v.recommendation = runsOnIt == 0
             ? 'Approve to generate the change.'
-            : automationCount + ' automation component'
-              + (automationCount == 1 ? '' : 's') + ' on this object will need regression '
-              + 'coverage once the change lands.';
+            : runsOnIt + ' automation component'
+              + (runsOnIt == 1 ? '' : 's') + ' run on this object and will need '
+              + 'regression coverage once the change lands.';
         return v;
     }
 

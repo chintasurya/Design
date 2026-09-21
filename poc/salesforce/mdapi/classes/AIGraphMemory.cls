@@ -170,6 +170,86 @@ public with sharing class AIGraphMemory {
     }
 
     /**
+     * Everything directly attached to one node whose name relates to a wanted
+     * name, found by scanning that node's own edges.
+     *
+     * This exists because asking "does this already exist" must never be
+     * answered from a traversal. blastRadius stops at a node budget, and on
+     * HealthcareFacility — 135 fields against a budget of 60, with automation
+     * walked first — roughly seven fields in ten never entered the result. The
+     * duplicate check then searched what survived and reported Safe to Create
+     * for a field that was sitting in the graph the whole time.
+     *
+     * A bounded sample can support "here is what this touches". It cannot
+     * support "this does not exist", because the thing not being in the sample
+     * says nothing about whether it is in the org. So existence gets its own
+     * lookup: one pass over the edges of a single node, complete by
+     * construction, with no budget anywhere near it.
+     *
+     * Returns exact matches first, then names that contain or are contained by
+     * the wanted one, so the caller can treat the two differently.
+     */
+    public List<AIGraphDocument.GraphNode> attachedMatches(String anchorId,
+                                                           String wantedName,
+                                                           String nodeType) {
+        List<AIGraphDocument.GraphNode> exact =
+            new List<AIGraphDocument.GraphNode>();
+        List<AIGraphDocument.GraphNode> near =
+            new List<AIGraphDocument.GraphNode>();
+        if (String.isBlank(anchorId) || String.isBlank(wantedName)) {
+            return exact;
+        }
+        String wanted = comparable(wantedName);
+        if (wanted.length() < 3) {
+            return exact;
+        }
+
+        Set<String> seen = new Set<String>();
+        for (AIGraphDocument.GraphEdge e : edgesTouching(anchorId)) {
+            String otherId = e.fromId == anchorId ? e.toId : e.fromId;
+            if (!seen.add(otherId)) {
+                continue;
+            }
+            AIGraphDocument.GraphNode n = nodesById.get(otherId);
+            if (n == null) {
+                continue;
+            }
+            if (String.isNotBlank(nodeType) && nodeType != 'Unknown'
+                    && n.nodeType != nodeType) {
+                continue;
+            }
+            String byApi = comparable(n.apiName);
+            String byName = comparable(n.name);
+            if (byApi == wanted || byName == wanted) {
+                exact.add(n);
+            } else if ((byApi.length() > 2 && byApi.contains(wanted))
+                    || (byName.length() > 2 && byName.contains(wanted))
+                    || (wanted.contains(byApi) && byApi.length() > 3)
+                    || (wanted.contains(byName) && byName.length() > 3)) {
+                near.add(n);
+            }
+        }
+        exact.addAll(near);
+        return exact;
+    }
+
+    /**
+     * A name reduced to what matters for comparison: lower case, no
+     * punctuation, and without the custom-object suffix, so "Effective From
+     * Date", "Effective_From_Date__c" and "effectivefromdate" are one string.
+     */
+    private static String comparable(String value) {
+        if (String.isBlank(value)) {
+            return '';
+        }
+        String v = value.toLowerCase().trim();
+        if (v.endsWith('__c')) {
+            v = v.substring(0, v.length() - 3);
+        }
+        return v.replaceAll('[^a-z0-9]', '');
+    }
+
+    /**
      * Split a name into whole words, including camel case boundaries, so that
      * matching can respect word edges.
      *

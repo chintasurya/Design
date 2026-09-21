@@ -106,22 +106,53 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
         if (intent.requestShape == 'Behaviour') {
             skipTypes = new Set<String>{ 'Field', 'RecordType' };
         }
+        // Does it already exist? Asked directly, before any traversal, and
+        // answered from the anchor's own edges rather than from whatever fits
+        // inside the node budget. An object with 135 fields against a budget
+        // of 60 left seven fields in ten outside the walk, and the duplicate
+        // check then searched the survivors and cleared a field that was in
+        // the graph all along.
+        Set<String> alreadyAdded = new Set<String>();
+        Integer exactHits = 0;
+        if (String.isNotBlank(intent.targetName) && !seeds.isEmpty()) {
+            for (AIGraphDocument.GraphNode n : graph.attachedMatches(
+                    seeds[0].id, intent.targetName, intent.targetType)) {
+                if (!alreadyAdded.add(n.id)) {
+                    continue;
+                }
+                slice.findings.add(AIContextSlice.build(
+                    n.id, n.nodeType, n.name,
+                    'Already on ' + seeds[0].name + ', and named like the '
+                        + 'request', 'Direct', n.riskTier, n.sourceSystem,
+                    n.provenance));
+                exactHits++;
+            }
+        }
+
         List<AIGraphMemory.Hit> hits =
             graph.blastRadius(seedIds, hops, MAX_NODES, skipTypes);
         Integer beforeFilter = hits.size();
 
         for (AIGraphMemory.Hit h : inReadingOrder(relevant(hits, intent))) {
+            if (!alreadyAdded.add(h.node.id)) {
+                continue;
+            }
             slice.findings.add(AIContextSlice.build(
                 h.node.id, h.node.nodeType, h.node.name, h.path,
                 impactOf(h.hops), h.node.riskTier, h.node.sourceSystem,
                 h.node.provenance));
         }
-        Integer dropped = beforeFilter - slice.findings.size();
+        Integer dropped = beforeFilter - (slice.findings.size() - exactHits);
 
         slice.summary = 'Read: ' + intent.summary
             + ' · searched from ' + seedBasis
+            + (exactHits > 0
+               ? ' · ' + exactHits + ' component'
+                 + (exactHits == 1 ? '' : 's') + ' already on that object '
+                 + 'match the name asked for'
+               : '')
             + ' · ' + slice.findings.size() + ' component'
-            + (slice.findings.size() == 1 ? '' : 's') + ' touch this'
+            + (slice.findings.size() == 1 ? '' : 's') + ' shown'
             + (dropped > 0 ? ', ' + dropped + ' unrelated hidden' : '')
             + ' · out of ' + graph.nodeCount + ' components in the Network '
             + 'Services graph · ' + graph.heapNote();
@@ -148,8 +179,21 @@ public with sharing class AIContextGraphFile implements AIContextGraphService {
             }
         }
 
+        // Adding or changing a column is not a code change. What matters is
+        // the object and the automation that RUNS on it, because that is what
+        // needs regression. A class that merely mentions the object somewhere
+        // in its body is a step further away than the question reaches, and
+        // listing thirty of them buries the one row that answers it.
+        Boolean schemaChange = intent.requestShape == 'Component'
+            && (intent.targetType == 'Field' || intent.targetType == 'RecordType');
+
         for (AIGraphMemory.Hit h : hits) {
             String nodeType = h.node.nodeType;
+
+            if (schemaChange
+                    && (nodeType == 'ApexClass' || nodeType == 'TestClass')) {
+                continue;
+            }
 
             // Automation and the anchor object always matter.
             if (nodeType != 'Field' && nodeType != 'RecordType') {

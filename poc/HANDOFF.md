@@ -656,6 +656,26 @@ hold.
   and produces a directory rather than an answer. The pod's real vocabulary is
   now listed: terminate, expire, deactivate, close, cancel, archive, suspend,
   renew, generate, populate, prevent and friends.
+- **Existence must never be inferred from a bounded sample.** *"Create
+  Effective From Date field in Healthcarefacility object"* returned **Safe to
+  Create** for a field that was in the graph. `blastRadius` stops at
+  `MAX_NODES = 60`; HealthcareFacility has **135 fields and 17 automation
+  components**, and behaviour edges are walked first, so roughly **seven fields
+  in ten never entered the result** — and `exactMatches()` then searched the
+  survivors. Which fields survived depended on map iteration order, so the
+  verdict was effectively luck. A bounded walk can support *"here is what this
+  touches"*; it can never support *"this does not exist"*, because absence from
+  a sample says nothing about absence from the org. Existence now has its own
+  lookup: `AIGraphMemory.attachedMatches()` scans the anchor's own edges,
+  complete by construction, with no budget anywhere near it.
+- **Adding a column is not a code change.** The same request listed 32
+  components, most of them Apex classes that merely mention the object
+  somewhere in their body. For a Field or RecordType request the blast radius
+  that matters is the object and the automation that **runs on** it, which is
+  what needs regression; a class that references the object is a step further
+  away than the question reaches. Those rows are dropped for schema changes,
+  and the recommendation counts flows and triggers rather than everything, so
+  the number in the sentence matches the list underneath it.
 - **Rows are read by both audiences.**
   `apex:AHC_TestDataFactory -[APEX_REFERENCES_SOBJECT]-> sobj:account` is
   legible to whoever wrote the exporter and to nobody else. Findings now carry
