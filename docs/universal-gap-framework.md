@@ -127,3 +127,39 @@ Four or more yes is a strong fit. Healthcare, telecom, automotive aftersales, fi
 Build the core once, sell the pack per industry. A new market is a five part declaration plus a set of connectors, not a new build. That is what turns a delivered project into a repeatable practice, and it is the reason to spend the extra effort now on keeping L6 to L9 free of any domain vocabulary.
 
 Rebuild the deck with `node scripts/build-universal-deck.js docs/universal-gap-framework.pptx` (requires `pptxgenjs`, and `scripts/trenda-widths.json` for text measurement).
+
+---
+
+## 7. The combined deck, and the questions that follow it
+
+`docs/universal-gap-framework-combined.pptx` is the presentation order: the three universal slides, a transition, the two worked architectures, and a closing slide on platform and technology.
+
+| # | Slide |
+|---|---|
+| 1 | Core and pack: what stays the same, what every industry declares |
+| 2 | The same model, four industries |
+| 3 | Fit, limits and technology |
+| 4 | **Transition:** one framework, two solutions, for reference |
+| 5 | Sample architecture: engineering delivery |
+| 6 | Sample architecture: clinical network |
+| 7 | **Platform:** where it runs, what it is written in, which model |
+
+### Slide 7, in text
+
+**Where does it run?** Any cloud or none: AWS, Azure, GCP, private cloud or on premise. Packaged as containers, so it lands in whatever is already operated. Batch on a schedule rebuilds the graph, an API service answers queries. No managed service is assumed anywhere in the design. *If it runs Python and containers, it runs this.*
+
+**Where does the data live?** Object storage (S3, Azure Blob, Google Cloud Storage), graph store (Neo4j, TigerGraph, Neptune, Memgraph), warehouse (Snowflake, BigQuery, Databricks, Synapse), or Postgres where the graph is small enough to sit there. *The snapshot is vendor neutral JSON, so the store is a swap, not a rewrite.*
+
+**What is it written in?** Python is the core: ingestion, identity resolution, derived edges and the gap engines. Standard libraries and open packages, no proprietary runtime. Orchestrated by whatever is already running, from Airflow to cron. Configuration is data, so ontology shapes, specifications and thresholds are files rather than code. *A new industry ships as configuration and connectors, not a new codebase.*
+
+**Which AI model?** Claude, Gemini, GPT and Codex, or an open weights model, behind one adapter. The model turns a question into a traversal and evidence into a sentence. It does not decide the answer: the traversal computes it and the citation proves it. Model choice can differ per environment and per sensitivity rule. *Swap the model and the answers do not change. That is the test.*
+
+### Three things required of any choice
+
+1. **A store that can traverse**, or every hop is paid for in hand written SQL.
+2. **An endpoint under the right agreement** where regulated data is in play, or the model sees aggregates only.
+3. **Reproducibility from a snapshot id**, so any answer replays at a date whatever the stack underneath.
+
+The framework is open by construction. Every vendor named is an example, not a dependency.
+
+Rebuild the combined deck with `python3 scripts/extend_combined_deck.py <merged-source.pptx> docs/universal-gap-framework-combined.pptx`. It fills the transition slide and appends the platform slide, leaving the two architecture posters untouched.
