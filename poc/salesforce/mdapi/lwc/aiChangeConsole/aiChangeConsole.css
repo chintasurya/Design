@@ -114,3 +114,9 @@
     max-height: 14rem;
     overflow-y: auto;
 }
+
+/* The model question, which only exists after the first gate is passed. */
+.modelchoice {
+    border-left: 3px solid #0176d3;
+    background: #f3f8fe;
+}

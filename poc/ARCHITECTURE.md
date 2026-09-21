@@ -93,7 +93,7 @@ objects at all**.
 
          ┌────────────────────────────────────────────────────────────────────┐
          │ aiChangeConsole  (LWC)                                             │
-         │ request entry · Codex | Claude | Gemini · both approval gates      │
+         │ request entry · both approval gates · model asked after gate 1     │
          └────────────────────────────────────────────────────────────────────┘
                                             │
                                             ▼

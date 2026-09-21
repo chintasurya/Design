@@ -145,8 +145,7 @@ private class AIGraphFileTest {
 
     @IsTest
     static void contextServiceReportsAnUnbuiltGraph() {
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Review Widget', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Review Widget');
         AIContextSlice slice = new AIContextGraphFile().query(req);
         System.assertEquals(0, slice.findings.size());
         System.assert(slice.summary.contains('not been exported'),

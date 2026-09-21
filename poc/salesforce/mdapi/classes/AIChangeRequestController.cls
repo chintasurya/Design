@@ -138,10 +138,28 @@ public with sharing class AIChangeRequestController {
         return (Integer) (System.currentTimeMillis() - t0);
     }
 
+    /**
+     * Start a request from the sentence alone: no type, no model.
+     *
+     * Both used to be asked for on the entry screen. The type is what the
+     * analysis is for, and the model is irrelevant until there is something
+     * worth generating.
+     */
     @AuraEnabled
-    public static Id createRequest(String requestText, String requestType, String model) {
+    public static Id createRequest(String requestText) {
         try {
-            return AIChangeRequestService.create(requestText, requestType, model).Id;
+            return AIChangeRequestService.create(requestText).Id;
+        } catch (Exception e) {
+            throw asAura(e);
+        }
+    }
+
+    /** Which model to ask for the logic. Only offered after gate 1. */
+    @AuraEnabled
+    public static ConsoleView chooseModel(Id requestId, String model) {
+        try {
+            AIChangeRequestService.chooseModel(requestId, model);
+            return getView(requestId);
         } catch (Exception e) {
             throw asAura(e);
         }

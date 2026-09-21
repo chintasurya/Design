@@ -6,6 +6,7 @@ import stepScope from '@salesforce/apex/AIChangeRequestController.stepScope';
 import stepSearch from '@salesforce/apex/AIChangeRequestController.stepSearch';
 import stepAssess from '@salesforce/apex/AIChangeRequestController.stepAssess';
 import approveAnalysis from '@salesforce/apex/AIChangeRequestController.approveAnalysis';
+import chooseModel from '@salesforce/apex/AIChangeRequestController.chooseModel';
 import approveCode from '@salesforce/apex/AIChangeRequestController.approveCode';
 import rejectRequest from '@salesforce/apex/AIChangeRequestController.rejectRequest';
 import getView from '@salesforce/apex/AIChangeRequestController.getView';
@@ -42,8 +43,6 @@ export default class AiChangeConsole extends LightningElement {
     @track steps = [];
     requestText = '';
     submittedText = '';
-    requestType = 'Update Existing';
-    model = 'Codex';
     busy = false;
     stepsExpanded = false;
     totalMs = 0;
@@ -181,18 +180,33 @@ export default class AiChangeConsole extends LightningElement {
     findingColumns = FINDING_COLUMNS;
     testColumns = TEST_COLUMNS;
 
-    get typeOptions() {
-        return [
-            { label: 'Change something that exists', value: 'Update Existing' },
-            { label: 'Add something new', value: 'New Enhancement' }
-        ];
-    }
-
     get models() {
         return ['Codex', 'Claude', 'Gemini'].map((name) => ({
             name,
-            variant: this.model === name ? 'brand' : 'neutral'
+            variant: this.chosenModel === name ? 'brand' : 'neutral'
         }));
+    }
+
+    /** Whatever is on the record, so a refresh does not lose the choice. */
+    get chosenModel() {
+        return this.view ? this.view.request.Model__c : null;
+    }
+
+    /**
+     * The question belongs here and nowhere earlier. Before the analysis is
+     * approved the answer may well be that no model is needed at all.
+     */
+    get atModelChoice() {
+        return this.status === 'Ticket Created';
+    }
+
+    get modelChoiceNote() {
+        return this.chosenModel
+            ? 'The analysis is approved. Pick a different model if you want to '
+              + 'change it.'
+            : 'The analysis is approved and the evidence above is what the '
+              + 'prompt would be built from. Nothing has been sent anywhere '
+              + 'yet.';
     }
 
     get hasRequest() {
@@ -339,7 +353,9 @@ export default class AiChangeConsole extends LightningElement {
             return 'This would duplicate something that already exists. Approve only if you intend to override that.';
         }
         return this.atAnalysisGate
-            ? 'Approve to raise a Jira ticket and build the prompt from these components only'
+            ? 'Approve to accept this evidence as the basis for the change. '
+              + 'Only these components would go into the prompt, not the whole '
+              + 'org. The Jira write-back is not built yet.'
             : 'Approve to deploy the generated change to this sandbox';
     }
 
@@ -351,12 +367,25 @@ export default class AiChangeConsole extends LightningElement {
         this.requestText = event.target.value;
     }
 
-    handleType(event) {
-        this.requestType = event.detail.value;
-    }
-
-    handleModel(event) {
-        this.model = event.target.dataset.model;
+    async handleChooseModel(event) {
+        if (!this.view) {
+            return;
+        }
+        const picked = event.target.dataset.model;
+        this.busy = true;
+        try {
+            this.view = await chooseModel({
+                requestId: this.view.request.Id,
+                model: picked
+            });
+            this.toast(`${picked} recorded`,
+                'Nothing has been sent to it. Generation is not built yet.',
+                'success');
+        } catch (error) {
+            this.toast('Could not record the model', this.messageOf(error), 'error');
+        } finally {
+            this.busy = false;
+        }
     }
 
     handleReset() {
@@ -390,9 +419,7 @@ export default class AiChangeConsole extends LightningElement {
 
         try {
             const requestId = await createRequest({
-                requestText: this.requestText,
-                requestType: this.requestType,
-                model: this.model
+                requestText: this.requestText
             });
 
             for (let i = 0; i < PIPELINE.length; i++) {

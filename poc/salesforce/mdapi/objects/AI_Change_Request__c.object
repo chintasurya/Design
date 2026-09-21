@@ -54,7 +54,7 @@
     <fields>
         <fullName>Model__c</fullName>
         <label>Model</label>
-        <required>true</required>
+        <required>false</required>
         <type>Picklist</type>
         <valueSet>
             <restricted>true</restricted>
@@ -62,7 +62,7 @@
                 <sorted>false</sorted>
                 <value>
                     <fullName>Codex</fullName>
-                    <default>true</default>
+                    <default>false</default>
                     <label>Codex</label>
                 </value>
                 <value>

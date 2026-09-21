@@ -35,16 +35,26 @@ public with sharing class AIChangeRequestService {
             TESTING        => new Set<String>{ COMPLETE, FAILED }
         };
 
-    public static AI_Change_Request__c create(String requestText,
-                                              String requestType,
-                                              String model) {
+    /**
+     * Start a request from the sentence alone.
+     *
+     * Nothing else is asked for. The person typing does not know whether what
+     * they want is new or a change to something existing — finding that out is
+     * the entire job of the analysis, and making them declare it up front both
+     * asked them to answer the question they came here with and let a wrong
+     * answer steer the search. The type is read from the text and shown back
+     * on the first step, where a misreading is visible and correctable.
+     *
+     * The model is not chosen here either. It is chosen after the analysis is
+     * approved, because until then there may be nothing to generate.
+     */
+    public static AI_Change_Request__c create(String requestText) {
         if (String.isBlank(requestText)) {
             throw new StateException('Describe the change before submitting it.');
         }
         AI_Change_Request__c req = new AI_Change_Request__c(
             Request_Text__c  = requestText,
-            Request_Type__c  = requestType,
-            Model__c         = model,
+            Request_Type__c  = derivedType(requestText),
             Pod__c           = 'Network Services',
             Status__c        = DRAFT,
             Correlation_Id__c = generateCorrelationId()
@@ -52,6 +62,53 @@ public with sharing class AIChangeRequestService {
         insert req;
         return req;
     }
+
+    /**
+     * Which of the two picklist values the sentence implies.
+     *
+     * Only Create means new. Update and Delete are both changes to something
+     * that is already there, and a request the parser could not read an action
+     * out of is treated as a change too: assuming "new" would be the answer
+     * that skips the duplicate check, and that is the one mistake this system
+     * exists to prevent.
+     */
+    @TestVisible
+    private static String derivedType(String requestText) {
+        return AIRequestIntent.parse(requestText).action == 'Create'
+            ? 'New Enhancement'
+            : 'Update Existing';
+    }
+
+    /**
+     * Record which model will be asked for the logic.
+     *
+     * Deliberately gated on the analysis having been approved. Before that,
+     * the honest state of the request is that it may not need a model at all:
+     * the graph can still come back saying the thing already exists, and
+     * offering a choice of generator alongside that verdict invites someone to
+     * build the duplicate anyway.
+     */
+    public static AI_Change_Request__c chooseModel(Id requestId, String model) {
+        if (!MODELS.contains(model)) {
+            throw new StateException('Unknown model "' + model + '".');
+        }
+        AI_Change_Request__c req = load(requestId);
+        if (!MODEL_CHOOSABLE_AT.contains(req.Status__c)) {
+            throw new StateException(
+                'The model is chosen once the analysis is approved. This '
+                + 'request is at "' + req.Status__c + '".');
+        }
+        req.Model__c = model;
+        update req;
+        return req;
+    }
+
+    private static final Set<String> MODELS =
+        new Set<String>{ 'Codex', 'Claude', 'Gemini' };
+
+    /** After gate 1, and still changeable until generation actually starts. */
+    private static final Set<String> MODEL_CHOOSABLE_AT =
+        new Set<String>{ TICKET_CREATED };
 
     /** Runs the graph query and parks the request at the first approval gate. */
     public static void analyze(Id requestId) {

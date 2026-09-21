@@ -12,7 +12,7 @@ private class AIChangeRequestServiceTest {
     @IsTest
     static void createRejectsEmptyRequest() {
         try {
-            AIChangeRequestService.create('   ', 'Update Existing', 'Codex');
+            AIChangeRequestService.create('   ');
             System.assert(false, 'Expected a StateException for blank request text.');
         } catch (AIChangeRequestService.StateException e) {
             System.assert(e.getMessage().contains('Describe the change'),
@@ -22,24 +22,96 @@ private class AIChangeRequestServiceTest {
 
     @IsTest
     static void createAssignsCorrelationIdAndDraftStatus() {
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Stop HFN duplicating on reactivation', 'Update Existing', 'Claude');
+        AI_Change_Request__c req = AIChangeRequestService.create('Stop HFN duplicating on reactivation');
 
         AI_Change_Request__c saved = [
-            SELECT Status__c, Correlation_Id__c, Pod__c, Model__c
+            SELECT Status__c, Correlation_Id__c, Pod__c, Model__c, Request_Type__c
             FROM AI_Change_Request__c WHERE Id = :req.Id];
         System.assertEquals(AIChangeRequestService.DRAFT, saved.Status__c);
         System.assertEquals('Network Services', saved.Pod__c);
-        System.assertEquals('Claude', saved.Model__c);
+        System.assertEquals(null, saved.Model__c,
+            'No model is chosen at creation. The request may turn out not to '
+            + 'need one, and a picklist default would have looked like a choice '
+            + 'somebody made.');
+        System.assertEquals('Update Existing', saved.Request_Type__c,
+            'Read from the sentence, not asked for.');
         System.assertEquals(36, saved.Correlation_Id__c.length(),
             'Correlation id should be a 36 character uuid-shaped string.');
     }
 
     @IsTest
-    static void analyzeStoresFindingsAndParksAtApprovalGate() {
+    static void theTypeIsReadFromTheSentence() {
+        // The person typing does not know whether what they want already
+        // exists. That is the question they came here with, so asking them to
+        // answer it first was both rude and a way to steer the search wrong.
+        System.assertEquals('New Enhancement',
+            AIChangeRequestService.derivedType(
+                'create a Provider NPI field on Account'));
+        System.assertEquals('Update Existing',
+            AIChangeRequestService.derivedType(
+                'change the HFN expiry logic so it stops duplicating'));
+        System.assertEquals('Update Existing',
+            AIChangeRequestService.derivedType('the HFN expiry thing'),
+            'An unreadable action must not be assumed new: that is the '
+            + 'assumption that skips the duplicate check.');
+    }
+
+    @IsTest
+    static void theModelIsNotChoosableBeforeTheAnalysisIsApproved() {
+        AI_Change_Request__c req = AIChangeRequestService.create(
+            'Add an HFN expiry warning');
+        try {
+            AIChangeRequestService.chooseModel(req.Id, 'Claude');
+            System.assert(false, 'Expected a StateException at Draft.');
+        } catch (AIChangeRequestService.StateException e) {
+            System.assert(e.getMessage().contains('analysis is approved'),
+                'It must say why, not just refuse: ' + e.getMessage());
+        }
+    }
+
+    @IsTest
+    static void theModelIsChosenAfterTheFirstGate() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
         AI_Change_Request__c req = AIChangeRequestService.create(
-            'Update HFN logic', 'Update Existing', 'Codex');
+            'Add an HFN expiry warning');
+
+        Test.startTest();
+        AIChangeRequestService.analyze(req.Id);
+        AIChangeRequestService.approveAnalysis(req.Id);
+        AIChangeRequestService.chooseModel(req.Id, 'Gemini');
+        Test.stopTest();
+
+        AI_Change_Request__c saved = [
+            SELECT Status__c, Model__c FROM AI_Change_Request__c
+            WHERE Id = :req.Id];
+        System.assertEquals('Gemini', saved.Model__c);
+        System.assertEquals(AIChangeRequestService.TICKET_CREATED,
+            saved.Status__c,
+            'Choosing a model records a decision. It does not advance the '
+            + 'state machine, because nothing generates yet.');
+    }
+
+    @IsTest
+    static void anUnknownModelIsRefused() {
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
+        AI_Change_Request__c req = AIChangeRequestService.create(
+            'Add an HFN expiry warning');
+        Test.startTest();
+        AIChangeRequestService.analyze(req.Id);
+        AIChangeRequestService.approveAnalysis(req.Id);
+        Test.stopTest();
+        try {
+            AIChangeRequestService.chooseModel(req.Id, 'Llama');
+            System.assert(false, 'Expected a StateException for an unknown model.');
+        } catch (AIChangeRequestService.StateException e) {
+            System.assert(e.getMessage().contains('Llama'), e.getMessage());
+        }
+    }
+
+    @IsTest
+    static void analyzeStoresFindingsAndParksAtApprovalGate() {
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
+        AI_Change_Request__c req = AIChangeRequestService.create('Update HFN logic');
 
         Test.startTest();
         AIChangeRequestService.analyze(req.Id);
@@ -68,8 +140,7 @@ private class AIChangeRequestServiceTest {
     @IsTest
     static void analyzeIsIdempotentAcrossReruns() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Update HFN logic', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Update HFN logic');
 
         AIChangeRequestService.analyze(req.Id);
         // Re-running from the gate should replace findings, never duplicate them.
@@ -85,8 +156,7 @@ private class AIChangeRequestServiceTest {
     @IsTest
     static void analyzeFailureRecordsErrorAndFailsRequest() {
         AIServiceFactory.graphOverride = new ThrowingGraph();
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Update HFN logic', 'Update Existing', 'Gemini');
+        AI_Change_Request__c req = AIChangeRequestService.create('Update HFN logic');
 
         try {
             AIChangeRequestService.analyze(req.Id);
@@ -105,8 +175,7 @@ private class AIChangeRequestServiceTest {
     @IsTest
     static void approvalGatesCannotBeSkipped() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Update HFN logic', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Update HFN logic');
 
         // Straight from Draft to deployment must be refused.
         try {
@@ -128,8 +197,7 @@ private class AIChangeRequestServiceTest {
     @IsTest
     static void happyPathReachesDeployingWithBothApprovalsStamped() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Update HFN logic', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Update HFN logic');
 
         AIChangeRequestService.analyze(req.Id);
         AIChangeRequestService.approveAnalysis(req.Id);
@@ -158,8 +226,7 @@ private class AIChangeRequestServiceTest {
     @IsTest
     static void rejectIsAllowedFromAnyGate() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Update HFN logic', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Update HFN logic');
         AIChangeRequestService.analyze(req.Id);
         AIChangeRequestService.reject(req.Id, 'Business declined the change');
 

@@ -91,6 +91,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>AI_Change_Request__c.Model__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>AI_Change_Request__c.Correlation_Id__c</field>
         <readable>true</readable>
     </fieldPermissions>

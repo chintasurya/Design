@@ -80,7 +80,7 @@ sf project convert mdapi --metadata-dir mdapi --output-dir force-app
 | `AIContextGraphService` | Interface the graph layer sits behind |
 | `AIContextGraphStub` | Canned findings so the console runs with no backend |
 | `AIContextGraphHttp` | Live implementation, via named credential |
-| `aiChangeConsole` | LWC: request entry, three model buttons, both approval gates |
+| `aiChangeConsole` | LWC: request entry, both approval gates, and the model question behind the first one |
 
 Findings are **rows, not a JSON blob**, so the approval screen, the Jira ticket
 and any audit report all read the same records. No field in this package ever

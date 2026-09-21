@@ -54,8 +54,7 @@ private class AIContextGraphLiveTest {
 
     @IsTest
     static void unknownNodeTypesFallBackRatherThanFailingTheInsert() {
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Review Account', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Review Account');
         AIContextSlice slice = new AIContextSlice();
         slice.findings.add(AIContextSlice.build('x:1', 'SomethingBrandNew', 'X',
             'path', 'Direct', 'Low', 'Salesforce', 'PROVENANCE'));
@@ -71,8 +70,7 @@ private class AIContextGraphLiveTest {
 
     @IsTest
     static void recordTypeIsAnAcceptedNodeType() {
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Review Account', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Review Account');
         AIContextSlice slice = new AIContextSlice();
         slice.findings.add(AIContextSlice.build('rt:Account.Biz', 'RecordType',
             'Business', 'SOBJECT_HAS_RECORDTYPE -> sobj:Account',
@@ -273,8 +271,7 @@ private class AIContextGraphLiveTest {
 
     @IsTest
     static void liveQueryRunsEndToEnd() {
-        AI_Change_Request__c req = AIChangeRequestService.create(
-            'Review the Account object', 'Update Existing', 'Codex');
+        AI_Change_Request__c req = AIChangeRequestService.create('Review the Account object');
 
         Test.startTest();
         AIContextSlice slice = new AIContextGraphLive().query(req);

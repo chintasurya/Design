@@ -5,9 +5,7 @@ private class AIChangeRequestControllerTest {
     static void consoleViewCarriesRequestAndFindings() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
 
-        Id reqId = AIChangeRequestController.createRequest(
-            'Update HFN logic so reactivation does not duplicate',
-            'Update Existing', 'Codex');
+        Id reqId = AIChangeRequestController.createRequest('Update HFN logic so reactivation does not duplicate');
 
         Test.startTest();
         AIChangeRequestController.ConsoleView view =
@@ -23,8 +21,7 @@ private class AIChangeRequestControllerTest {
 
     @IsTest
     static void controllerSurfacesStateErrorsToTheUi() {
-        Id reqId = AIChangeRequestController.createRequest(
-            'Update HFN logic', 'Update Existing', 'Codex');
+        Id reqId = AIChangeRequestController.createRequest('Update HFN logic');
         try {
             AIChangeRequestController.approveCode(reqId);
             System.assert(false, 'Expected an AuraHandledException.');
@@ -36,8 +33,7 @@ private class AIChangeRequestControllerTest {
     @IsTest
     static void approveAndRejectRoundTripThroughController() {
         AIServiceFactory.graphOverride = new AIContextGraphStub();
-        Id reqId = AIChangeRequestController.createRequest(
-            'Add HFN expiry warning', 'New Enhancement', 'Gemini');
+        Id reqId = AIChangeRequestController.createRequest('Add HFN expiry warning');
 
         AIChangeRequestController.runAnalysis(reqId);
         AIChangeRequestController.ConsoleView approved =
@@ -49,5 +45,29 @@ private class AIChangeRequestControllerTest {
             AIChangeRequestController.rejectRequest(reqId, 'Superseded');
         System.assertEquals(AIChangeRequestService.REJECTED,
             rejected.request.Status__c);
+    }
+
+    @IsTest
+    static void theModelQuestionIsAskedAfterTheGate() {
+        // The three model buttons used to sit on the entry screen, next to the
+        // text box, before anything had been searched. They belong here: after
+        // the evidence is in and a human has accepted it.
+        AIServiceFactory.graphOverride = new AIContextGraphStub();
+        Id reqId = AIChangeRequestController.createRequest(
+            'Add HFN expiry warning');
+
+        AIChangeRequestController.runAnalysis(reqId);
+        AIChangeRequestController.ConsoleView beforeChoice =
+            AIChangeRequestController.getView(reqId);
+        System.assertEquals(null, beforeChoice.request.Model__c,
+            'No model until the analysis is approved.');
+
+        AIChangeRequestController.approveAnalysis(reqId);
+        AIChangeRequestController.ConsoleView chosen =
+            AIChangeRequestController.chooseModel(reqId, 'Claude');
+
+        System.assertEquals('Claude', chosen.request.Model__c);
+        System.assertEquals(AIChangeRequestService.TICKET_CREATED,
+            chosen.request.Status__c);
     }
 }

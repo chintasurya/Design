@@ -66,30 +66,15 @@
                     placeholder="Describe the change in your own words"
                     value={requestText} onchange={handleText}></lightning-textarea>
 
-                <div class="slds-grid slds-wrap slds-gutters_small slds-var-m-top_small">
-                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                        <lightning-radio-group name="requestType" label="Type"
-                            type="button" options={typeOptions} value={requestType}
-                            onchange={handleType}></lightning-radio-group>
-                    </div>
-                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                        <p class="slds-form-element__label">Model</p>
-                        <template for:each={models} for:item="m">
-                            <lightning-button key={m.name} label={m.name}
-                                variant={m.variant} data-model={m.name}
-                                onclick={handleModel}
-                                class="slds-m-right_xx-small"></lightning-button>
-                        </template>
-                    </div>
-                </div>
-
                 <div class="slds-var-m-top_medium">
                     <lightning-button variant="brand" label={submitLabel}
                         onclick={handleSubmit} disabled={analyseDisabled}></lightning-button>
                     <p class="slds-text-body_small slds-text-color_weak
                               slds-var-m-top_xx-small">
-                        The graph is traversed first. A model is only called after
-                        you approve what was found.
+                        Just describe it. Whether this is new or a change to
+                        something that already exists is what the analysis is
+                        for, and no model is called until you approve what the
+                        graph found.
                     </p>
                 </div>
             </div>
@@ -205,6 +190,33 @@
                 </h2>
                 <lightning-datatable key-field="Id" data={testResults}
                     columns={testColumns} hide-checkbox-column></lightning-datatable>
+            </template>
+
+            <!-- the model question, asked only once the analysis is approved -->
+            <template if:true={atModelChoice}>
+                <div class="slds-box slds-var-m-top_medium modelchoice">
+                    <p class="slds-text-heading_small">
+                        Do you want me to connect a model to get the logic?
+                    </p>
+                    <p class="slds-text-body_small slds-text-color_weak
+                              slds-var-m-top_xx-small">{modelChoiceNote}</p>
+                    <div class="slds-var-m-top_small">
+                        <template for:each={models} for:item="m">
+                            <lightning-button key={m.name} label={m.name}
+                                variant={m.variant} data-model={m.name}
+                                onclick={handleChooseModel} disabled={busy}
+                                class="slds-m-right_xx-small"></lightning-button>
+                        </template>
+                    </div>
+                    <template if:true={chosenModel}>
+                        <p class="slds-text-body_small slds-var-m-top_small">
+                            <strong>{chosenModel}</strong> is recorded on this
+                            request. Generation, deploy and the Jira write-back
+                            are not built yet, so this is where the request
+                            stops for now.
+                        </p>
+                    </template>
+                </div>
             </template>
 
             <!-- gate -->

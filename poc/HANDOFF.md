@@ -215,12 +215,13 @@ poc/
 buildGraph()                → kicks off the Queueable export
 graphStatus()               → node/edge/KB counts for the status bar
 listProfiles()              → all profiles, alphabetical, filterable
-createRequest(text, type, model)
+createRequest(text)           → the sentence and nothing else
 stepUnderstand(requestId)   ┐
 stepScope(requestId)        │ progressive "thinking" pipeline,
 stepSearch(requestId)       │ so the user sees what it is doing
 stepAssess(requestId)       ┘
 approveAnalysis / approveCode / rejectRequest / getView
+chooseModel(requestId, model)  → recorded only after gate 1
 ```
 
 ### Custom objects
@@ -336,13 +337,26 @@ refusing a filter degrades one answer instead of killing the run. It prints:
 Deploy the new package first, run **Build Graph** again, then run the probe:
 the graph file has to be rebuilt for the boundary nodes to exist.
 
-### P2 — LWC restructure (user's point 3, agreed, not started)
-- **Remove the "Change something that exists / Add something new" Type buttons.**
-  The system now infers the shape itself; the person typing does not know
-  whether their request is new or an update.
-- **Move the three model buttons (Codex / Claude / Gemini)** so they appear only
-  *after* approval, phrased as *"do you want me to connect a model to get the
-  logic?"* — not on the entry screen.
+### P2 — LWC restructure — DONE
+- The **Type buttons are gone**. `Request_Type__c` is derived from the sentence
+  by `AIChangeRequestService.derivedType()` and still written, so the audit
+  trail is unchanged; nobody is asked to declare it. An action the parser
+  cannot read is treated as **Update Existing**, never as new — assuming "new"
+  is the assumption that skips the duplicate check.
+- The **model buttons moved behind gate 1**. They render only at status
+  `Ticket Created`, under *"Do you want me to connect a model to get the
+  logic?"*. `Model__c` is no longer set at creation, which needed two metadata
+  changes: `required` false, and the `Codex` picklist **default removed** — a
+  picklist default is applied server-side on insert and would have looked like
+  a choice somebody made.
+- `chooseModel()` refuses before the gate and names the current status when it
+  does. Choosing a model **records a decision and does not advance the state
+  machine**, because nothing generates yet.
+- The entry screen now says what it actually does: describe it, and whether
+  this is new or a change is what the analysis is for.
+
+What it does **not** do: generate anything. Picking a model writes `Model__c`
+and says so. That is the honest end of the road until P5.
 
 ### P3 — Resume-from-Jira-ticket (user's point 4, agreed, not started)
 The console should open with two doors:
@@ -432,6 +446,14 @@ call rather than taking it on trust.
 - Static Resources **cannot** be written from Apex without a Metadata API callout.
 - ContentVersion counts against **file** storage, not data storage; setting
   `ContentDocumentId` creates a new version rather than a new file.
+- **A picklist default is applied on insert, so "not choosing" becomes a
+  choice.** `Model__c` was `required` with `Codex` defaulted. Simply leaving it
+  out of the insert would have written Codex anyway, and the console would have
+  shown a model nobody picked. Deferring a field means clearing `required`
+  **and** removing the `<default>` from its value set.
+- A **required** field is implicitly editable, so `gen_permset.py` leaves it out
+  of the permission set. Making one optional adds it — that is why the field
+  count moves when a `required` flag changes.
 - Apex `Map` key order is **not** guaranteed — the data-type scan needs an
   explicit ordered list so `DATETIME` is tried before `DATE` and `TEXTAREA`
   before `TEXT`.
@@ -508,6 +530,8 @@ call rather than taking it on trust.
 ## 10. Recent commits worth knowing
 
 ```
+(this session)  Ask for the sentence, and ask about a model only once there is
+                something worth generating
 (this session)  Stop dropping automation that fires outside the pod, and stop
                 clearing a behaviour the graph never searched
 7676cce  Add a read-only probe for the missing Account flow
