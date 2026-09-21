@@ -334,3 +334,74 @@ block but does not reliably return an API-enabled one in asynchronous Apex, and
 the graph export is a Queueable. The Named Credential still has to work before
 the flow reader can ship. This only stops the question "is this data worth
 having" waiting on the question "is the OAuth config right".
+
+
+---
+
+## Troubleshooting: `missing required code challenge` when saving the Named Credential
+
+```
+error=invalid_request&error_description=missing%20required%20code%20challenge
+```
+
+The authorization flow started, reached the External Client App, and the app
+demanded a PKCE `code_challenge` that the Salesforce-type Auth. Provider did
+not send. Nothing is wrong with the URLs, the key, the secret or the callback:
+the two ends disagree about PKCE.
+
+**Unticking PKCE on the app is often not enough, because there are two
+switches and the org-wide one wins.**
+
+### Turn it off in both places
+
+1. **Org-wide.** Setup → **OAuth and OpenID Connect Settings** → find
+   **Require Proof Key for Code Exchange (PKCE) Extension for Supported
+   Authorization Flows** and turn it **off**. This is the one people miss. If
+   it is on, the app-level setting cannot save you.
+2. **On the app.** External Client App Manager → `AI Tooling API` → Settings →
+   OAuth → **Require Proof Key for Code Exchange (PKCE)** → unticked. On some
+   releases this sits under a **Security** subsection of the OAuth settings.
+
+Then **wait about ten minutes** — app changes propagate on the same delay as a
+new Consumer Key — and re-save the Named Credential with **Start
+Authentication Flow on Save** ticked.
+
+### If org policy will not allow PKCE to be disabled
+
+Then do not use the authorization code flow at all. **Client Credentials never
+sends a code challenge**, because there is no browser redirect and no
+authorization code in the first place. It also has no refresh token to expire
+and works in asynchronous Apex, which this POC needs anyway.
+
+1. **External Client App → Policies → OAuth Policies → Edit**
+   - **Enable Client Credentials Flow**: checked
+   - **Run As**: the integration user whose access the callouts should use
+   - Save.
+2. **Setup → Named Credentials → External Credentials → New**
+   - Label / Name: `AI Tooling Cred`
+   - Authentication Protocol: **OAuth 2.0**
+   - Authentication Flow Type: **Client Credentials with Client Secret**
+   - Identity Provider URL / token endpoint:
+     `https://test.salesforce.com/services/oauth2/token`
+   - Save, then **Principals → New**: name it `Tooling`, Sequence 1, and add
+     the **Client ID** and **Client Secret** as authentication parameters.
+3. **Permission set → External Credential Principal Access → add the `Tooling`
+   principal**, and assign that permission set to yourself. Without this step
+   the running user gets no token and the callout returns
+   `INVALID_SESSION_ID`.
+4. **Setup → Named Credentials → New**
+   - Name `AI_Tooling_API`, URL = the My Domain sandbox URL
+   - External Credential: `AI Tooling Cred`
+   - **Generate Authorization Header**: checked
+
+Field labels in this area have moved between releases. If one does not match
+what is on screen, take the nearest equivalent — the shape is: app enables
+client credentials and names a run-as user, external credential holds the
+token, a permission set grants the principal to the running user, named
+credential points at the org.
+
+### Neither of these is blocking the POC today
+
+`tools/verify_tooling_session.apex` answers the five Tooling API questions with
+no OAuth at all. Run that first so the flow reader can be designed against real
+output while this is being sorted out.
