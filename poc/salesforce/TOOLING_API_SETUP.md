@@ -576,6 +576,12 @@ whoever or whatever triggers the graph build.
 It is listing **principals**, and a permission set can only grant a principal
 that already exists. Check these in order.
 
+The list is alphabetical and every row reads
+`<External Credential> - <Principal>`, so `AI_Tooling_Cred - Tooling` sorts
+near the top. If the list starts at something like `GCP_...` and there is no
+`AI_...` row above it, the principal does not exist — that is a certainty, not
+a guess, and there is no point scrolling.
+
 **1. Does the External Credential have a Principal at all?**
 
 Setup → Named Credentials → **External Credentials** tab → `AI Tooling Cred` →
@@ -600,6 +606,20 @@ so nothing about them ever appears here. If the credential you made had
 **Authentication Protocol** and **Authentication Provider** fields on the same
 screen as the URL, it is the legacy one. Client credentials needs the
 **External Credential** plus **Named Credential** pair from A2 and A5.
+
+### A working example already exists in this org
+
+This picker lists every principal in the org, and there are around nineteen of
+them — `NPI_Registry_EC`, `NextGate_EMPI_API_PROD`, `PatientEncounters_API_QA`
+and so on. So the new External Credential model is already in use here and
+somebody has made it work before.
+
+Open one from **Setup → Named Credentials → External Credentials** and look at
+how its principal is laid out before building `AI Tooling Cred`. The
+authentication protocols differ, since those point at outside APIs rather than
+at this org, but the shape — external credential, named principal, parameters —
+is identical, and a working example in the same org beats a runbook written
+against a different release.
 
 ## A5. Named Credential
 
