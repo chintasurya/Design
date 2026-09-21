@@ -525,6 +525,44 @@ Copy the **Consumer Key** and **Consumer Secret** from
 **Settings → OAuth Settings → Consumer Key and Secret**, and wait about ten
 minutes before A2 so they propagate.
 
+## A1b. `no client credentials user enabled`
+
+```
+Unable to fetch the OAuth token. Error: invalid_grant.
+Error description: no client credentials user enabled.
+```
+
+This is a good error to get. It means the token endpoint is correct, the
+request reached the org, and the client id was recognised — the app exists and
+was found. One thing is missing: **the app has no Run As user**, so there is no
+identity for a token to be issued as.
+
+Client credentials has no user in the request. The app names the user in
+advance, once, and that is the Run As field. Without it there is nobody to be.
+
+**External Client App Manager → your app → Policies → Edit → OAuth Policies →
+Run As →** choose the user → **Save**.
+
+Then reopen the Policies tab and confirm the name is actually shown. A Run As
+selection that did not persist looks identical to one that was never made, and
+the token endpoint reports both the same way.
+
+### If Run As is set and the error persists
+
+**The Consumer Key must come from the same app that carries the Run As user.**
+If more than one app was created while working through this document — an
+External Client App, and perhaps a Connected App or a second attempt — it is
+easy to have configured Run As on one and copied the key and secret from
+another. The token request then finds a real app with no Run As user on it.
+
+Check by going to the app that has Run As set, opening
+**Settings → OAuth Settings → Consumer Key and Secret**, and comparing the
+first few characters of the key against the one stored on the External
+Credential principal in A3. If they differ, update the principal.
+
+Allow a few minutes after saving. Policy changes propagate on the same delay as
+a new Consumer Key.
+
 ## A2 and A5 are two different objects. This is the part that trips everyone.
 
 They live on two tabs of the same Setup page, both are created with a button
@@ -737,4 +775,5 @@ returns a token-backed `HTTP 200` or it does not.
 | `HTTP 403` | The **Run As** user lacks API Enabled or View Setup and Configuration |
 | Body starts with `<` | The Named Credential URL is a login host, not My Domain |
 | Callout exception naming `invalid_grant` and *request not supported on this domain* | The External Credential's token endpoint is `test.salesforce.com`. Client credentials is only served by My Domain. See A2. |
+| Callout exception naming `invalid_grant` and *no client credentials user enabled* | The token endpoint is right and the app was found. The app has **no Run As user** on its OAuth policies, or the key in the principal belongs to a different app than the one Run As was set on. See A1b. |
 | Callout exception | No Named Credential by that name |
