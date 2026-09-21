@@ -210,6 +210,8 @@ poc/
 └── salesforce/
     ├── AI_Change_Console_POC.zip   ← deploy this in Workbench
     ├── README.md                   deploy notes + failure triage
+    ├── TOOLING_API_SETUP.md        External Client App → Auth Provider →
+    │                               Named Credential, sandbox, step by step
     ├── mdapi/                      source of truth (MDAPI format)
     │   ├── package.xml
     │   ├── classes/    (23 Apex classes)
@@ -226,6 +228,8 @@ poc/
         ├── emergency_purge.apex    hard-delete graph records (LIMIT 4000)
         ├── print_scope.apex        read-only: the scoped object list, with the
         │                           reason each one qualified
+        ├── verify_tooling_api.apex read-only: does the Named Credential work,
+        │                           and is Flow.Metadata really one per call
         └── probe_flow_missing.apex read-only diagnostic for the Account flow
 ```
 
@@ -275,8 +279,8 @@ graph that filled the org.
 
 `AI_Poc_Config__mdt` fields: `Use_Stub_Graph__c`, `Use_Remote_Graph__c`,
 `Use_Live_Search__c`, `Context_Named_Credential__c`, `Context_Query_Path__c`,
-`Pod_Profile_Name__c` (default `Network Services`), plus Jira/Confluence
-credential fields reserved for the write services.
+`Pod_Profile_Name__c` (default `Network Services`), `Tooling_Named_Credential__c`,
+plus Jira/Confluence credential fields reserved for the write services.
 
 ---
 
@@ -433,22 +437,34 @@ Ticket creation and page creation. Credential fields already exist on
 
 All in the sandbox, ~15 minutes, needs Setup access.
 
-1. **Connected App** (Setup → App Manager → New Connected App / External Client
-   App). Enable OAuth. Scopes `api` and `refresh_token, offline_access`.
-   Placeholder callback URL for now. Save, wait ~10 min, copy Consumer Key and
-   Secret.
-2. **Auth. Provider** (Setup → Auth. Providers → New → type **Salesforce**).
-   Paste the key/secret. Authorize endpoint
-   `https://<mydomain>.sandbox.my.salesforce.com/services/oauth2/authorize`,
-   token endpoint `.../services/oauth2/token`, default scopes
-   `api refresh_token`. Save, then copy its generated **Callback URL** back into
-   the Connected App.
-3. **Named Credential** (New Legacy). Name `AI_Tooling_API`, URL
-   `https://<mydomain>.sandbox.my.salesforce.com`, Identity Type **Named
-   Principal**, OAuth 2.0 with the Auth Provider, tick **Start Authentication
-   Flow on Save** and **Generate Authorization Header**.
+**Full runbook: `poc/salesforce/TOOLING_API_SETUP.md`.** Summary:
+
+1. **External Client App** (Setup → App Manager → New External Client App).
+   Connected Apps are superseded; the Auth. Provider and Named Credential steps
+   are unchanged. Distribution State **Local**, Enable OAuth, scopes `api` and
+   `refresh_token, offline_access`, PKCE **off**, placeholder callback. Then
+   **Policies → Edit** and enable OAuth there too — policies are a separate
+   screen and an app whose policies were never saved refuses to authorize,
+   which is the most common failure. Copy Consumer Key and Secret, wait ~10 min.
+2. **Auth. Provider** (New → type **Salesforce**). Paste the key/secret.
+   Authorize `https://test.salesforce.com/services/oauth2/authorize`, token
+   `https://test.salesforce.com/services/oauth2/token`, scopes
+   `api refresh_token`. Save, copy its generated **Callback URL** back into the
+   app.
+3. **Named Credential** (New Legacy). Name `AI_Tooling_API`, Identity Type
+   **Named Principal**, OAuth 2.0 with that Auth. Provider, **Start
+   Authentication Flow on Save** and **Generate Authorization Header** ticked.
+   URL is **the My Domain sandbox URL**, `https://<mydomain>--<sandbox>.sandbox.my.salesforce.com`.
 4. **Permissions** on that principal: API Enabled, View Setup and Configuration,
-   View All Data (the Dependency API needs it).
+   View All Data (the Dependency API needs it; flow internals do not).
+5. **`AI_Poc_Config__mdt.Default.Tooling_Named_Credential__c`** = `AI_Tooling_API`.
+6. **Verify with `tools/verify_tooling_api.apex`** before building anything on
+   it. Read-only, four callouts.
+
+**`test.salesforce.com` is a login host, not an API host.** It is correct for
+the Auth. Provider endpoints and wrong for the Named Credential URL: a callout
+there returns a login page, so the failure looks like an HTML body or a 302
+rather than an auth error. The verify script calls this out by name.
 
 Apex then calls `callout:AI_Tooling_API/services/data/v59.0/tooling/query?q=...`
 with no Remote Site Setting needed.
