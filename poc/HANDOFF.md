@@ -226,6 +226,8 @@ poc/
         ├── lint_apex.py            6 rules, each from a real failed deploy
         ├── gen_permset.py          derives the permission set from the metadata
         ├── emergency_purge.apex    hard-delete graph records (LIMIT 4000)
+        ├── build_graph.apex        enqueue the export, then check the job and
+        │                           print the notes, node and edge type counts
         ├── print_scope.apex        read-only: the scoped object list, with the
         │                           reason each one qualified
         ├── verify_tooling_api.apex read-only: does the Named Credential work,
