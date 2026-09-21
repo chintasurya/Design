@@ -252,3 +252,85 @@ across several transactions, with progress persisted between them.
 This is the current understanding and it is exactly what step 7 checks. If it
 turns out `Metadata` can be selected for several records at once, the reader
 gets much simpler.
+
+
+---
+
+## Troubleshooting: `HTTP 401` with `INVALID_SESSION_ID`
+
+```
+1. connectivity · HTTP 401
+   body: [{"message":"Session expired or invalid","errorCode":"INVALID_SESSION_ID"}]
+```
+
+**Read the good news in that first.** The body is a real Salesforce API error
+in JSON, not an HTML login page, so:
+
+- the Named Credential exists under the name the script used;
+- its URL is right — the request reached the API, which `test.salesforce.com`
+  would never have done;
+- the endpoint and API version are right.
+
+One thing is missing: a valid token on the request. Work through these in
+order, because the first is by far the most common.
+
+### 1. New-model Named Credential with no principal access
+
+If the Named Credential screen had a field called **External Credential**, you
+created the new-model credential rather than the legacy one. In that model the
+token is held by a **Principal** on the External Credential, and a running user
+gets nothing at all until that principal is granted to them through a
+permission set. No grant, no token, `INVALID_SESSION_ID` — exactly this error.
+
+**Setup → Permission Sets →** pick one assigned to you (or create one) **→
+External Credential Principal Access → Edit → add the principal belonging to
+your External Credential → Save.** Then assign that permission set to yourself
+and run the script again.
+
+### 2. The credential never completed authentication
+
+**Setup → Named Credentials → `AI Tooling API`.** A legacy credential shows
+**Authentication Status**. If it is blank, *Pending*, or shows an error, no
+token was ever obtained.
+
+Fix: **Edit → tick Start Authentication Flow on Save → Save**, and complete the
+login and approval in the window that opens. It must come back reading
+**Authenticated as &lt;user&gt;**.
+
+### 3. Identity Type is Per User
+
+Per User means every user authenticates separately, and you are running as a
+user who has not. Set **Identity Type = Named Principal** and re-authenticate.
+Named Principal is what the export needs anyway: the graph must read the same
+metadata no matter who triggers it.
+
+### 4. Generate Authorization Header is unchecked
+
+Then Salesforce attaches no `Authorization` header and the request arrives
+anonymous. Tick it.
+
+### 5. The refresh token was revoked or expired
+
+If the External Client App's **Refresh Token Policy** is anything other than
+*valid until revoked*, the token can die between setup and use. Set it to valid
+until revoked, then re-authenticate the credential.
+
+---
+
+## Not blocked by any of the above
+
+`tools/verify_tooling_session.apex` answers the same five questions using
+`UserInfo.getSessionId()` instead of the Named Credential, so what the Tooling
+API actually returns can be established while the OAuth configuration is still
+being chased.
+
+It needs one thing: **Setup → Security → Remote Site Settings → New**, with the
+My Domain URL the script prints on its first line. Delete that remote site once
+the Named Credential works.
+
+**It is a diagnostic, not the production path.**
+`UserInfo.getSessionId()` returns a usable session in an interactive anonymous
+block but does not reliably return an API-enabled one in asynchronous Apex, and
+the graph export is a Queueable. The Named Credential still has to work before
+the flow reader can ship. This only stops the question "is this data worth
+having" waiting on the question "is the OAuth config right".
