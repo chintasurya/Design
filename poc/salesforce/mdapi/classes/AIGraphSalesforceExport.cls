@@ -66,7 +66,11 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         doc.snapshotId = String.valueOf(System.now().getTime());
         doc.notes.add(scope.note);
 
-        doc.notes.add(targets.size() + ' objects in scope');
+        // The names, not just the count. A note reading "36 objects in scope"
+        // cannot be checked by anyone, and it is what made "is Account in
+        // scope?" unanswerable without a Developer Console. At roughly 20
+        // bytes an object this is free against a megabyte of JSON.
+        doc.notes.add(targets.size() + ' objects in scope: ' + nameList(targets));
         Map<String, Schema.SObjectType> described = Schema.getGlobalDescribe();
         Map<String, String> labelToApi = new Map<String, String>();
         Set<String> known = new Set<String>(targets);
@@ -135,6 +139,19 @@ public with sharing class AIGraphSalesforceExport implements Queueable {
         }
         targets.sort();
         return targets;
+    }
+
+    /** A readable list, truncated rather than allowed to grow unbounded. */
+    private static String nameList(List<String> names) {
+        Integer cap = 120;
+        if (names.size() <= cap) {
+            return String.join(names, ', ');
+        }
+        List<String> head = new List<String>();
+        for (Integer n = 0; n < cap; n++) {
+            head.add(names[n]);
+        }
+        return String.join(head, ', ') + ', and ' + (names.size() - cap) + ' more';
     }
 
     // ----------------------------------------------------------------- nodes

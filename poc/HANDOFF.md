@@ -186,6 +186,8 @@ poc/
         ├── lint_apex.py            6 rules, each from a real failed deploy
         ├── gen_permset.py          derives the permission set from the metadata
         ├── emergency_purge.apex    hard-delete graph records (LIMIT 4000)
+        ├── print_scope.apex        read-only: the scoped object list, with the
+        │                           reason each one qualified
         └── probe_flow_missing.apex read-only diagnostic for the Account flow
 ```
 
@@ -309,7 +311,13 @@ the Queueable, then the status bar shows node/edge/KB counts.
    record types are not filtered by profile readability. The note now says that.
    When the profile grants nothing at all, the scope falls back to the
    permission-set objects rather than to every readable object.
-3. The graph can see *that* a flow exists but not *what it does*. Reading
+3. **Nobody has ever seen the scoped object list.** The scope reported counts
+   and never names, which is why "is Account in scope?" could not be answered
+   from anything in the repo. `tools/print_scope.apex` prints the list with the
+   reason each object qualified, and the exporter now writes the names into the
+   graph notes so every graph file says what it covered. Neither is a
+   substitute for running it: the scope is live org state.
+4. The graph can see *that* a flow exists but not *what it does*. Reading
    `recordCreates` / `recordUpdates` needs the Tooling API (section 8).
 
 ---
