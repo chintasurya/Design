@@ -1,13 +1,14 @@
 # HANDOFF — AI Change Console POC
 
 Everything a fresh conversation needs to continue this work without re-deriving
-it. Written 2026-09-20.
+it. Written 2026-09-20, rewritten 2026-09-24 after a session that closed P1 and
+P2, declared the pod, and fixed two false clearances.
 
 - **Repo:** `chintasurya/Design`
 - **Branch:** `claude/funny-babbage-t29499` (all work lives here, never on main)
 - **Package root:** `poc/salesforce/`
 - **Deployable artifact:** `poc/salesforce/AI_Change_Console_POC.zip`
-- **Last commit at handoff:** `7676cce`
+- **Last commit at handoff:** `a2361a2`
 
 ---
 
@@ -202,6 +203,11 @@ estimate.
 
 ```
 poc/
+├── Ascension Network Services Knowledge Graph.pptx
+│                                slides 1-8 the target architecture,
+│                                9-21 generated, what the POC actually does
+├── deck/                        generator for slides 9-21; re-runnable,
+│                                idempotent, with a geometry checker
 ├── ARCHITECTURE.md              target-state nine-stage pipeline
 ├── HANDOFF.md                   this file
 ├── discovery/
@@ -398,69 +404,90 @@ the Queueable, then the status bar shows node/edge/KB counts.
 
 ## 7. Open work, in priority order
 
-### P1 — Run the probe and confirm the Account flow gap is closed
-**The code fixes are in** (section 6, item 1). What remains is confirmation in
-the org, which needs someone with a Developer Console.
+Re-ranked 2026-09-24. P1 and P2 are done and verified in the org; what was P4
+is now the blocker.
 
-`tools/probe_flow_missing.apex` → Developer Console → Execute Anonymous, with
-Open Log ticked. Read-only, and every risky query is wrapped so a view object
-refusing a filter degrades one answer instead of killing the run. It prints:
+### P1 — Finish the Tooling API credential  ·  BLOCKING
 
-- the scope, including how much access comes from permission sets rather than
-  the profile, and a `SIGNAL:` line if the permission sets grant more;
-- the true active-flow count, and whether the view can be filtered and sorted
-  at all — the filter the exporter now depends on;
-- every active flow record-triggered on Account;
-- what reached the graph, including whether `sobj:Account` is present **only as
-  a boundary node**, and how many flow edges point at it;
-- whether `FlowElementView` is queryable and what fields it carries, which
-  decides whether flow internals need the Tooling API (P4) or not.
+Everything else of value is behind this. Flow internals are unreadable without
+it, and "how is an HFN generated" is answered half in Apex (working) and half
+in Flow (invisible).
 
-Deploy the new package first, run **Build Graph** again, then run the probe:
-the graph file has to be rebuilt for the boundary nodes to exist.
+**Where it got to.** PKCE is locked on in this org — the External Client App
+shows *"To change this required setting, contact Support"* — so the
+authorization code flow is impossible and **client credentials is the only
+path**. Appendix A of `salesforce/TOOLING_API_SETUP.md` is the runbook. Three
+errors were worked through in order, each one progress:
 
-### P2 — LWC restructure — DONE
-- The **Type buttons are gone**. `Request_Type__c` is derived from the sentence
-  by `AIChangeRequestService.derivedType()` and still written, so the audit
-  trail is unchanged; nobody is asked to declare it. An action the parser
-  cannot read is treated as **Update Existing**, never as new — assuming "new"
-  is the assumption that skips the duplicate check.
-- The **model buttons moved behind gate 1**. They render only at status
-  `Ticket Created`, under *"Do you want me to connect a model to get the
-  logic?"*. `Model__c` is no longer set at creation, which needed two metadata
-  changes: `required` false, and the `Codex` picklist **default removed** — a
-  picklist default is applied server-side on insert and would have looked like
-  a choice somebody made.
-- `chooseModel()` refuses before the gate and names the current status when it
-  does. Choosing a model **records a decision and does not advance the state
-  machine**, because nothing generates yet.
-- The entry screen now says what it actually does: describe it, and whether
-  this is new or a change is what the analysis is for.
+| Error | Cause | Fixed by |
+|---|---|---|
+| `missing required code challenge` | PKCE locked on, auth code flow unusable | switching to client credentials |
+| `request not supported on this domain` | token endpoint was `test.salesforce.com` | **client credentials is only served by My Domain** |
+| `no client credentials user enabled` | **the app has no Run As user** | ← **this is where it stopped** |
 
-What it does **not** do: generate anything. Picking a model writes `Model__c`
-and says so. That is the honest end of the road until P5.
+**Next action:** External Client App Manager → Policies → **Edit** (the tab
+opens read-only, which looks identical to a disabled feature) → tick *Enable
+Client Credentials Flow* → the **Run As** field appears only after that tick →
+choose an integration user with **API Enabled** and **View Setup and
+Configuration** → Save → re-run `tools/verify_tooling_api.apex`. If the error
+survives, the consumer key on the External Credential principal belongs to a
+different app than the one carrying Run As.
 
-### P3 — Resume-from-Jira-ticket (user's point 4, agreed, not started)
-The console should open with two doors:
-- **new request** — as today; or
-- **enter a Jira ticket number** — rehydrate the stored analysis, evidence and
-  approval from `AI_Change_Request__c` so the user does not re-answer
-  everything and a second ticket is not created.
+**Already proved, using `tools/verify_tooling_session.apex`** (which bypasses
+OAuth with `UserInfo.getSessionId()` and a Remote Site Setting — a diagnostic
+only, since that does not work in async Apex):
 
-Status arc to implement: Ticket Created → In Progress → generate → deploy → QA.
-If the ticket is not in the current sprint it goes to the next sprint.
+- `Flow.Metadata` **is readable** and carries `recordCreates`, `recordUpdates`,
+  `recordLookups` **and `subflows`**
+- **495 active flows**, all 495 ids returned in **one** call — the Tooling API
+  removes the 200-row `FlowDefinitionView` cap as a side effect
+- `SELECT Id, Metadata ... LIMIT 5` returns `MALFORMED_QUERY`, so **one record
+  per call is confirmed**: 495 retrieves against 100 callouts per transaction
+  means a **chained Queueable across 5+ transactions**, keeping only extracted
+  facts (a body is ~8 KB; 495 of them is ~4 MB, which the heap will not hold)
+- `MetadataComponentDependency` answers, so **real dependency edges are
+  available** and the Apex body text-scan heuristic can be retired
 
-### P4 — Tooling API connection — NOW BLOCKING, not optional
-It was ranked fourth when the open question was reuse of fields and objects. It
-is now the thing standing between this POC and the questions the pod actually
-asks, because "how is an HFN generated" is answered half in Apex and half in
-Flow, and **Flow internals cannot be read without it**. Apex bodies are plain
-SOQL and their call chains are already edges; flows are opaque beyond their
-trigger object. Setup steps in section 8, roughly 15 minutes with Setup access.
+### P2 — Build the flow reader, once P1 is green
+
+Design is settled by the measurements above. Chained Queueable, progress
+persisted between transactions, extract and discard per flow. Emits
+`FLOW_CREATES_SOBJECT` / `FLOW_UPDATES_FIELD` style edges and
+`FLOW_CALLS_SUBFLOW`, which is the flow equivalent of the Apex call chains that
+already work. This is what finally answers HFN generation end to end.
+
+### P3 — Resume from a ticket number  ·  agreed, not started
+
+The console opens with two doors: a new request, or a ticket number that
+rehydrates the stored analysis, evidence and approval from
+`AI_Change_Request__c`, so nothing is re-answered and no second ticket is
+raised. Status arc: Ticket Created → In Progress → generate → deploy → QA, and
+into the next sprint if the current one is closed.
+
+### P4 — Snapshot model  ·  a gap against the design, see section 6 item 5
+
+Versions are retained; nothing reads or compares them. Cheapest first step is a
+diff between two ContentVersions of the same file — no schema change needed.
 
 ### P5 — Jira and Confluence write services
-Ticket creation and page creation. Credential fields already exist on
-`AI_Poc_Config__mdt`; the services do not exist yet.
+
+Ticket creation and page creation. Credential fields exist on
+`AI_Poc_Config__mdt`; the services do not.
+
+### Done this session, with the defect each one fixed
+
+| Was | Now |
+|---|---|
+| Flows on out-of-pod objects dropped entirely | boundary nodes; automation is never lost for its target's sake |
+| A behaviour cleared because the object was never searched | a clearance must show the trigger object was in the evidence |
+| Pod scope inferred from a profile that cannot see automation-written objects | `AINetworkServicesPod` declares it; 13/13 names resolved |
+| Apex read with `contains()`, so `Account` matched `AccountingCode` | whole-identifier token matching |
+| Trigger → handler → handler invisible | `TRIGGER_CALLS_APEX` and `APEX_CALLS_APEX` edges |
+| Type and model asked for on the entry screen | type derived; model asked only after gate 1 |
+| One question about HFN returned 55 rows, all via `sobj:account` | a non-anchor object is a destination, not a corridor |
+| Rows read as `apex:X -[EDGE]-> sobj:y` | rows read as sentences, ordered automation first |
+| **A field that existed cleared as Safe to Create** | **existence has its own budget-free lookup** |
+| A column change listed 30 classes that merely mention the object | schema changes show the object and what runs on it |
 
 ---
 
@@ -707,18 +734,28 @@ hold.
 ## 10. Recent commits worth knowing
 
 ```
-(this session)  Ask for the sentence, and ask about a model only once there is
-                something worth generating
-(this session)  Stop dropping automation that fires outside the pod, and stop
-                clearing a behaviour the graph never searched
-7676cce  Add a read-only probe for the missing Account flow
-2df9f3d  Read the field name out of the request without swallowing "field"
-b6b40f3  Fix a case-insensitive shadowing bug, and lint for the whole class of it
-7829f98  Stop clearing behaviour requests the graph cannot actually vouch for
-40379ca  Measure the heap the graph load actually uses, and trim the document
-0d0199a  Match whole words, and anchor the search on the object that was named
-bf30b66  Fix the empty scope that produced 350 orphan nodes and zero edges
-ed9601f  Match the profile tolerantly, and stop hiding it in the diagnostic
-c3adbfe  Move Layer 5 from records to a JSON file, per the original design
-1ebd2b6  Replace live search with a real persisted knowledge graph
+a2361a2 Stop deciding whether something exists from a truncated sample
+4831623 Correct a claim about snapshot diffing, and record the gap it was hiding
+186bfb1 Fix line spacing that stacked every wrapped paragraph on one line
+914ec5b Add thirteen slides to the deck describing what the POC actually does
+08a804d Add files via upload
+3aa10b4 Stop walking through one object to reach everything that touches another
+e85360a Document the no-client-credentials-user error and what it rules in
+bbdd7a6 Replace the Tooling API guesses with what the org actually returned
+6b88c14 Make the graph rebuild a script like everything else
+10cb19d Spell out that the external credential and the named credential are two objects
+8720f55 Distinguish New from New Legacy, and say a legacy credential must be replaced
+77ba7d0 Explain an authentication status stuck at Pending under client credentials
+89b1996 Give a certain test for a missing principal, and point at the org's own examples
+023b583 Explain an empty External Credential Principal Access list
+2be3010 Take the client credentials warning at face value and say how to contain it
+703b724 Say that the Policies tab opens read-only, and how to tell that from a locked setting
+2f9a31f Say which of the two External Client App screens holds Run As
+f7c22c4 Promote client credentials to the primary path, because this org locks PKCE on
+6933e4d Explain the PKCE failure, including the org-wide switch that overrides the app
+2b575a2 Diagnose the 401, and stop the Tooling API questions waiting on the OAuth config
+89bd324 Say plainly what steps 6 and 7 do, and stop the verify script failing five times over
+448d641 Write the Tooling API setup runbook for External Client Apps, and a way to verify it
+2b5c799 Declare the Network Services pod instead of inferring it from a profile
+9f8a7f5 Print the scoped object list, and write the names into the graph notes
 ```
