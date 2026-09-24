@@ -8,7 +8,7 @@ P2, declared the pod, and fixed two false clearances.
 - **Branch:** `claude/funny-babbage-t29499` (all work lives here, never on main)
 - **Package root:** `poc/salesforce/`
 - **Deployable artifact:** `poc/salesforce/AI_Change_Console_POC.zip`
-- **Last commit at handoff:** `a2361a2`
+- **Last commit at handoff:** `87296f2`
 
 ---
 
@@ -208,6 +208,9 @@ poc/
 │                                9-21 generated, what the POC actually does
 ├── deck/                        generator for slides 9-21; re-runnable,
 │                                idempotent, with a geometry checker
+├── Fonts.zip                    Trenda IG, the deck's typeface. Install it
+│                                before judging the slides: without it
+│                                PowerPoint substitutes and the spacing lies
 ├── ARCHITECTURE.md              target-state nine-stage pipeline
 ├── HANDOFF.md                   this file
 ├── discovery/
@@ -734,6 +737,8 @@ hold.
 ## 10. Recent commits worth knowing
 
 ```
+87296f2 Rewrite the handoff for a fresh conversation
+fa092e7 Add files via upload
 a2361a2 Stop deciding whether something exists from a truncated sample
 4831623 Correct a claim about snapshot diffing, and record the gap it was hiding
 186bfb1 Fix line spacing that stacked every wrapped paragraph on one line
@@ -756,6 +761,4 @@ f7c22c4 Promote client credentials to the primary path, because this org locks P
 2b575a2 Diagnose the 401, and stop the Tooling API questions waiting on the OAuth config
 89bd324 Say plainly what steps 6 and 7 do, and stop the verify script failing five times over
 448d641 Write the Tooling API setup runbook for External Client Apps, and a way to verify it
-2b5c799 Declare the Network Services pod instead of inferring it from a profile
-9f8a7f5 Print the scoped object list, and write the names into the graph notes
 ```
