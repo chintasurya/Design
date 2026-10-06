@@ -1,0 +1,20 @@
+[
+ [0.0, 4.9, "Hi everyone. Let me show you how this works."],
+ [4.9, 28.9, "So, here's our Tech Lead, in Codex. One request, typed in plain English. When a provider account is approved, create its Healthcare Facility Network record, and notify the network manager. That's it. That's the only input anyone gives."],
+ [28.9, 44.5, "Before anything gets built, the Impact and Reuse agent checks the knowledge graph. And it turns out, this already exists, in Apex, and in Flow. So the advice is simple. Extend what's there. Don't add a third path."],
+ [44.5, 53.5, "Now, a person decides. The P M and Tech Lead see the same evidence, and approve the scope."],
+ [53.5, 66.0, "The Jeera agent raises the story in the current sprint, with acceptance criteria, and the graph evidence attached. No copy and paste."],
+ [66.0, 78.3, "Next, the Architect agent picks the pattern from facts, not habit. And the Confluence agent publishes the solution design."],
+ [78.3, 86.7, "The Tech Lead signs off the design, before a single line of code is written."],
+ [86.7, 100.6, "Now the Developer agent writes the change, to Ascension's standards. The Review agent checks it, and only then is a pull request opened."],
+ [100.6, 109.3, "The Tech Lead approves the pull request. Agents never approve their own work."],
+ [109.3, 121.4, "Testing runs on its own. Unit tests, plus the regression tests the graph says this change touches. And Jeera moves to Q A by itself."],
+ [121.4, 133.2, "The Deployment agent promotes the change through Co-pah-do, to Q A, and U A T. Production waits."],
+ [133.2, 141.9, "Production stays with your existing change advisory board. They approve, and then it goes live."],
+ [141.9, 152.8, "Finally, the graph re-syncs, so the next request already knows about this change. And every step is on the ticket, ready for audit."],
+ [152.8, 156.6, "Now, one more."],
+ [156.6, 173.6, "Let's try a different request. Create an Effective From Date field, on Healthcare Facility. Sounds simple enough."],
+ [173.6, 184.2, "The agent checks every field on that object. All one hundred and thirty five of them. Not a sample."],
+ [184.2, 198.1, "And, it already exists. So there's nothing to build. No ticket, no code, and nobody spends a sprint on a duplicate."],
+ [198.1, 204.7, "That's the idea. Four months, one pod, and we'll measure everything."]
+]
