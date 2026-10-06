@@ -4,6 +4,11 @@ Everything a fresh conversation needs to continue this work without re-deriving
 it. Written 2026-09-20, rewritten 2026-09-24 after a session that closed P1 and
 P2, declared the pod, and fixed two false clearances.
 
+This file is the **state**. `SESSION-LOG-2026-09.md` beside it is the
+**history** — each defect with its root cause, the OAuth errors in order, and
+the conclusions of mine that turned out to be wrong. Read both before changing
+anything: a fix with no failure attached reads as a preference and gets undone.
+
 - **Repo:** `chintasurya/Design`
 - **Branch:** `claude/funny-babbage-t29499` (all work lives here, never on main)
 - **Package root:** `poc/salesforce/`
@@ -211,6 +216,9 @@ poc/
 ├── Fonts.zip                    Trenda IG, the deck's typeface. Install it
 │                                before judging the slides: without it
 │                                PowerPoint substitutes and the spacing lies
+├── SESSION-LOG-2026-09.md       how it got this way: every defect with its
+│                                root cause, the four OAuth errors in order,
+│                                and what I got wrong — read with this file
 ├── ARCHITECTURE.md              target-state nine-stage pipeline
 ├── HANDOFF.md                   this file
 ├── discovery/
