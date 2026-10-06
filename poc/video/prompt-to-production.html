@@ -1,0 +1,679 @@
+<title>Prompt to Production</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 16:9 "screen" — rail of steps on top, Codex on the left, the agent's live work on the right, a caption bar underneath. */
+:root {
+  --bg: #0B1626;          /* Insight Global navy, a step deeper */
+  --panel: #12233B;       /* template navy for panels */
+  --panel-2: #172C49;
+  --line: #26405F;
+  --fg: #EAF0F7;
+  --muted: #95A7BD;
+  --teal: #5FD0C0;        /* template teal accent */
+  --blue: #5BA4F5;
+  --amber: #F2A93B;       /* human gates */
+  --green: #4CC38A;
+  --rose: #E7609A;
+  --violet: #B592F5;
+  --paper: #F5F7FA;       /* light tool surfaces (ticket, design page) */
+  --ink: #18222F;
+  --ink-2: #5A6573;
+  --display: 'Trenda IG Display', 'Outfit', system-ui, sans-serif;
+  --body: 'Trenda IG Text', 'Outfit', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 1rem; line-height: 1.45; padding-inline: 16px; padding-block: 18px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+.wrap { max-width: 1320px; margin-inline: auto; display: flex; flex-direction: column; gap: 12px; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; justify-content: space-between; }
+.brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.eyebrow { font-family: var(--display); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--teal); }
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(1.25rem, 2.2vw, 1.7rem); text-wrap: balance; }
+.scen { display: flex; flex-wrap: wrap; gap: 8px; }
+.scen button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 0.86rem; color: var(--muted); }
+.scen button[aria-pressed="true"] { border-color: var(--teal); color: var(--fg); background: #163a42; }
+
+/* step rail */
+.rail { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.rail button { flex: 1 0 auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.rail .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
+.rail button.gate .dot { border-radius: 2px; transform: rotate(45deg); background: #5b4524; }
+.rail button.done { color: var(--fg); }
+.rail button.done .dot { background: var(--green); }
+.rail button.gate.done .dot { background: var(--amber); }
+.rail button.now { border-color: var(--teal); color: var(--fg); background: #143440; }
+.rail button.now .dot { background: var(--teal); box-shadow: 0 0 0 4px rgba(95,208,192,.18); }
+
+/* stage */
+.stage { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr); gap: 12px; height: clamp(460px, 58vh, 620px); }
+.codex, .work { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.78rem; color: var(--muted); }
+.bar b { color: var(--fg); font-weight: 600; font-family: var(--mono); font-size: 0.8rem; }
+.live { display: inline-flex; align-items: center; gap: 6px; }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 1.4s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+.log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 9px; scroll-behavior: smooth; }
+.line { display: flex; gap: 9px; align-items: flex-start; font-size: 0.86rem; animation: rise .35s ease both; min-width: 0; }
+.line .who { flex: none; font-family: var(--mono); font-size: 0.68rem; padding: 2px 7px; border-radius: 5px; background: var(--panel-2); color: var(--c, var(--muted)); border: 1px solid color-mix(in srgb, var(--c, var(--muted)) 40%, transparent); margin-top: 1px; }
+.line .txt { min-width: 0; overflow-wrap: anywhere; }
+.line code { font-family: var(--mono); font-size: 0.78rem; color: #CFE3F7; }
+.line.ok .txt::before { content: "✓ "; color: var(--green); }
+.prompt { background: #0E1D31; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 0.95rem; }
+.prompt .you { font-family: var(--mono); font-size: 0.7rem; color: var(--teal); display: block; margin-bottom: 4px; }
+.caret { display: inline-block; width: 8px; height: 1.05em; background: var(--teal); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+.gatebox { border: 1px solid var(--amber); background: #2a2213; border-radius: 10px; padding: 11px 13px; display: flex; flex-direction: column; gap: 8px; animation: rise .35s ease both; }
+.gatebox .g { font-family: var(--display); font-weight: 600; color: var(--amber); font-size: 0.78rem; letter-spacing: .12em; text-transform: uppercase; }
+.gatebox p { margin: 0; font-size: 0.88rem; }
+.gatebox .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.approve { background: var(--amber); color: #241703; border: 0; border-radius: 8px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
+.approve[disabled] { background: #4b3b1d; color: #d9c49b; cursor: default; }
+.gatebox .stamp { font-size: 0.8rem; color: var(--green); }
+
+.view { flex: 1; position: relative; overflow: hidden; padding: 18px; display: flex; flex-direction: column; min-width: 0; }
+.view > .pane { flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; animation: fadein .45s ease both; }
+@keyframes fadein { from { opacity: 0; transform: translateY(8px); } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+.pop { animation: rise .4s ease both; }
+
+/* caption + controls */
+.caption { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; display: flex; gap: 14px; align-items: center; min-height: 72px; }
+.caption .tag { flex: none; font-family: var(--display); font-weight: 600; font-size: 0.72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--teal); }
+.caption p { margin: 0; font-size: clamp(1rem, 1.55vw, 1.2rem); line-height: 1.4; text-wrap: pretty; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.controls .grp { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 14px; cursor: pointer; font-size: 0.88rem; }
+.btn.primary { background: var(--teal); color: #062521; border-color: var(--teal); font-weight: 600; min-width: 96px; }
+.toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
+.toggle input { accent-color: var(--teal); width: 16px; height: 16px; }
+.note { font-size: 0.75rem; color: var(--muted); }
+
+/* --- views --- */
+.vtitle { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.vtitle h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.2rem; }
+.vtitle span { font-size: 0.78rem; color: var(--muted); }
+.agentchip { font-family: var(--mono); font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); color: var(--c); background: color-mix(in srgb, var(--c) 10%, transparent); }
+
+.roster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.roster div { border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 0.82rem; color: var(--muted); background: var(--panel-2); transition: all .4s; }
+.roster div.on { color: var(--fg); border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); background: color-mix(in srgb, var(--c) 12%, var(--panel-2)); }
+.bigprompt { font-family: var(--display); font-size: clamp(1.1rem, 2vw, 1.5rem); line-height: 1.3; font-weight: 500; text-wrap: balance; border-left: 3px solid var(--teal); padding-left: 14px; }
+
+.graph { flex: 1; min-height: 0; position: relative; }
+.graph svg { width: 100%; height: 100%; display: block; }
+.graph .edge { stroke: #3d5b80; stroke-width: 1.6; fill: none; stroke-dasharray: 400; stroke-dashoffset: 400; transition: stroke-dashoffset 1s ease, stroke .4s; }
+.graph .edge.drawn { stroke-dashoffset: 0; }
+.graph .edge.hot { stroke: var(--teal); stroke-width: 2.4; }
+.graph .node { opacity: 0; transform-box: fill-box; transform-origin: center; transition: opacity .4s, transform .4s; transform: scale(.6); }
+.graph .node.in { opacity: 1; transform: scale(1); }
+.graph .node rect { fill: #183150; stroke: #3d5b80; }
+.graph .node.hit rect { stroke: var(--teal); stroke-width: 2; fill: #134048; }
+.graph .node text { fill: var(--fg); font-family: var(--body); font-size: 12px; }
+.graph .node .k { fill: var(--muted); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; }
+.graph .field { fill: #2b4568; transition: fill .3s; }
+.graph .field.scan { fill: #4b6f9b; }
+.graph .field.found { fill: var(--teal); }
+.verdict { border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 5px; background: #102f35; border: 1px solid var(--teal); }
+.verdict.dup { background: #2b2412; border-color: var(--amber); }
+.verdict .vk { font-family: var(--display); font-weight: 700; font-size: 0.8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); }
+.verdict.dup .vk { color: var(--amber); }
+.verdict p { margin: 0; font-size: 0.92rem; }
+
+/* light tool surfaces */
+.paper { background: var(--paper); color: var(--ink); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; flex: 1; }
+.paper h3 { margin: 0; font-family: var(--display); font-size: 1.1rem; font-weight: 700; text-wrap: balance; }
+.paper .meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.paper .meta div { background: #E8EDF3; border-radius: 8px; padding: 7px 9px; font-size: 0.78rem; }
+.paper .meta b { display: block; font-size: 0.66rem; color: var(--ink-2); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+.paper .sec { font-size: 0.7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+.paper ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 0.86rem; }
+.lozenge { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 4px; background: #DFE3E8; color: #42526E; transition: all .4s; }
+.lozenge.prog { background: #DEEBFF; color: #0747A6; }
+.lozenge.qa { background: #EAE6FF; color: #403294; }
+.key { font-family: var(--mono); font-size: 0.8rem; color: #0B5CAD; }
+.opt { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto; gap: 8px; align-items: center; font-size: 0.82rem; padding: 7px 9px; border-radius: 8px; background: #E8EDF3; }
+.opt.pick { background: #DDF3EC; outline: 2px solid #2E9C7D; }
+.opt em { font-style: normal; font-weight: 700; font-size: 0.7rem; letter-spacing: .06em; }
+.opt.pick em { color: #1C7A5F; } .opt.no em { color: #9B3B3B; }
+
+.editor { background: #0A1422; border: 1px solid var(--line); border-radius: 10px; font-family: var(--mono); font-size: 0.76rem; line-height: 1.6; padding: 10px 0; overflow: auto; flex: 1; min-height: 0; }
+.editor .fn { color: var(--muted); padding: 0 12px 6px; font-size: 0.72rem; }
+.editor div.l { padding: 0 12px; white-space: pre; animation: rise .25s ease both; }
+.editor .add { background: rgba(76,195,138,.12); color: #BFF0D6; }
+.editor .add::before { content: "+ "; color: var(--green); }
+.editor .ctx::before { content: "  "; }
+.editor .ctx { color: #8FA5BF; }
+.split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; flex: 1; min-height: 0; }
+.checks { display: flex; flex-direction: column; gap: 7px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 0.84rem; color: var(--muted); padding: 7px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); transition: all .3s; }
+.check.pass { color: var(--fg); border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+.check .ic { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line); flex: none; display: grid; place-items: center; font-size: 0.7rem; }
+.check.pass .ic { background: var(--green); border-color: var(--green); color: #05261a; }
+.check.run .ic { border-color: var(--blue); border-top-color: transparent; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pr { display: flex; gap: 10px; align-items: center; border: 1px solid var(--violet); background: #221a39; padding: 9px 12px; border-radius: 10px; font-size: 0.85rem; }
+
+.meter { height: 10px; background: var(--panel-2); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+.meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), var(--green)); transition: width 1.4s ease; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.stat b { display: block; font-family: var(--display); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.76rem; color: var(--muted); }
+
+.pipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.env { border: 1px solid var(--line); border-radius: 12px; padding: 14px 12px; background: var(--panel-2); display: flex; flex-direction: column; gap: 6px; transition: all .5s; position: relative; }
+.env b { font-family: var(--display); font-size: 1.15rem; }
+.env span { font-size: 0.76rem; color: var(--muted); }
+.env.ok { border-color: var(--green); background: #10301f; }
+.env.ok span { color: #b9ecd0; }
+.env.run { border-color: var(--blue); }
+.env.lock { border-color: var(--amber); border-style: dashed; }
+.flow { height: 4px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
+.flow i { display: block; height: 100%; width: 0; background: var(--teal); transition: width 1.2s ease; }
+
+.chain { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.chain div { border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 0.82rem; background: var(--panel-2); color: var(--muted); transition: all .35s; }
+.chain div.ok { color: var(--fg); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
+.chain div.ok::before { content: "✓ "; color: var(--green); }
+.cta { display: flex; gap: 10px; flex-wrap: wrap; }
+.disclaim { font-size: 0.74rem; color: var(--muted); }
+
+/* video mode: the page recorded to MP4 */
+html.video { font-size: 21px; }
+body.video { padding: 24px 32px; }
+body.video .wrap { max-width: none; }
+body.video .controls, body.video .scen, body.video .cta { display: none; }
+body.video .stage { height: 66vh; }
+
+@media (max-width: 860px) {
+  .stage { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .codex { height: 300px; }
+  .work { min-height: 460px; }
+  .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .paper .meta, .pipe, .chain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .caption { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Agentic Delivery · Ascension</span>
+      <h1>One prompt in Codex, from request to release</h1>
+    </div>
+    <div class="scen" role="group" aria-label="Choose a request">
+      <button id="scen-build" aria-pressed="true">New behaviour: full journey</button>
+      <button id="scen-dup" aria-pressed="false">Duplicate request: stopped early</button>
+    </div>
+  </header>
+
+  <nav class="rail" id="rail" aria-label="Steps"></nav>
+
+  <main class="stage">
+    <section class="codex" aria-label="Codex">
+      <div class="bar"><b>codex</b><span class="live"><i></i>Network Services workspace</span></div>
+      <div class="log" id="log" aria-live="polite"></div>
+    </section>
+    <section class="work" aria-label="What the agents are doing">
+      <div class="bar"><span id="worktitle">Workspace</span><span id="agentnow"></span></div>
+      <div class="view" id="view"></div>
+    </section>
+  </main>
+
+  <div class="caption"><span class="tag" id="captag">Step 1</span><p id="caption">Press Play to watch one request travel from Codex to production.</p></div>
+
+  <div class="controls">
+    <div class="grp">
+      <button class="btn" id="prev" aria-label="Previous step">◀ Back</button>
+      <button class="btn primary" id="play">▶ Play</button>
+      <button class="btn" id="next" aria-label="Next step">Next ▶</button>
+      <button class="btn" id="restart">Restart</button>
+      <button class="btn" id="speed">Speed 1×</button>
+    </div>
+    <div class="grp">
+      <label class="toggle"><input type="checkbox" id="auto"> Approve gates automatically</label>
+      <label class="toggle"><input type="checkbox" id="voice"> Narrate</label>
+    </div>
+  </div>
+  <p class="note">Simulated walkthrough. Ticket keys, file names, test counts and timings are illustrative. The Healthcare Facility figures (135 fields, 17 automations) and the Apex and Flow split for HFN creation come from the Ascension sandbox.</p>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const VIDEO = location.hash === '#video';
+  if (VIDEO) { document.body.classList.add('video'); document.documentElement.classList.add('video'); }
+
+  const AG = {
+    you: ['You', 'var(--teal)'], orch: ['Orchestrator', '#5FD0C0'], impact: ['Impact & Reuse', '#3CC6B4'],
+    jira: ['Jira', '#5BA4F5'], arch: ['Architect', '#B592F5'], conf: ['Confluence', '#7FB2FF'],
+    dev: ['Developer', '#F2A93B'], review: ['Review', '#E7609A'], test: ['Test', '#4CC38A'],
+    qa: ['QA automation', '#8BD17C'], deploy: ['Deployment', '#F27B5C'], sync: ['Graph sync', '#5FD0C0']
+  };
+  const PROMPTS = {
+    build: 'When a provider Account is approved, create its Healthcare Facility Network record and notify the network manager.',
+    dup: 'Create an Effective From Date field on the Healthcare Facility object.'
+  };
+
+  // ---------- engine ----------
+  const S = { run: 0, paused: true, speed: 1, instant: false, step: 0, scen: 'build', started: false };
+  class Cancel {}
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const check = id => { if (id !== S.run) throw new Cancel(); };
+  async function wait(ms) {
+    const id = S.run;
+    if (S.instant) { check(id); return; }
+    let t = 0;
+    while (t < ms) { await sleep(40); check(id); if (!S.paused) t += 40 * S.speed; }
+  }
+  const log = $('#log'), view = $('#view');
+  const scroll = () => { log.scrollTop = log.scrollHeight; };
+  function line(agent, html, cls = '') {
+    const [name, c] = AG[agent];
+    const d = document.createElement('div');
+    d.className = 'line ' + cls;
+    d.innerHTML = `<span class="who" style="--c:${c}">${name}</span><span class="txt">${html}</span>`;
+    log.appendChild(d); scroll(); return d;
+  }
+  async function say(agent, html, ms = 900, cls = '') { line(agent, html, cls); await wait(ms); }
+  async function typeInto(el, text, cps = 34) {
+    el.innerHTML = '<span></span><i class="caret"></i>';
+    const span = el.firstChild;
+    for (let i = 0; i < text.length; i++) { span.textContent += text[i]; if (!S.instant) await wait(1000 / cps); }
+    el.querySelector('.caret')?.remove();
+  }
+  function pane(html, title, agent) {
+    view.innerHTML = `<div class="pane">${html}</div>`;
+    $('#worktitle').textContent = title;
+    const a = agent ? AG[agent] : null;
+    $('#agentnow').innerHTML = a ? `<span class="agentchip" style="--c:${a[1]}">${a[0]} agent</span>` : '';
+    return view.firstChild;
+  }
+  function caption(tag, text) {
+    $('#captag').textContent = tag; $('#caption').textContent = text;
+    if (!S.instant && $('#voice').checked && 'speechSynthesis' in window) {
+      try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.02 * S.speed; speechSynthesis.speak(u); } catch (e) {}
+    }
+  }
+  async function gate(n, who, text, viewNote) {
+    const id = S.run;
+    const box = document.createElement('div');
+    box.className = 'gatebox';
+    box.innerHTML = `<span class="g">Gate ${n} · ${who}</span><p>${text}</p><div class="row"><button class="approve">Approve</button><span class="note">${viewNote}</span></div>`;
+    log.appendChild(box); scroll();
+    const btn = box.querySelector('.approve');
+    let ok = false, t = 0;
+    btn.onclick = () => { ok = true; };
+    if (!S.instant) setPlayLabel();
+    while (!ok) {
+      if (S.instant) break;
+      await sleep(60); check(id);
+      if (($('#auto').checked || VIDEO) && !S.paused) { t += 60 * S.speed; if (t > 1900) ok = true; }
+    }
+    check(id);
+    btn.disabled = true; btn.textContent = 'Approved';
+    box.querySelector('.note').outerHTML = `<span class="stamp">✓ ${who} approved</span>`;
+    scroll();
+    await wait(700);
+  }
+
+  // ---------- steps ----------
+  const steps = {
+    ask: { label: 'Ask in Codex', async run() {
+      caption('Ask', 'A Tech Lead types one plain-English request into Codex. That is the only input anyone gives.');
+      const p = pane(`
+        <div class="vtitle"><h2>One prompt in</h2><span>Codex routes it to the agent team</span></div>
+        <div class="bigprompt" id="bp"></div>
+        <div class="roster" id="roster">${Object.entries(AG).filter(([k]) => !['you', 'sync'].includes(k)).map(([k, [n, c]]) => `<div data-k="${k}" style="--c:${c}">${n}</div>`).join('')}</div>`, 'Codex', 'orch');
+      const box = document.createElement('div'); box.className = 'prompt';
+      box.innerHTML = '<span class="you">you › codex</span><span id="pt"></span>';
+      log.appendChild(box); scroll();
+      await wait(500);
+      await typeInto($('#pt'), PROMPTS[S.scen]);
+      $('#bp').textContent = PROMPTS[S.scen];
+      await wait(500);
+      await say('orch', S.scen === 'build' ? 'Classified: <b>behaviour change</b> on Account → Healthcare Facility Network.' : 'Classified: <b>new field</b> on Healthcare Facility.', 900);
+      await say('orch', 'Checking the Ascension Knowledge Graph before anything is built.', 700);
+      const order = S.scen === 'build' ? ['orch', 'impact', 'jira', 'arch', 'conf', 'dev', 'review', 'test', 'qa', 'deploy'] : ['orch', 'impact'];
+      for (const k of order) { p.querySelector(`[data-k="${k}"]`)?.classList.add('on'); await wait(220); }
+      await wait(600);
+    }},
+
+    graph: { label: 'Graph check', async run() {
+      if (S.scen === 'dup') return graphDup();
+      caption('Graph check', 'Before anything is built, the Impact and Reuse agent asks the knowledge graph what already exists and what this change would touch.');
+      const N = [
+        { id: 'acc', x: 250, y: 165, w: 120, k: 'Object', t: 'Account' },
+        { id: 'trg', x: 40, y: 60, w: 160, k: 'Trigger', t: 'AHC_AccountTrigger' },
+        { id: 'flw', x: 40, y: 270, w: 160, k: 'Flows', t: 'Record-triggered (Account)' },
+        { id: 'apx', x: 430, y: 55, w: 170, k: 'Apex', t: 'HFN creation · Apex' },
+        { id: 'hfl', x: 430, y: 160, w: 170, k: 'Flow', t: 'HFN creation · Flow' },
+        { id: 'hfn', x: 430, y: 270, w: 170, k: 'Object', t: 'Healthcare Facility Network' }
+      ];
+      const E = [['trg', 'acc'], ['flw', 'acc'], ['acc', 'apx'], ['acc', 'hfl'], ['apx', 'hfn'], ['hfl', 'hfn']];
+      const c = id => { const n = N.find(o => o.id === id); return [n.x + n.w / 2, n.y + 22]; };
+      const p = pane(`
+        <div class="vtitle"><h2>Ascension Knowledge Graph</h2><span>graph.impact(anchor: Account)</span></div>
+        <div class="graph"><svg viewBox="0 0 640 330" role="img" aria-label="Components connected to Account">
+          ${E.map(([a, b], i) => { const [x1, y1] = c(a), [x2, y2] = c(b); return `<path class="edge" id="e${i}" d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}"/>`; }).join('')}
+          ${N.map(n => `<g class="node" id="n-${n.id}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="44" rx="9"/><text class="k" x="${n.x + 10}" y="${n.y + 16}">${n.k}</text><text x="${n.x + 10}" y="${n.y + 33}">${n.t}</text></g>`).join('')}
+        </svg></div>
+        <div id="vd"></div>`, 'Knowledge graph', 'impact');
+      await say('impact', '<code>graph.impact(anchor: Account, creates: HealthcareFacilityNetwork)</code>', 600);
+      const show = id => p.querySelector('#n-' + id).classList.add('in');
+      show('acc'); await wait(500);
+      for (const [i, n] of [[0, 'trg'], [1, 'flw']]) { show(n); await wait(250); p.querySelector('#e' + i).classList.add('drawn'); await wait(350); }
+      await say('impact', 'Found <b>AHC_AccountTrigger</b> and record-triggered flows already running on Account.', 700, 'ok');
+      for (const [i, n] of [[2, 'apx'], [3, 'hfl']]) { show(n); await wait(250); p.querySelector('#e' + i).classList.add('drawn'); await wait(350); }
+      show('hfn'); [4, 5].forEach(i => p.querySelector('#e' + i).classList.add('drawn'));
+      await wait(500);
+      ['e2', 'e3', 'e4', 'e5'].forEach(i => p.querySelector('#' + i).classList.add('hot'));
+      ['apx', 'hfl', 'hfn'].forEach(i => p.querySelector('#n-' + i).classList.add('hit'));
+      await say('impact', 'HFN records are <b>already created</b>: in Apex for some scenarios, in Flow for others.', 900, 'ok');
+      p.querySelector('#vd').innerHTML = `<div class="verdict pop"><span class="vk">Verdict · Reuse and extend</span><p>The capability exists in two places. Extend the existing creation logic and add the notification. Do not add a third path.</p></div>`;
+      await say('impact', 'Verdict: <b>reuse and extend</b>. Evidence attached, snapshot <code>b7f1c2e4</code>.', 1200);
+    }},
+
+    g1: { label: 'Gate 1', gate: true, async run() {
+      caption('Gate 1', 'The PM and Tech Lead see the evidence and approve the scope. Nothing is raised until a person says yes.');
+      pane(approvalView('Scope', 'PM and Tech Lead', ['Extend existing HFN creation logic', 'Add a notification to the network manager', 'No new Flow on Account']), 'Approval', null);
+      await gate(1, 'PM and Tech Lead', 'Approve the scope: extend the existing HFN creation and add the notification.', 'Waiting for the PM and Tech Lead');
+    }},
+
+    jira: { label: 'Jira ticket', async run() {
+      caption('Jira', 'The Jira agent raises the ticket in the current sprint, with acceptance criteria and the graph evidence attached.');
+      const p = pane(`
+        <div class="paper">
+          <div class="vtitle"><span class="key">NS-1482</span><span class="lozenge" id="loz">TO DO</span></div>
+          <h3>Create Healthcare Facility Network on Account approval, and notify the network manager</h3>
+          <div class="meta">
+            <div><b>Type</b>Story</div><div><b>Sprint</b>Current sprint</div><div><b>Pod</b>Network Services</div><div><b>Risk</b>Medium</div>
+          </div>
+          <span class="sec">Acceptance criteria</span>
+          <ul id="ac"></ul>
+          <span class="sec">Evidence</span>
+          <ul id="ev"></ul>
+        </div>`, 'Jira', 'jira');
+      await say('jira', 'Creating story in the current sprint for Network Services.', 600);
+      const AC = ['Given an approved provider Account, when it is saved, then one HFN record exists for it', 'Given a duplicate save, then no second HFN record is created', 'When the HFN is created, then the network manager is notified'];
+      for (const a of AC) { const li = document.createElement('li'); li.className = 'pop'; li.textContent = a; p.querySelector('#ac').appendChild(li); await wait(450); }
+      const EV = ['Graph verdict: reuse and extend (snapshot b7f1c2e4)', 'Components touched: AHC_AccountTrigger, HFN creation in Apex and Flow'];
+      for (const a of EV) { const li = document.createElement('li'); li.className = 'pop'; li.textContent = a; p.querySelector('#ev').appendChild(li); await wait(350); }
+      await say('jira', 'Raised <b>NS-1482</b> with three acceptance criteria and the graph evidence.', 600, 'ok');
+      const l = p.querySelector('#loz'); l.textContent = 'IN PROGRESS'; l.classList.add('prog');
+      await say('jira', 'Status moved to <b>In Progress</b>.', 900);
+    }},
+
+    design: { label: 'Design', async run() {
+      caption('Design', 'The Architect agent picks the pattern from facts, and the Confluence agent publishes the solution design.');
+      const p = pane(`
+        <div class="paper">
+          <span class="sec">Network Services space · Solution design</span>
+          <h3>NS-1482 · HFN creation on Account approval</h3>
+          <span class="sec">Options considered</span>
+          <div id="opts" style="display:flex;flex-direction:column;gap:6px"></div>
+          <span class="sec">Impact and test plan</span>
+          <ul id="plan"></ul>
+        </div>`, 'Confluence', 'arch');
+      await say('arch', 'Reading what runs on Account and how HFN is created today.', 700);
+      const O = [['New record-triggered Flow', 'Adds a third creation path; order of execution unclear', 'REJECTED', 'no'],
+                 ['Extend the Apex handler', 'One path, bulk-safe, already covered by tests', 'CHOSEN', 'pick'],
+                 ['Change the HFN Flow only', 'Misses scenarios the Apex path owns', 'REJECTED', 'no']];
+      for (const [a, b, c, k] of O) { const d = document.createElement('div'); d.className = `opt pop ${k}`; d.innerHTML = `<b>${a}</b><span>${b}</span><em>${c}</em>`; p.querySelector('#opts').appendChild(d); await wait(550); }
+      await say('arch', 'Pattern: <b>extend the existing handler</b>. A new Flow would make a third path.', 800, 'ok');
+      for (const t of ['Touches: AHC_AccountTrigger handler, HFN creation in Apex', 'Regression: tests covering Account save and HFN creation', 'Notification through the existing alert framework']) { const li = document.createElement('li'); li.className = 'pop'; li.textContent = t; p.querySelector('#plan').appendChild(li); await wait(380); }
+      $('#agentnow').innerHTML = `<span class="agentchip" style="--c:${AG.conf[1]}">Confluence agent</span>`;
+      await say('conf', 'Published the solution design and linked it to NS-1482.', 900, 'ok');
+    }},
+
+    g2: { label: 'Gate 2', gate: true, async run() {
+      caption('Gate 2', 'The Tech Lead approves the design before a single line of code is written.');
+      pane(approvalView('Design', 'Tech Lead', ['Extend the existing Apex handler', 'One creation path, bulk-safe', 'Regression scope agreed']), 'Approval', null);
+      await gate(2, 'Tech Lead', 'Approve the design: extend the existing handler, no new Flow.', 'Waiting for the Tech Lead');
+    }},
+
+    build: { label: 'Build and review', async run() {
+      caption('Build', 'The Developer agent writes the change to Ascension standards, and the Review agent checks it before a pull request is opened.');
+      const p = pane(`
+        <div class="split">
+          <div class="editor"><div class="fn">force-app/main/default/classes/AccountApprovalService.cls</div><div id="code"></div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+            <span class="sec" style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Review agent</span>
+            <div class="checks" id="checks"></div>
+            <div id="pr"></div>
+          </div>
+        </div>`, 'Code', 'dev');
+      const CODE = [['ctx', 'public with sharing class AccountApprovalService {'],
+        ['ctx', '  public static void onApproved(List<Account> approved) {'],
+        ['ctx', '    HfnCreation.createFor(approved);'],
+        ['add', '    Set<Id> created = HfnCreation.lastCreatedIds();'],
+        ['add', '    if (!created.isEmpty()) {'],
+        ['add', '      NetworkAlerts.notifyManagers(created);'],
+        ['add', '    }'],
+        ['ctx', '  }'],
+        ['ctx', '}'],
+        ['ctx', ''],
+        ['add', '@IsTest static void notifiesManagerOnceForBulkApproval() { … }']];
+      await say('dev', 'Extending the existing handler on <code>feature/NS-1482</code>.', 500);
+      for (const [k, t] of CODE) { const d = document.createElement('div'); d.className = 'l ' + k; d.textContent = t; p.querySelector('#code').appendChild(d); await wait(170); }
+      await say('dev', 'Change written, with a bulk test.', 500, 'ok');
+      const C = ['Bulk-safe: no SOQL or DML in loops', 'Sharing and field access respected', 'Ascension naming standards', 'No duplicate creation path'];
+      const box = p.querySelector('#checks');
+      for (const t of C) {
+        const d = document.createElement('div'); d.className = 'check run'; d.innerHTML = `<span class="ic"></span>${t}`; box.appendChild(d);
+        await wait(420); d.className = 'check pass'; d.querySelector('.ic').textContent = '✓';
+      }
+      $('#agentnow').innerHTML = `<span class="agentchip" style="--c:${AG.review[1]}">Review agent</span>`;
+      await say('review', 'Review passed: 4 of 4 checks.', 500, 'ok');
+      p.querySelector('#pr').innerHTML = `<div class="pr pop"><b>Pull request</b><span>feature/NS-1482 → develop · 2 files</span></div>`;
+      await say('review', 'Pull request opened and linked to NS-1482.', 900);
+    }},
+
+    g3: { label: 'Gate 3', gate: true, async run() {
+      caption('Gate 3', 'The Tech Lead reviews and approves the pull request. Agents never approve their own work.');
+      pane(approvalView('Code', 'Tech Lead', ['2 files changed', 'Review agent: 4 of 4 checks passed', 'Linked to NS-1482 and its design page']), 'Approval', null);
+      await gate(3, 'Tech Lead', 'Approve and merge the pull request for NS-1482.', 'Waiting for the Tech Lead');
+    }},
+
+    test: { label: 'Test', async run() {
+      caption('Test', 'The Test agents run the unit tests and the regression tests the graph says this change touches. Jira moves to QA on its own.');
+      const p = pane(`
+        <div class="vtitle"><h2>Test run</h2><span>Chosen by blast radius, not by guesswork</span></div>
+        <div class="checks" id="tests"></div>
+        <div style="display:flex;flex-direction:column;gap:6px"><span class="note">Code coverage on changed classes</span><div class="meter"><i id="cov"></i></div></div>
+        <div class="stats">
+          <div class="stat"><b id="s1">0</b><span>unit tests passed</span></div>
+          <div class="stat"><b id="s2">0</b><span>regression tests selected</span></div>
+          <div class="stat"><b id="s3">0</b><span>Zephyr test cases created</span></div>
+        </div>`, 'Tests', 'test');
+      const T = ['AccountApprovalServiceTest · 6 methods', 'HfnCreationTest · regression', 'AHC_AccountTrigger regression suite', 'Notification delivery check'];
+      const box = p.querySelector('#tests');
+      for (const t of T) { const d = document.createElement('div'); d.className = 'check run'; d.innerHTML = `<span class="ic"></span>${t}`; box.appendChild(d); await wait(500); d.className = 'check pass'; d.querySelector('.ic').textContent = '✓'; }
+      p.querySelector('#cov').style.width = '92%';
+      const count = async (el, to) => { for (let i = 0; i <= to; i++) { el.textContent = i; await wait(30); } };
+      await count(p.querySelector('#s1'), 6); await count(p.querySelector('#s2'), 14);
+      await say('test', 'All tests green. Coverage on changed classes: <b>92%</b>.', 500, 'ok');
+      $('#agentnow').innerHTML = `<span class="agentchip" style="--c:${AG.qa[1]}">QA automation agent</span>`;
+      await count(p.querySelector('#s3'), 5);
+      await say('qa', 'Created 5 Zephyr test cases and the Copado functional test.', 600, 'ok');
+      await say('jira', 'NS-1482 moved to <b>QA</b> with the results attached.', 900);
+    }},
+
+    deploy: { label: 'Deploy', async run() {
+      caption('Deploy', 'The Deployment agent promotes the change through Copado to QA and UAT. Production waits for Ascension\'s CAB.');
+      const p = pane(`
+        <div class="vtitle"><h2>Copado pipeline</h2><span>Sandbox and lower environments only</span></div>
+        <div class="pipe" id="pipe">
+          ${['DEV', 'SIT', 'UAT', 'PROD'].map((e, i) => `<div class="env" id="env${i}"><b>${e}</b><span>${i === 3 ? 'Needs CAB approval' : 'Waiting'}</span><div class="flow"><i></i></div></div>`).join('')}
+        </div>
+        <div class="checks" id="dchk"></div>`, 'Copado', 'deploy');
+      p.querySelector('#env3').classList.add('lock');
+      for (let i = 0; i < 3; i++) {
+        const e = p.querySelector('#env' + i); e.classList.add('run'); e.querySelector('span').textContent = 'Promoting…'; e.querySelector('.flow i').style.width = '100%';
+        await wait(1100); e.classList.remove('run'); e.classList.add('ok'); e.querySelector('span').textContent = i === 2 ? 'Deployed · ready for UAT' : 'Deployed and validated';
+        await say('deploy', `Promoted to <b>${['DEV', 'SIT', 'UAT'][i]}</b>.`, 300, 'ok');
+      }
+      const d = document.createElement('div'); d.className = 'check pass pop'; d.innerHTML = '<span class="ic">✓</span>Release notes and rollback plan attached to NS-1482'; p.querySelector('#dchk').appendChild(d);
+      await say('deploy', 'Release notes and rollback plan written. Production is locked until CAB approves.', 1000);
+    }},
+
+    g4: { label: 'Gate 4 · CAB', gate: true, async run() {
+      caption('Gate 4', 'Production stays inside Ascension\'s existing change process. The CAB approves, and only then does the release go out.');
+      pane(approvalView('Production', 'CAB and release manager', ['UAT signed off', 'Tests and evidence on the ticket', 'Rollback plan attached']), 'Approval', null);
+      await gate(4, 'CAB and release manager', 'Approve the production release of NS-1482.', 'Waiting for CAB');
+    }},
+
+    done: { label: 'Re-sync and close', async run() {
+      caption('Done', 'The graph re-syncs, so the next request already knows about this change. Every step is on the ticket, ready for an audit.');
+      const p = pane(`
+        <div class="vtitle"><h2>Released, recorded, remembered</h2><span>NS-1482</span></div>
+        <div class="chain" id="chain">${['Request', 'Graph verdict', 'Jira ticket', 'Design page', 'Git commit', 'Copado deploy', 'Test results', 'Graph snapshot'].map(t => `<div>${t}</div>`).join('')}</div>
+        <div class="stats">
+          <div class="stat"><b>1</b><span>prompt typed</span></div>
+          <div class="stat"><b>4</b><span>human approvals</span></div>
+          <div class="stat"><b>10</b><span>agents involved</span></div>
+        </div>
+        <div class="cta"><button class="btn" id="tryDup">Watch the duplicate request</button><button class="btn" id="again">Watch again</button></div>
+        <p class="disclaim">Illustrative run. In the pilot, the same flow runs on 10 to 15 real Network Services tickets and is measured against today.</p>`, 'Summary', 'sync');
+      await say('deploy', 'Released to <b>PROD</b> after CAB approval.', 600, 'ok');
+      await say('sync', 'Graph re-synced: the new notification path is now part of the org\'s memory.', 600, 'ok');
+      for (const d of p.querySelectorAll('#chain div')) { d.classList.add('ok'); await wait(230); }
+      await say('jira', 'NS-1482 moved to <b>Done</b>.', 800, 'ok');
+      p.querySelector('#tryDup').onclick = () => setScenario('dup');
+      p.querySelector('#again').onclick = () => { S.paused = false; runFrom(0); };
+    }},
+
+    stop: { label: 'Stopped early', async run() {
+      caption('Saved', 'Nothing to build. The field already exists, so no ticket is raised and nobody spends a sprint on a duplicate.');
+      const p = pane(`
+        <div class="vtitle"><h2>No build needed</h2><span>Stopped at the graph check</span></div>
+        <div class="verdict dup pop"><span class="vk">Already exists</span><p><b>Effective_From_Date__c</b> is already on Healthcare Facility. The request is answered with the existing field.</p></div>
+        <div class="stats">
+          <div class="stat"><b>0</b><span>tickets raised</span></div>
+          <div class="stat"><b>0</b><span>lines of code</span></div>
+          <div class="stat"><b>1</b><span>duplicate avoided</span></div>
+        </div>
+        <div class="cta"><button class="btn" id="tryBuild">Watch the full journey</button></div>
+        <p class="disclaim">This request is a real case from the sandbox: an earlier version of the check answered "Safe to create" for this field. Existence is now checked against the full graph, not a sample.</p>`, 'Summary', 'impact');
+      await say('orch', 'Stopped. No ticket, no design, no code: the request is already met.', 900, 'ok');
+      p.querySelector('#tryBuild').onclick = () => setScenario('build');
+    }}
+  };
+
+  async function graphDup() {
+    caption('Graph check', 'The Impact and Reuse agent checks every field on Healthcare Facility, not a sample. Existence is never guessed.');
+    const cols = 15, rows = 9;
+    let dots = '';
+    for (let i = 0; i < 135; i++) { const x = 300 + (i % cols) * 21, y = 40 + Math.floor(i / cols) * 25; dots += `<rect class="field" id="f${i}" x="${x}" y="${y}" width="15" height="15" rx="3"/>`; }
+    const p = pane(`
+      <div class="vtitle"><h2>Ascension Knowledge Graph</h2><span>graph.exists(object: HealthcareFacility, field)</span></div>
+      <div class="graph"><svg viewBox="0 0 640 300" role="img" aria-label="All 135 fields on Healthcare Facility scanned">
+        <g class="node in hit"><rect x="20" y="110" width="210" height="60" rx="10"/><text class="k" x="34" y="133">Object</text><text x="34" y="155">Healthcare Facility</text></g>
+        <path class="edge drawn" d="M230,140 C265,140 265,140 296,140"/>
+        ${dots}
+        <text x="300" y="285" fill="#95A7BD" font-size="11">135 fields · 17 automations (measured in the sandbox)</text>
+      </svg></div>
+      <div id="vd"></div>`, 'Knowledge graph', 'impact');
+    await say('impact', '<code>graph.exists(HealthcareFacility, "Effective From Date")</code>', 500);
+    const target = 97;
+    for (let i = 0; i <= target; i += 3) {
+      for (let j = i; j < Math.min(i + 3, 135); j++) p.querySelector('#f' + j)?.classList.add('scan');
+      await wait(28);
+    }
+    p.querySelector('#f' + target).classList.remove('scan'); p.querySelector('#f' + target).classList.add('found');
+    await say('impact', 'Match: <b>Effective_From_Date__c</b> already exists on Healthcare Facility.', 600, 'ok');
+    p.querySelector('#vd').innerHTML = `<div class="verdict dup pop"><span class="vk">Verdict · Already exists</span><p>Do not create it. Reuse the existing field. No ticket needed.</p></div>`;
+    await say('impact', 'Verdict: <b>already exists</b>. Request closed with the evidence.', 1200);
+  }
+
+  function approvalView(name, who, items) {
+    return `<div class="vtitle"><h2>Gate · ${name}</h2><span>A person decides</span></div>
+      <div class="verdict dup"><span class="vk">${who}</span><p>The approver sees the same evidence the agents used.</p></div>
+      <div class="checks">${items.map(t => `<div class="check pass"><span class="ic">✓</span>${t}</div>`).join('')}</div>
+      <p class="disclaim">Approve in the Codex panel, or turn on "Approve gates automatically".</p>`;
+  }
+
+  const FLOWS = { build: ['ask', 'graph', 'g1', 'jira', 'design', 'g2', 'build', 'g3', 'test', 'deploy', 'g4', 'done'], dup: ['ask', 'graph', 'stop'] };
+  const flow = () => FLOWS[S.scen];
+
+  function drawRail() {
+    const r = $('#rail'); r.innerHTML = '';
+    flow().forEach((k, i) => {
+      const b = document.createElement('button');
+      b.className = (steps[k].gate ? 'gate ' : '') + (i < S.step ? 'done' : '') + (i === S.step ? ' now' : '');
+      b.innerHTML = `<span class="dot"></span>${steps[k].label}`;
+      b.onclick = () => { S.paused = false; runFrom(i); };
+      r.appendChild(b);
+    });
+    r.querySelector('.now')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  function setPlayLabel() {
+    const pb = $('#play');
+    if (S.step >= flow().length) pb.textContent = '↺ Replay';
+    else pb.textContent = S.paused ? '▶ Play' : '❚❚ Pause';
+  }
+
+  async function runFrom(n) {
+    S.run++; const id = S.run;
+    try { speechSynthesis?.cancel(); } catch (e) {}
+    log.innerHTML = ''; view.innerHTML = '';
+    S.started = true;
+    try {
+      S.instant = true;
+      for (let i = 0; i < n; i++) { S.step = i; await steps[flow()[i]].run(); }
+      S.instant = false;
+      for (let i = n; i < flow().length; i++) {
+        S.step = i; drawRail(); setPlayLabel();
+        await steps[flow()[i]].run();
+        check(id);
+      }
+      S.step = flow().length; drawRail(); S.paused = true; setPlayLabel();
+      if (VIDEO) document.body.dataset.finished = '1';
+    } catch (e) { if (!(e instanceof Cancel)) throw e; }
+    finally { if (id === S.run) S.instant = false; }
+  }
+
+  function setScenario(sc) {
+    S.scen = sc;
+    $('#scen-build').setAttribute('aria-pressed', sc === 'build');
+    $('#scen-dup').setAttribute('aria-pressed', sc === 'dup');
+    S.paused = false; runFrom(0);
+  }
+
+  $('#play').onclick = () => {
+    if (!S.started || S.step >= flow().length) { S.paused = false; runFrom(0); setPlayLabel(); return; }
+    S.paused = !S.paused; setPlayLabel();
+    try { S.paused ? speechSynthesis.pause() : speechSynthesis.resume(); } catch (e) {}
+  };
+  $('#next').onclick = () => { S.paused = false; runFrom(Math.min(S.step + 1, flow().length - 1)); };
+  $('#prev').onclick = () => { S.paused = false; runFrom(Math.max(S.step - 1, 0)); };
+  $('#restart').onclick = () => { S.paused = false; runFrom(0); };
+  const SPEEDS = [1, 1.5, 2];
+  $('#speed').onclick = () => { S.speed = SPEEDS[(SPEEDS.indexOf(S.speed) + 1) % SPEEDS.length]; $('#speed').textContent = `Speed ${S.speed}×`; };
+  $('#scen-build').onclick = () => setScenario('build');
+  $('#scen-dup').onclick = () => setScenario('dup');
+  document.addEventListener('keydown', e => { if (e.key === ' ' && e.target === document.body) { e.preventDefault(); $('#play').click(); } });
+
+  // Resting first frame: the prompt, the roster and the whole route, ready to play.
+  drawRail();
+  pane(`<div class="vtitle"><h2>One prompt in</h2><span>Press Play</span></div>
+    <div class="bigprompt">${PROMPTS.build}</div>
+    <div class="roster">${Object.entries(AG).filter(([k]) => !['you', 'sync'].includes(k)).map(([k, [n, c]]) => `<div class="on" style="--c:${c}">${n}</div>`).join('')}</div>
+    <p class="disclaim">Ten agents, four human approvals, one evidence trail. Choose a request above, then press Play. Click any step to jump to it.</p>`, 'Codex', 'orch');
+  line('orch', 'Ready. Type a request, or press Play to watch a recorded one.');
+
+  if (VIDEO) { $('#auto').checked = true; S.paused = false; S.speed = 0.72; setTimeout(() => runFrom(0), 600); }
+})();
+</script>
