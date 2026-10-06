@@ -1,0 +1,71 @@
+1
+00:00:00,000 --> 00:00:04,778
+Concept walkthrough. One prompt in Codex, from request to release.
+
+2
+00:00:04,878 --> 00:00:28,774
+A Tech Lead types one plain-English request into Codex. That is the only input anyone gives.
+
+3
+00:00:28,875 --> 00:00:44,384
+Before anything is built, the Impact and Reuse agent asks the knowledge graph what already exists and what this change would touch.
+
+4
+00:00:44,484 --> 00:00:53,439
+The PM and Tech Lead see the evidence and approve the scope. Nothing is raised until a person says yes.
+
+5
+00:00:53,539 --> 00:01:05,949
+The Jira agent raises the ticket in the current sprint, with acceptance criteria and the graph evidence attached.
+
+6
+00:01:06,049 --> 00:01:18,182
+The Architect agent picks the pattern from facts, and the Confluence agent publishes the solution design.
+
+7
+00:01:18,281 --> 00:01:26,588
+The Tech Lead approves the design before a single line of code is written.
+
+8
+00:01:26,688 --> 00:01:40,529
+The Developer agent writes the change to Ascension standards, and the Review agent checks it before a pull request is opened.
+
+9
+00:01:40,629 --> 00:01:49,223
+The Tech Lead reviews and approves the pull request. Agents never approve their own work.
+
+10
+00:01:49,323 --> 00:02:01,270
+The Test agents run the unit tests and the regression tests the graph says this change touches. Jira moves to QA on its own.
+
+11
+00:02:01,370 --> 00:02:13,115
+The Deployment agent promotes the change through Copado to QA and UAT. Production waits for Ascension's CAB.
+
+12
+00:02:13,215 --> 00:02:21,849
+Production stays inside Ascension's existing change process. The CAB approves, and only then does the release go out.
+
+13
+00:02:21,949 --> 00:02:32,719
+The graph re-syncs, so the next request already knows about this change. Every step is on the ticket, ready for an audit.
+
+14
+00:02:32,819 --> 00:02:36,549
+A second request. What if it already exists?
+
+15
+00:02:36,649 --> 00:02:53,508
+A Tech Lead types one plain-English request into Codex. That is the only input anyone gives.
+
+16
+00:02:53,608 --> 00:03:04,132
+The Impact and Reuse agent checks every field on Healthcare Facility, not a sample. Existence is never guessed.
+
+17
+00:03:04,231 --> 00:03:17,979
+Nothing to build. The field already exists, so no ticket is raised and nobody spends a sprint on a duplicate.
+
+18
+00:03:18,079 --> 00:03:22,479
+A four-month pilot on the Network Services pod.

@@ -186,12 +186,35 @@ button { font: inherit; color: inherit; }
 .cta { display: flex; gap: 10px; flex-wrap: wrap; }
 .disclaim { font-size: 0.74rem; color: var(--muted); }
 
-/* video mode: the page recorded to MP4 */
-html.video { font-size: 21px; }
-body.video { padding: 24px 32px; }
-body.video .wrap { max-width: none; }
-body.video .controls, body.video .scen, body.video .cta { display: none; }
-body.video .stage { height: 66vh; }
+.winbar, #cursor, .ripple, .tabs { display: none; }
+
+/* video mode: recorded to MP4 as if a person were screen-recording Codex */
+html.video { font-size: 19px; }
+html.video, body.video { background: radial-gradient(1400px 800px at 25% 15%, #22385A 0%, #0E1828 60%, #0A111C 100%); }
+body.video { padding: 0; height: 100vh; overflow: hidden; }
+body.video .wrap { position: fixed; inset: 0; max-width: none; padding: 34px 48px 30px; gap: 0; }
+body.video .top, body.video .rail, body.video .note, body.video .controls, body.video .scen, body.video .cta { display: none; }
+body.video .camwrap { flex: 1; min-height: 0; overflow: hidden; border-radius: 14px; background: var(--bg); box-shadow: 0 30px 90px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07); }
+body.video .cam { position: relative; height: 100%; display: flex; flex-direction: column; transform-origin: 0 0; transition: transform 1.15s cubic-bezier(.65,0,.35,1); will-change: transform; }
+body.video .winbar { display: flex; align-items: center; gap: 16px; height: 46px; padding: 0 18px; background: #0F1C2E; border-bottom: 1px solid var(--line); flex: none; }
+.winbar .dots { display: flex; gap: 8px; }
+.winbar .dots i { width: 12px; height: 12px; border-radius: 50%; background: #34465E; }
+.winbar .wt { font-size: 15px; color: var(--muted); }
+.winbar .wt b { color: var(--fg); font-weight: 600; }
+body.video .stage { flex: 1; height: auto; min-height: 0; padding: 14px; }
+body.video .log { scroll-behavior: auto; }
+body.video #worktitle { display: none; }
+body.video .tabs { display: flex; gap: 2px; }
+.tabs span { font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; color: var(--muted); transition: background .25s, color .25s; }
+.tabs span.on { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+body.video #cursor { display: block; position: absolute; left: 0; top: 0; width: 28px; height: 28px; z-index: 50; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,.55)); }
+body.video .ripple { display: block; position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.9); pointer-events: none; z-index: 49; animation: rip .55s ease-out forwards; }
+@keyframes rip { from { transform: scale(.25); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+body.video .caption { position: fixed; left: 50%; bottom: 58px; transform: translateX(-50%); z-index: 60; width: max-content; max-width: 1500px; min-height: 0; padding: 14px 28px; border: 0; border-radius: 10px; background: rgba(6,10,16,.84); }
+body.video .caption .tag { display: none; }
+body.video .caption.high { bottom: auto; top: 48px; }
+body.video .caption p { font-size: 29px; text-align: center; color: #FFFFFF; }
+body.video .caption.swap p { animation: rise .45s ease both; }
 
 @media (max-width: 860px) {
   .stage { grid-template-columns: minmax(0, 1fr); height: auto; }
@@ -221,16 +244,20 @@ body.video .stage { height: 66vh; }
 
   <nav class="rail" id="rail" aria-label="Steps"></nav>
 
+  <div class="camwrap"><div class="cam" id="cam">
+  <div class="winbar"><span class="dots"><i></i><i></i><i></i></span><span class="wt"><b>Codex</b> · Network Services workspace</span></div>
   <main class="stage">
     <section class="codex" aria-label="Codex">
       <div class="bar"><b>codex</b><span class="live"><i></i>Network Services workspace</span></div>
       <div class="log" id="log" aria-live="polite"></div>
     </section>
     <section class="work" aria-label="What the agents are doing">
-      <div class="bar"><span id="worktitle">Workspace</span><span id="agentnow"></span></div>
+      <div class="bar"><span id="worktitle">Workspace</span><div class="tabs" id="tabs"></div><span id="agentnow"></span></div>
       <div class="view" id="view"></div>
     </section>
   </main>
+  <svg id="cursor" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 3 L5 22 L10 17.5 L13.6 25 L17 23.4 L13.5 16 L20 16 Z" fill="#FFFFFF" stroke="#0B1626" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  </div></div>
 
   <div class="caption"><span class="tag" id="captag">Step 1</span><p id="caption">Press Play to watch one request travel from Codex to production.</p></div>
 
@@ -288,21 +315,86 @@ body.video .stage { height: 66vh; }
     log.appendChild(d); scroll(); return d;
   }
   async function say(agent, html, ms = 900, cls = '') { line(agent, html, cls); await wait(ms); }
+
+  // --- screen-recording behaviour (video mode only): camera, cursor, tabs ---
+  const cam = $('#cam'), cur = $('#cursor');
+  const REC = () => VIDEO && !S.instant;
+  let cx = 1180, cy = 620, camOn = false;
+  let seed = 11;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  function rel(el) {
+    let x = 0, y = 0, n = el;
+    while (n && n !== cam) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+    if (log.contains(el)) y -= log.scrollTop;
+    return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+  }
+  async function look(el, z = 1.5) {
+    if (!REC()) return;
+    const capEl = $('.caption');
+    if (!el) { capEl.classList.remove('high'); if (!camOn) return; cam.style.transform = 'none'; camOn = false; await wait(1150); return; }
+    const b = rel(el), W = cam.offsetWidth, H = cam.offsetHeight;
+    let tx = W / 2 - (b.x + b.w / 2) * z, ty = H / 2 - (b.y + b.h / 2) * z;
+    tx = Math.min(0, Math.max(W - W * z, tx)); ty = Math.min(0, Math.max(H - H * z, ty));
+    cam.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${z})`; camOn = true;
+    // keep the subtitle off whatever the camera is looking at
+    capEl.classList.toggle('high', (b.y + b.h / 2) * z + ty > H * 0.55 && (b.y + b.h) * z + ty > H - 190);
+    await wait(1150);
+  }
+  async function moveTo(el, fx = 0.5, fy = 0.5) {
+    if (!REC() || !el) return;
+    const id = S.run;
+    const b = rel(el), tx = b.x + b.w * fx + (rnd() - 0.5) * 6, ty = b.y + b.h * fy + (rnd() - 0.5) * 4;
+    const dist = Math.hypot(tx - cx, ty - cy), d = Math.min(1100, 320 + dist * 0.55);
+    const mx = (cx + tx) / 2 + (ty - cy) * 0.12, my = (cy + ty) / 2 - (tx - cx) * 0.12;
+    cur.style.transition = `transform ${d * 0.5}ms cubic-bezier(.45,0,.9,.6)`;
+    cur.style.transform = `translate(${mx}px, ${my}px)`;
+    await sleep(d * 0.5); check(id);
+    cur.style.transition = `transform ${d * 0.5}ms cubic-bezier(.15,.5,.35,1)`;
+    cur.style.transform = `translate(${tx}px, ${ty}px)`;
+    cx = tx; cy = ty;
+    await wait(d * 0.5 + 120);
+  }
+  async function clickEl(el) {
+    if (!REC() || !el) return;
+    await moveTo(el); await wait(260 + rnd() * 260);
+    const r = document.createElement('span'); r.className = 'ripple';
+    r.style.left = (cx + 5) + 'px'; r.style.top = (cy + 3) + 'px'; cam.appendChild(r);
+    setTimeout(() => r.remove(), 700);
+    await wait(220);
+  }
+  const TABS = ['Codex', 'Knowledge graph', 'Approval', 'Jira', 'Confluence', 'Code', 'Tests', 'Copado', 'Summary'];
+  if (VIDEO) $('#tabs').innerHTML = TABS.map(t => `<span data-t="${t}">${t}</span>`).join('');
+  async function paneA(html, title, agent) {
+    if (REC()) {
+      const tab = $(`#tabs [data-t="${title}"]`);
+      if (tab && !tab.classList.contains('on')) { await clickEl(tab); }
+    }
+    return pane(html, title, agent);
+  }
   async function typeInto(el, text, cps = 34) {
     el.innerHTML = '<span></span><i class="caret"></i>';
     const span = el.firstChild;
-    for (let i = 0; i < text.length; i++) { span.textContent += text[i]; if (!S.instant) await wait(1000 / cps); }
+    const typo = REC() ? text.indexOf('notify') + 3 : -1;
+    for (let i = 0; i < text.length; i++) {
+      if (i === typo && typo > 2) { span.textContent += 'r'; await wait(180); await wait(320); span.textContent = span.textContent.slice(0, -1); await wait(160); }
+      span.textContent += text[i];
+      if (S.instant) continue;
+      if (REC()) { const ch = text[i]; await wait((1000 / cps) * (0.45 + rnd() * 1.25) + (ch === ' ' ? 35 : 0) + (ch === ',' ? 260 : 0) + (rnd() < 0.05 ? 280 : 0)); }
+      else await wait(1000 / cps);
+    }
     el.querySelector('.caret')?.remove();
   }
   function pane(html, title, agent) {
     view.innerHTML = `<div class="pane">${html}</div>`;
     $('#worktitle').textContent = title;
+    document.querySelectorAll('#tabs span').forEach(t => t.classList.toggle('on', t.dataset.t === title));
     const a = agent ? AG[agent] : null;
     $('#agentnow').innerHTML = a ? `<span class="agentchip" style="--c:${a[1]}">${a[0]} agent</span>` : '';
     return view.firstChild;
   }
   function caption(tag, text) {
     $('#captag').textContent = tag; $('#caption').textContent = text;
+    if (REC()) { const c = $('.caption'); c.classList.remove('swap'); void c.offsetWidth; c.classList.add('swap'); console.log('CAPTION|' + text); }
     if (!S.instant && $('#voice').checked && 'speechSynthesis' in window) {
       try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.02 * S.speed; speechSynthesis.speak(u); } catch (e) {}
     }
@@ -317,6 +409,7 @@ body.video .stage { height: 66vh; }
     let ok = false, t = 0;
     btn.onclick = () => { ok = true; };
     if (!S.instant) setPlayLabel();
+    if (REC()) { await look(box, 1.45); await wait(900); await clickEl(btn); ok = true; }
     while (!ok) {
       if (S.instant) break;
       await sleep(60); check(id);
@@ -327,23 +420,27 @@ body.video .stage { height: 66vh; }
     box.querySelector('.note').outerHTML = `<span class="stamp">✓ ${who} approved</span>`;
     scroll();
     await wait(700);
+    await look(null);
   }
 
   // ---------- steps ----------
   const steps = {
     ask: { label: 'Ask in Codex', async run() {
       caption('Ask', 'A Tech Lead types one plain-English request into Codex. That is the only input anyone gives.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="vtitle"><h2>One prompt in</h2><span>Codex routes it to the agent team</span></div>
         <div class="bigprompt" id="bp"></div>
         <div class="roster" id="roster">${Object.entries(AG).filter(([k]) => !['you', 'sync'].includes(k)).map(([k, [n, c]]) => `<div data-k="${k}" style="--c:${c}">${n}</div>`).join('')}</div>`, 'Codex', 'orch');
       const box = document.createElement('div'); box.className = 'prompt';
       box.innerHTML = '<span class="you">you › codex</span><span id="pt"></span>';
       log.appendChild(box); scroll();
+      await clickEl(box);
+      await look(box, 1.7);
       await wait(500);
       await typeInto($('#pt'), PROMPTS[S.scen]);
       $('#bp').textContent = PROMPTS[S.scen];
-      await wait(500);
+      await wait(650);
+      await look(null);
       await say('orch', S.scen === 'build' ? 'Classified: <b>behaviour change</b> on Account → Healthcare Facility Network.' : 'Classified: <b>new field</b> on Healthcare Facility.', 900);
       await say('orch', 'Checking the Ascension Knowledge Graph before anything is built.', 700);
       const order = S.scen === 'build' ? ['orch', 'impact', 'jira', 'arch', 'conf', 'dev', 'review', 'test', 'qa', 'deploy'] : ['orch', 'impact'];
@@ -364,7 +461,7 @@ body.video .stage { height: 66vh; }
       ];
       const E = [['trg', 'acc'], ['flw', 'acc'], ['acc', 'apx'], ['acc', 'hfl'], ['apx', 'hfn'], ['hfl', 'hfn']];
       const c = id => { const n = N.find(o => o.id === id); return [n.x + n.w / 2, n.y + 22]; };
-      const p = pane(`
+      const p = await paneA(`
         <div class="vtitle"><h2>Ascension Knowledge Graph</h2><span>graph.impact(anchor: Account)</span></div>
         <div class="graph"><svg viewBox="0 0 640 330" role="img" aria-label="Components connected to Account">
           ${E.map(([a, b], i) => { const [x1, y1] = c(a), [x2, y2] = c(b); return `<path class="edge" id="e${i}" d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}"/>`; }).join('')}
@@ -372,6 +469,7 @@ body.video .stage { height: 66vh; }
         </svg></div>
         <div id="vd"></div>`, 'Knowledge graph', 'impact');
       await say('impact', '<code>graph.impact(anchor: Account, creates: HealthcareFacilityNetwork)</code>', 600);
+      await moveTo(p.querySelector('.graph'), 0.45, 0.5);
       const show = id => p.querySelector('#n-' + id).classList.add('in');
       show('acc'); await wait(500);
       for (const [i, n] of [[0, 'trg'], [1, 'flw']]) { show(n); await wait(250); p.querySelector('#e' + i).classList.add('drawn'); await wait(350); }
@@ -383,18 +481,21 @@ body.video .stage { height: 66vh; }
       ['apx', 'hfl', 'hfn'].forEach(i => p.querySelector('#n-' + i).classList.add('hit'));
       await say('impact', 'HFN records are <b>already created</b>: in Apex for some scenarios, in Flow for others.', 900, 'ok');
       p.querySelector('#vd').innerHTML = `<div class="verdict pop"><span class="vk">Verdict · Reuse and extend</span><p>The capability exists in two places. Extend the existing creation logic and add the notification. Do not add a third path.</p></div>`;
-      await say('impact', 'Verdict: <b>reuse and extend</b>. Evidence attached, snapshot <code>b7f1c2e4</code>.', 1200);
+      await look(p.querySelector('#vd'), 1.6);
+      await moveTo(p.querySelector('#vd p'), 0.35, 0.5);
+      await say('impact', 'Verdict: <b>reuse and extend</b>. Evidence attached, snapshot <code>b7f1c2e4</code>.', 1400);
+      await look(null);
     }},
 
     g1: { label: 'Gate 1', gate: true, async run() {
       caption('Gate 1', 'The PM and Tech Lead see the evidence and approve the scope. Nothing is raised until a person says yes.');
-      pane(approvalView('Scope', 'PM and Tech Lead', ['Extend existing HFN creation logic', 'Add a notification to the network manager', 'No new Flow on Account']), 'Approval', null);
+      await paneA(approvalView('Scope', 'PM and Tech Lead', ['Extend existing HFN creation logic', 'Add a notification to the network manager', 'No new Flow on Account']), 'Approval', null);
       await gate(1, 'PM and Tech Lead', 'Approve the scope: extend the existing HFN creation and add the notification.', 'Waiting for the PM and Tech Lead');
     }},
 
     jira: { label: 'Jira ticket', async run() {
       caption('Jira', 'The Jira agent raises the ticket in the current sprint, with acceptance criteria and the graph evidence attached.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="paper">
           <div class="vtitle"><span class="key">NS-1482</span><span class="lozenge" id="loz">TO DO</span></div>
           <h3>Create Healthcare Facility Network on Account approval, and notify the network manager</h3>
@@ -411,14 +512,18 @@ body.video .stage { height: 66vh; }
       for (const a of AC) { const li = document.createElement('li'); li.className = 'pop'; li.textContent = a; p.querySelector('#ac').appendChild(li); await wait(450); }
       const EV = ['Graph verdict: reuse and extend (snapshot b7f1c2e4)', 'Components touched: AHC_AccountTrigger, HFN creation in Apex and Flow'];
       for (const a of EV) { const li = document.createElement('li'); li.className = 'pop'; li.textContent = a; p.querySelector('#ev').appendChild(li); await wait(350); }
+      await look(p, 1.3);
+      await moveTo(p.querySelector('#ac'), 0.3, 0.5);
       await say('jira', 'Raised <b>NS-1482</b> with three acceptance criteria and the graph evidence.', 600, 'ok');
       const l = p.querySelector('#loz'); l.textContent = 'IN PROGRESS'; l.classList.add('prog');
+      await moveTo(p.querySelector('#loz'));
       await say('jira', 'Status moved to <b>In Progress</b>.', 900);
+      await look(null);
     }},
 
     design: { label: 'Design', async run() {
       caption('Design', 'The Architect agent picks the pattern from facts, and the Confluence agent publishes the solution design.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="paper">
           <span class="sec">Network Services space · Solution design</span>
           <h3>NS-1482 · HFN creation on Account approval</h3>
@@ -432,21 +537,24 @@ body.video .stage { height: 66vh; }
                  ['Extend the Apex handler', 'One path, bulk-safe, already covered by tests', 'CHOSEN', 'pick'],
                  ['Change the HFN Flow only', 'Misses scenarios the Apex path owns', 'REJECTED', 'no']];
       for (const [a, b, c, k] of O) { const d = document.createElement('div'); d.className = `opt pop ${k}`; d.innerHTML = `<b>${a}</b><span>${b}</span><em>${c}</em>`; p.querySelector('#opts').appendChild(d); await wait(550); }
-      await say('arch', 'Pattern: <b>extend the existing handler</b>. A new Flow would make a third path.', 800, 'ok');
+      await look(p.querySelector('#opts'), 1.55);
+      await moveTo(p.querySelector('.opt.pick'), 0.2, 0.5);
+      await say('arch', 'Pattern: <b>extend the existing handler</b>. A new Flow would make a third path.', 1100, 'ok');
       for (const t of ['Touches: AHC_AccountTrigger handler, HFN creation in Apex', 'Regression: tests covering Account save and HFN creation', 'Notification through the existing alert framework']) { const li = document.createElement('li'); li.className = 'pop'; li.textContent = t; p.querySelector('#plan').appendChild(li); await wait(380); }
       $('#agentnow').innerHTML = `<span class="agentchip" style="--c:${AG.conf[1]}">Confluence agent</span>`;
       await say('conf', 'Published the solution design and linked it to NS-1482.', 900, 'ok');
+      await look(null);
     }},
 
     g2: { label: 'Gate 2', gate: true, async run() {
       caption('Gate 2', 'The Tech Lead approves the design before a single line of code is written.');
-      pane(approvalView('Design', 'Tech Lead', ['Extend the existing Apex handler', 'One creation path, bulk-safe', 'Regression scope agreed']), 'Approval', null);
+      await paneA(approvalView('Design', 'Tech Lead', ['Extend the existing Apex handler', 'One creation path, bulk-safe', 'Regression scope agreed']), 'Approval', null);
       await gate(2, 'Tech Lead', 'Approve the design: extend the existing handler, no new Flow.', 'Waiting for the Tech Lead');
     }},
 
     build: { label: 'Build and review', async run() {
       caption('Build', 'The Developer agent writes the change to Ascension standards, and the Review agent checks it before a pull request is opened.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="split">
           <div class="editor"><div class="fn">force-app/main/default/classes/AccountApprovalService.cls</div><div id="code"></div></div>
           <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
@@ -467,8 +575,10 @@ body.video .stage { height: 66vh; }
         ['ctx', ''],
         ['add', '@IsTest static void notifiesManagerOnceForBulkApproval() { … }']];
       await say('dev', 'Extending the existing handler on <code>feature/NS-1482</code>.', 500);
+      await look(p.querySelector('.editor'), 1.4);
       for (const [k, t] of CODE) { const d = document.createElement('div'); d.className = 'l ' + k; d.textContent = t; p.querySelector('#code').appendChild(d); await wait(170); }
       await say('dev', 'Change written, with a bulk test.', 500, 'ok');
+      await look(null);
       const C = ['Bulk-safe: no SOQL or DML in loops', 'Sharing and field access respected', 'Ascension naming standards', 'No duplicate creation path'];
       const box = p.querySelector('#checks');
       for (const t of C) {
@@ -478,18 +588,19 @@ body.video .stage { height: 66vh; }
       $('#agentnow').innerHTML = `<span class="agentchip" style="--c:${AG.review[1]}">Review agent</span>`;
       await say('review', 'Review passed: 4 of 4 checks.', 500, 'ok');
       p.querySelector('#pr').innerHTML = `<div class="pr pop"><b>Pull request</b><span>feature/NS-1482 → develop · 2 files</span></div>`;
+      await moveTo(p.querySelector('#pr'));
       await say('review', 'Pull request opened and linked to NS-1482.', 900);
     }},
 
     g3: { label: 'Gate 3', gate: true, async run() {
       caption('Gate 3', 'The Tech Lead reviews and approves the pull request. Agents never approve their own work.');
-      pane(approvalView('Code', 'Tech Lead', ['2 files changed', 'Review agent: 4 of 4 checks passed', 'Linked to NS-1482 and its design page']), 'Approval', null);
+      await paneA(approvalView('Code', 'Tech Lead', ['2 files changed', 'Review agent: 4 of 4 checks passed', 'Linked to NS-1482 and its design page']), 'Approval', null);
       await gate(3, 'Tech Lead', 'Approve and merge the pull request for NS-1482.', 'Waiting for the Tech Lead');
     }},
 
     test: { label: 'Test', async run() {
       caption('Test', 'The Test agents run the unit tests and the regression tests the graph says this change touches. Jira moves to QA on its own.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="vtitle"><h2>Test run</h2><span>Chosen by blast radius, not by guesswork</span></div>
         <div class="checks" id="tests"></div>
         <div style="display:flex;flex-direction:column;gap:6px"><span class="note">Code coverage on changed classes</span><div class="meter"><i id="cov"></i></div></div>
@@ -503,41 +614,47 @@ body.video .stage { height: 66vh; }
       for (const t of T) { const d = document.createElement('div'); d.className = 'check run'; d.innerHTML = `<span class="ic"></span>${t}`; box.appendChild(d); await wait(500); d.className = 'check pass'; d.querySelector('.ic').textContent = '✓'; }
       p.querySelector('#cov').style.width = '92%';
       const count = async (el, to) => { for (let i = 0; i <= to; i++) { el.textContent = i; await wait(30); } };
+      await look(p.querySelector('.stats'), 1.45);
+      await moveTo(p.querySelector('#s2'));
       await count(p.querySelector('#s1'), 6); await count(p.querySelector('#s2'), 14);
       await say('test', 'All tests green. Coverage on changed classes: <b>92%</b>.', 500, 'ok');
       $('#agentnow').innerHTML = `<span class="agentchip" style="--c:${AG.qa[1]}">QA automation agent</span>`;
       await count(p.querySelector('#s3'), 5);
       await say('qa', 'Created 5 Zephyr test cases and the Copado functional test.', 600, 'ok');
       await say('jira', 'NS-1482 moved to <b>QA</b> with the results attached.', 900);
+      await look(null);
     }},
 
     deploy: { label: 'Deploy', async run() {
       caption('Deploy', 'The Deployment agent promotes the change through Copado to QA and UAT. Production waits for Ascension\'s CAB.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="vtitle"><h2>Copado pipeline</h2><span>Sandbox and lower environments only</span></div>
         <div class="pipe" id="pipe">
           ${['DEV', 'SIT', 'UAT', 'PROD'].map((e, i) => `<div class="env" id="env${i}"><b>${e}</b><span>${i === 3 ? 'Needs CAB approval' : 'Waiting'}</span><div class="flow"><i></i></div></div>`).join('')}
         </div>
         <div class="checks" id="dchk"></div>`, 'Copado', 'deploy');
       p.querySelector('#env3').classList.add('lock');
+      await look(p.querySelector('#pipe'), 1.35);
       for (let i = 0; i < 3; i++) {
         const e = p.querySelector('#env' + i); e.classList.add('run'); e.querySelector('span').textContent = 'Promoting…'; e.querySelector('.flow i').style.width = '100%';
         await wait(1100); e.classList.remove('run'); e.classList.add('ok'); e.querySelector('span').textContent = i === 2 ? 'Deployed · ready for UAT' : 'Deployed and validated';
         await say('deploy', `Promoted to <b>${['DEV', 'SIT', 'UAT'][i]}</b>.`, 300, 'ok');
       }
+      await moveTo(p.querySelector('#env3'), 0.5, 0.4);
       const d = document.createElement('div'); d.className = 'check pass pop'; d.innerHTML = '<span class="ic">✓</span>Release notes and rollback plan attached to NS-1482'; p.querySelector('#dchk').appendChild(d);
       await say('deploy', 'Release notes and rollback plan written. Production is locked until CAB approves.', 1000);
+      await look(null);
     }},
 
     g4: { label: 'Gate 4 · CAB', gate: true, async run() {
       caption('Gate 4', 'Production stays inside Ascension\'s existing change process. The CAB approves, and only then does the release go out.');
-      pane(approvalView('Production', 'CAB and release manager', ['UAT signed off', 'Tests and evidence on the ticket', 'Rollback plan attached']), 'Approval', null);
+      await paneA(approvalView('Production', 'CAB and release manager', ['UAT signed off', 'Tests and evidence on the ticket', 'Rollback plan attached']), 'Approval', null);
       await gate(4, 'CAB and release manager', 'Approve the production release of NS-1482.', 'Waiting for CAB');
     }},
 
     done: { label: 'Re-sync and close', async run() {
       caption('Done', 'The graph re-syncs, so the next request already knows about this change. Every step is on the ticket, ready for an audit.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="vtitle"><h2>Released, recorded, remembered</h2><span>NS-1482</span></div>
         <div class="chain" id="chain">${['Request', 'Graph verdict', 'Jira ticket', 'Design page', 'Git commit', 'Copado deploy', 'Test results', 'Graph snapshot'].map(t => `<div>${t}</div>`).join('')}</div>
         <div class="stats">
@@ -549,15 +666,19 @@ body.video .stage { height: 66vh; }
         <p class="disclaim">Illustrative run. In the pilot, the same flow runs on 10 to 15 real Network Services tickets and is measured against today.</p>`, 'Summary', 'sync');
       await say('deploy', 'Released to <b>PROD</b> after CAB approval.', 600, 'ok');
       await say('sync', 'Graph re-synced: the new notification path is now part of the org\'s memory.', 600, 'ok');
-      for (const d of p.querySelectorAll('#chain div')) { d.classList.add('ok'); await wait(230); }
+      await look(p.querySelector('#chain'), 1.4);
+      for (const d of p.querySelectorAll('#chain div')) { d.classList.add('ok'); await wait(260); }
       await say('jira', 'NS-1482 moved to <b>Done</b>.', 800, 'ok');
+      await look(null);
+      await moveTo(p.querySelector('.stats'), 0.4, 0.5);
+      await wait(1200);
       p.querySelector('#tryDup').onclick = () => setScenario('dup');
       p.querySelector('#again').onclick = () => { S.paused = false; runFrom(0); };
     }},
 
     stop: { label: 'Stopped early', async run() {
       caption('Saved', 'Nothing to build. The field already exists, so no ticket is raised and nobody spends a sprint on a duplicate.');
-      const p = pane(`
+      const p = await paneA(`
         <div class="vtitle"><h2>No build needed</h2><span>Stopped at the graph check</span></div>
         <div class="verdict dup pop"><span class="vk">Already exists</span><p><b>Effective_From_Date__c</b> is already on Healthcare Facility. The request is answered with the existing field.</p></div>
         <div class="stats">
@@ -567,7 +688,10 @@ body.video .stage { height: 66vh; }
         </div>
         <div class="cta"><button class="btn" id="tryBuild">Watch the full journey</button></div>
         <p class="disclaim">This request is a real case from the sandbox: an earlier version of the check answered "Safe to create" for this field. Existence is now checked against the full graph, not a sample.</p>`, 'Summary', 'impact');
-      await say('orch', 'Stopped. No ticket, no design, no code: the request is already met.', 900, 'ok');
+      await look(p.querySelector('.verdict'), 1.5);
+      await say('orch', 'Stopped. No ticket, no design, no code: the request is already met.', 1400, 'ok');
+      await look(null);
+      await wait(800);
       p.querySelector('#tryBuild').onclick = () => setScenario('build');
     }}
   };
@@ -577,7 +701,7 @@ body.video .stage { height: 66vh; }
     const cols = 15, rows = 9;
     let dots = '';
     for (let i = 0; i < 135; i++) { const x = 300 + (i % cols) * 21, y = 40 + Math.floor(i / cols) * 25; dots += `<rect class="field" id="f${i}" x="${x}" y="${y}" width="15" height="15" rx="3"/>`; }
-    const p = pane(`
+    const p = await paneA(`
       <div class="vtitle"><h2>Ascension Knowledge Graph</h2><span>graph.exists(object: HealthcareFacility, field)</span></div>
       <div class="graph"><svg viewBox="0 0 640 300" role="img" aria-label="All 135 fields on Healthcare Facility scanned">
         <g class="node in hit"><rect x="20" y="110" width="210" height="60" rx="10"/><text class="k" x="34" y="133">Object</text><text x="34" y="155">Healthcare Facility</text></g>
@@ -593,9 +717,12 @@ body.video .stage { height: 66vh; }
       await wait(28);
     }
     p.querySelector('#f' + target).classList.remove('scan'); p.querySelector('#f' + target).classList.add('found');
+    await moveTo(p.querySelector('.graph'), 0.79, 0.43);
     await say('impact', 'Match: <b>Effective_From_Date__c</b> already exists on Healthcare Facility.', 600, 'ok');
     p.querySelector('#vd').innerHTML = `<div class="verdict dup pop"><span class="vk">Verdict · Already exists</span><p>Do not create it. Reuse the existing field. No ticket needed.</p></div>`;
-    await say('impact', 'Verdict: <b>already exists</b>. Request closed with the evidence.', 1200);
+    await look(p.querySelector('#vd'), 1.6);
+    await say('impact', 'Verdict: <b>already exists</b>. Request closed with the evidence.', 1500);
+    await look(null);
   }
 
   function approvalView(name, who, items) {
@@ -629,6 +756,7 @@ body.video .stage { height: 66vh; }
     S.run++; const id = S.run;
     try { speechSynthesis?.cancel(); } catch (e) {}
     log.innerHTML = ''; view.innerHTML = '';
+    if (VIDEO) { cam.style.transform = 'none'; camOn = false; $('.caption').classList.remove('high'); }
     S.started = true;
     try {
       S.instant = true;
@@ -674,6 +802,6 @@ body.video .stage { height: 66vh; }
     <p class="disclaim">Ten agents, four human approvals, one evidence trail. Choose a request above, then press Play. Click any step to jump to it.</p>`, 'Codex', 'orch');
   line('orch', 'Ready. Type a request, or press Play to watch a recorded one.');
 
-  if (VIDEO) { $('#auto').checked = true; S.paused = false; S.speed = 0.72; setTimeout(() => runFrom(0), 600); }
+  if (VIDEO) { $('#auto').checked = true; S.paused = false; S.speed = 0.8; cur.style.transform = `translate(${cx}px, ${cy}px)`; setTimeout(() => runFrom(0), 600); }
 })();
 </script>
