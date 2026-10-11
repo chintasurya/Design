@@ -69,3 +69,35 @@ height to 1.25% and stacking every line at the same position.
 made no sense. It made the defect invisible to the one check that should have
 caught it. The clamp is gone, and a line-spacing value under 50% is now
 reported as an error in its own right rather than normalised into silence.
+
+## Ascension MAD Approach, on the IG template
+
+`../Ascension MAD Approach.pptx` is built by `build_mad_ig_deck.py` from
+`source/Ascension MAD Approach - source.pptx` (the deck as shared, untouched).
+
+```bash
+python3 build_mad_ig_deck.py
+```
+
+It does two separate things:
+
+1. **Restyle, words untouched.** Every original slide keeps its text, order
+   and speaker notes (the build was checked text-for-text against the source).
+   The palette, type and frame follow the IG PowerPoint Template User Guide:
+   white ground; primary FFD700 · 00D6F2 · FF0069 · 000000 · 00273B, with
+   secondary 4527A0 · FA8B35 · 56E13B · F2F2F2 used sparingly; Trenda IG Text
+   Bold headlines, Trenda IG Text Light for large stats; the IG dense table
+   style; and the ●●●IG mark plus a page number in the footer. Content that ran
+   into the footer is scaled about the slide's centre line, fonts and all,
+   until it clears it, by 2 to 7 percent, so nothing re-wraps.
+   Colour meaning is kept: cyan is AI and agents, yellow is a human gate,
+   magenta is governance and the Change Guardian.
+2. **Two new slides after "One agent team":** the target architecture and
+   the execution flow. Numbered markers on each diagram match a rail of client
+   questions (how agents connect, external systems, security, accuracy,
+   learning without training on Ascension data, SDLC control, failure and
+   recovery, cross-pod impact, confidence), and stars mark the x-factors. The
+   speaker notes give the full answer for each marker, plus the follow-up
+   questions architects tend to ask and what is not proven yet.
+
+`assets/ig-mark-black.png` is the ●●●IG footer mark, cut from the template guide.
