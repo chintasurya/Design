@@ -93,11 +93,14 @@ It does two separate things:
    Colour meaning is kept: cyan is AI and agents, yellow is a human gate,
    magenta is governance and the Change Guardian.
 2. **Two new slides after "One agent team":** the target architecture and
-   the execution flow. Numbered markers on each diagram match a rail of client
-   questions (how agents connect, external systems, security, accuracy,
-   learning without training on Ascension data, SDLC control, failure and
-   recovery, cross-pod impact, confidence), and stars mark the x-factors. The
-   speaker notes give the full answer for each marker, plus the follow-up
-   questions architects tend to ask and what is not proven yet.
+   the execution flow. Nothing on them is addressed to the presenter.
+   Differentiators, meaning what an off-the-shelf coding agent does not do,
+   get a border in the three IG logo colours (yellow, magenta, cyan) and a
+   black DIFFERENTIATOR tab; no other box uses that border, and a key on the
+   eyebrow line says what it means. Every major block states how mature it
+   is (sandbox POC, built from agents in use, pilot build, unchanged), and
+   the architecture names the industry patterns it builds on. The client
+   questions each slide answers, where to point for each, and what is not
+   proven yet are in the speaker notes only.
 
 `assets/ig-mark-black.png` is the ●●●IG footer mark, cut from the template guide.
