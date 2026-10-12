@@ -362,49 +362,54 @@ def commercials_slide(prs, layout):
                                                                                   m(plat)), {})]], size=7.5,
             anchor=MSO_ANCHOR.MIDDLE)
 
-    # options
+    # options: build (A or B), then run (C)
     RX = X0 + tw + 0.3
     RW = 12.88 - RX
-    cv.label(RX, 1.28, RW, "Three ways to contract")
-    opts = [("A · Fixed fee by gate", "RECOMMENDED", m(fixed),
-             "Each phase priced up front and invoiced only when its gate is signed. Insight Global carries delivery "
-             "risk (%d%% included)." % round(RISK * 100), True),
-            ("B · Time and materials, capped", None, m(tm),
-             "Billed monthly on actuals, with a not-to-exceed cap per phase. Lower price; Ascension carries the "
-             "overrun risk up to the cap.", False),
-            ("C · Managed service from month 19", None, "%s / month" % k(RUN_MONTHLY),
-             "Run team of 6 keeps the graph, agents, rules and evaluations current, plus platform at cost "
-             "(about %s/month)." % k(PLATFORM_SCALE), False)]
-    oy = 1.52
-    for title, tag, price, body, rec in opts:
-        h = 0.98
+
+    def card(y, h, title, price, body, rec=False, tag=None, extra=None):
         if rec:
-            ix, iy, iw, ih = cv.frame(RX, oy, RW, h)
+            ix, iy, iw, ih = cv.frame(RX, y, RW, h)
         else:
-            ix, iy, iw, ih = RX, oy, RW, h
-            cv.rect(RX, oy, RW, h, WHITE, RULE)
+            ix, iy, iw, ih = RX, y, RW, h
+            cv.rect(RX, y, RW, h, WHITE, RULE)
         cv.text(ix + 0.12, iy + 0.06, iw - 1.5, 0.2, title, size=8.5, bold=True, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(ix + iw - 1.42, iy + 0.04, 1.3, 0.26, price, size=12, font="Trenda IG Text Light",
                 align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(ix + 0.12, iy + 0.34, iw - 0.24, ih - 0.4, body, size=7)
+        cv.text(ix + 0.12, iy + 0.32, iw - 0.24, 0.36, body, size=7)
+        if extra:
+            cv.rect(ix + 0.1, iy + ih - 0.36, iw - 0.2, 0.28, GREY)
+            cv.text(ix + 0.18, iy + ih - 0.36, iw - 0.36, 0.28, extra, size=7, anchor=MSO_ANCHOR.MIDDLE)
         if tag:
-            cv.rect(ix + iw - 1.12, iy + ih - 0.24, 1.0, 0.16, BLACK, None, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
+            cv.rect(ix + iw - 1.12, iy + ih - 0.24, 1.0, 0.16, BLACK, None, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+                    radius=0.5)
             cv.text(ix + iw - 1.12, iy + ih - 0.24, 1.0, 0.16, tag, size=5.5, bold=True, color=WHITE,
                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=150)
-        oy += h + 0.1
-    vy = oy + 0.04
+
+    cv.label(RX, 1.28, RW, "Build · months 1-18 · choose one")
+    card(1.5, 0.84, "A · Fixed fee by gate", m(fixed),
+         "Each phase priced up front and invoiced only when its gate is signed. Insight Global carries delivery "
+         "risk (%d%% included)." % round(RISK * 100), rec=True, tag="RECOMMENDED")
+    card(2.42, 0.74, "B · Time and materials, capped", m(tm),
+         "Billed monthly on actuals, with a not-to-exceed cap per phase. Lower price; Ascension carries the "
+         "overrun risk up to the cap.")
+    cv.label(RX, 3.3, RW, "Run · from month 19, after the build ends")
+    run_total = RUN_MONTHLY + PLATFORM_SCALE
+    card(3.52, 1.12, "C · Managed service, monthly", "%s / month" % k(RUN_MONTHLY),
+         "Starts only once all pods are live. A run team of 6, offshore, keeps the graph, agents, Guardian rules "
+         "and evaluations current, fixes failed runs and adds new sources.",
+         extra=[[("Team %s + platform ~%s = " % (k(RUN_MONTHLY), k(PLATFORM_SCALE)), {}),
+                 ("about %s a month (%s a year)" % (k(run_total), m(run_total * 12)), {"bold": True})]])
+    vy = 4.76
     vh = CONTENT_FLOOR - 0.02 - vy
     cv.rect(RX, vy, RW, vh, BLACK)
     cv.text(RX + 0.14, vy + 0.08, RW - 0.28, 0.2, "VALUE CHECK", size=7, bold=True, color=YELLOW, track=150)
-    cv.text(RX + 0.14, vy + 0.32, RW - 0.28, vh - 0.4, [
+    cv.text(RX + 0.14, vy + 0.3, RW - 0.28, vh - 0.36, [
         [("Planned saving: 20-25% lower net run cost per pod ", {"color": WHITE}),
          ("(business outcomes slide).", {"color": "BFBFBF"})],
         [("Every $10M of pod delivery spend saves $2.0-2.5M a year, ", {"color": WHITE}),
-         ("so the fixed fee pays back in about %.1f to %.1f years once pods are live." % (fixed / 2.5e6, fixed / 2.0e6),
+         ("so the build fee pays back in about %.1f to %.1f years once pods are live." % (fixed / 2.5e6, fixed / 2.0e6),
           {"color": WHITE})],
         [("Example: one 14-person pod at about $2.47M a year saves $0.49-0.62M a year.", {"color": "BFBFBF"})],
-        [("Payback is measured per pod against the Phase 0 baseline: cycle time, effort per story, escaped "
-          "defects.", {"color": "BFBFBF"})],
     ], size=9, after=6)
     cv.text(X0, CONTENT_FLOOR - 0.36, tw, 0.34,
             "Assumed offshore bill rates for sizing, by role: $45-85/h, blended $%.0f/h, %d h per FTE-month, "
@@ -474,10 +479,10 @@ INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by r
 KEY MESSAGE
 %s as a fixed fee over 18 months, invoiced only when each gate is signed. Platform usage is passed through at cost. After month 18, a managed service.
 
-THE OPTIONS
+THE OPTIONS (A or B pays for the build, months 1-18; C is the separate monthly service that starts at month 19)
 - A, fixed fee by gate (recommended): Ascension pays for a phase only when its gate passes; Insight Global carries delivery risk (%d%% in the price).
 - B, time and materials with a cap per phase: %s estimated; Ascension carries overrun risk up to the cap.
-- C, managed service from month 19: %s a month for a run team of 6, plus platform at cost.
+- C, managed service, only from month 19 once all pods are live: %s a month for a run team of 6 (graph, agents, Guardian rules, evaluations, failed runs, new sources), plus platform at cost of about $20K a month. It is not part of the build fee and not charged during months 1-18.
 
 IF ASCENSION ASKS FOR A LOWER NUMBER: TRADE SCOPE OR RISK, NOT RATES
 - Move to option B (time and materials, capped): %s.
