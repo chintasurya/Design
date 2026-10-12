@@ -47,6 +47,7 @@ SLIDE_W = 13.333
 FOOTER_TOP = 7.03          # where the template puts the ●●●IG mark
 CONTENT_FLOOR = 6.93       # content must end above this
 NEW_AFTER = 2              # the two new slides follow slide 2
+PLAN_AFTER = 11            # timeline, team, commercials follow business outcomes
 
 # ---------------------------------------------------------------- palette
 YELLOW, CYAN, MAGENTA = "FFD700", "00D6F2", "FF0069"
@@ -1049,6 +1050,11 @@ def main():
     architecture_slide(prs, layout)
     execution_slide(prs, layout)
     move_new_slides(prs, 2, NEW_AFTER)
+    import plan_slides
+    plan_slides.timeline_slide(prs, layout)
+    plan_slides.team_slide(prs, layout)
+    plan_slides.commercials_slide(prs, layout)
+    move_new_slides(prs, 3, PLAN_AFTER)
     prs.save(out)
     print("wrote", os.path.abspath(out), "-", len(prs.slides), "slides")
 
