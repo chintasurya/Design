@@ -20,30 +20,34 @@ MARK_WHITE = os.path.join(HERE, "assets", "ig-mark-white.png")
 SOFT = "BFBFBF"      # secondary text on black
 LINE_D = "595959"    # rules on black
 
-# Pod figures as provided by Ascension (annual spend, headcount). Role mix is
+# Pod figures as provided by Ascension (annual spend, headcount). The squad
+# model keeps today's cost per person for the roles that stay; the role mix is
 # assumed from a typical pod and confirmed with each pod lead.
+#   VBC, 14 today: tech lead + 2 squads (developer + agent) + 1-2 QA = 4-5 people
+#   Network Services, 4 today (3 developers, 1 QA): 1 squad = developer + agent + QA = 2 people
 PODS = [
-    dict(name="VBC · Salesforce Core / Flex", cost=2470000, heads=14, kept=3, squads=2,
-         today="1 pod lead · 1 BA · 1 tech lead · 8 developers · 2 QA · 1 release",
-         mad="1 pod lead · 1 BA · 1 tech lead · 2 squads of developer + agent + QA"),
-    dict(name="Network Services", cost=117000, heads=4, kept=0, squads=1,
-         today="3 developers · 1 QA",
-         mad="1 squad of developer + agent + QA"),
+    dict(name="VBC · Salesforce Core / Flex", cost=2470000, heads=14, stay=(4, 5), squads=2),
+    dict(name="Network Services", cost=117000, heads=4, stay=(2, 2), squads=1),
 ]
-SQUAD_PEOPLE = 2                       # 1 developer + 1 QA; the agent does the work of 3-4 developers
 AGENT_LO, AGENT_HI = 9000, 18000       # agent run cost per squad a year: model usage and cloud runtime
-FLOOR_LO, FLOOR_HI = 0.20, 0.25        # conservative floor on the business outcomes slide
 YEAR1_LO, YEAR1_HI = 0.6, 0.7          # share of steady state realised in year 1
-ALL_PODS = 8                           # pods named in the deck, sharing one platform
+YEARS = 3                              # horizon for the cumulative figure
 
 
 def pod_model(pd):
-    """Today's cost per person carried into the squad model, plus agent run cost."""
+    """Today's cost per person for the people who stay, plus agent run cost."""
     per_head = pd["cost"] / pd["heads"]
-    people = pd["kept"] + pd["squads"] * SQUAD_PEOPLE
-    lo = people * per_head + pd["squads"] * AGENT_LO
-    hi = people * per_head + pd["squads"] * AGENT_HI
-    return dict(people=people, lo=lo, hi=hi, save_lo=pd["cost"] - hi, save_hi=pd["cost"] - lo)
+    lo = pd["stay"][0] * per_head + pd["squads"] * AGENT_LO
+    hi = pd["stay"][1] * per_head + pd["squads"] * AGENT_HI
+    s_lo, s_hi = pd["cost"] - hi, pd["cost"] - lo
+    return dict(lo=lo, hi=hi, save_lo=s_lo, save_hi=s_hi,
+                y1_lo=s_lo * YEAR1_LO, y1_hi=s_hi * YEAR1_HI,
+                multi_lo=s_lo * (YEAR1_LO + YEARS - 1), multi_hi=s_hi * (YEAR1_HI + YEARS - 1))
+
+
+def pct_range(lo, hi, base):
+    a_, b_ = round(100 * lo / base), round(100 * hi / base)
+    return "%d%%" % a_ if a_ == b_ else "%d-%d%%" % (a_, b_)
 
 
 def money(v):
@@ -356,13 +360,11 @@ def pod_economics_slide(prs, layout):
     cv = Canvas(s)
     models = [pod_model(pd) for pd in PODS]
     tot = sum(pd["cost"] for pd in PODS)
-    heads = sum(pd["heads"] for pd in PODS)
     m_lo, m_hi = sum(m["lo"] for m in models), sum(m["hi"] for m in models)
     sv_lo, sv_hi = tot - m_hi, tot - m_lo
-    people = sum(m["people"] for m in models)
-    squads = sum(pd["squads"] for pd in PODS)
     cv.header("ASCENSION MAD APPROACH · WHAT IT MEANS FOR TWO PODS",
-              "Agent-first squads take two pods from %s to %s a year" % (money(tot), money_range(m_lo, m_hi)),
+              "Two pods spend %s a year today. With MAD: %s back every year" % (
+                  money(tot), money_range(sv_lo, sv_hi)),
               "Every squad of 4-5 developers becomes 1 developer directing 1 MAD agent, plus 1 QA. "
               "The agent drafts; people review, approve and own every change.")
     X0, W = 0.45, 12.43
@@ -412,56 +414,52 @@ def pod_economics_slide(prs, layout):
         x = X0 + i * (cw + 0.23)
         cv.rect(x, y, cw, ch, WHITE, RULE)
         cv.text(x + 0.2, y + 0.1, cw - 0.4, 0.3, pd["name"], size=12, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-        cv.label(x + 0.2, y + 0.5, 2.4, "Today")
-        cv.text(x + 0.2, y + 0.66, 2.6, 0.55, money(pd["cost"]), size=28, font=LIGHT, color=MUTE,
+        cv.label(x + 0.2, y + 0.55, 2.4, "Today")
+        cv.text(x + 0.2, y + 0.72, 2.6, 0.6, money(pd["cost"]), size=30, font=LIGHT, color=MUTE,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.2, y + 1.22, 2.6, 0.2, "%d people a year" % pd["heads"], size=9, bold=True, color=MUTE)
-        cv.text(x + 0.2, y + 1.42, 2.55, 0.34, pd["today"], size=7, color=MUTE)
-        cv.arrow(x + 2.78, y + 0.94, x + 3.13, y + 0.94, BLACK, 2.0)
-        cv.label(x + 3.3, y + 0.5, 2.6, "With agent-first squads")
-        cv.text(x + 3.3, y + 0.66, 2.7, 0.55, money_range(m["lo"], m["hi"]), size=24, font=LIGHT, color=BLACK,
+        cv.text(x + 0.2, y + 1.34, 2.6, 0.2, "a year", size=9, color=MUTE)
+        cv.arrow(x + 2.78, y + 1.02, x + 3.13, y + 1.02, BLACK, 2.0)
+        cv.label(x + 3.3, y + 0.55, 2.6, "With MAD")
+        cv.text(x + 3.3, y + 0.72, 2.7, 0.6, money_range(m["lo"], m["hi"]), size=28, font=LIGHT, color=BLACK,
                 anchor=MSO_ANCHOR.MIDDLE)
-        ag = "agent" if pd["squads"] == 1 else "agents"
-        cv.text(x + 3.3, y + 1.22, 2.7, 0.2, "%d people + %d %s" % (m["people"], pd["squads"], ag), size=9,
-                bold=True)
-        cv.text(x + 3.3, y + 1.42, 2.6, 0.34, pd["mad"], size=7, color=MUTE)
-        pct = round(100 * (m["save_lo"] + m["save_hi"]) / 2 / pd["cost"])
-        fx, fy, fw, fh = cv.frame(x + 0.2, y + 1.84, cw - 0.4, 0.6, YELLOW_T)
+        cv.text(x + 3.3, y + 1.34, 2.7, 0.2, "a year, agents included", size=9, color=MUTE)
+        fx, fy, fw, fh = cv.frame(x + 0.2, y + 1.72, cw - 0.4, 0.68, YELLOW_T)
         cv.text(fx + 0.15, fy, 2.2, fh, [[("SAVES EVERY YEAR", {"bold": True, "track": 200})],
-                                         [("%d%% of today's spend · %d fewer people" % (
-                                             pct, pd["heads"] - m["people"]), {"size": 7.5})]],
+                                         [("%s lower than today" % pct_range(m["save_lo"], m["save_hi"],
+                                                                            pd["cost"]), {"size": 8})]],
                 size=7, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(fx + 2.3, fy, fw - 2.45, fh, money_range(m["save_lo"], m["save_hi"]), size=24, bold=True,
+        cv.text(fx + 2.3, fy, fw - 2.45, fh, money_range(m["save_lo"], m["save_hi"]), size=28, bold=True,
                 align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.2, y + 2.5, cw - 0.4, 0.17,
-                "Year 1, while the pod is onboarded: %s" % money_range(m["save_lo"] * YEAR1_LO,
-                                                                       m["save_hi"] * YEAR1_HI),
-                size=7.5, color=MUTE)
+        cv.text(x + 0.2, y + 2.47, cw - 0.4, 0.18,
+                [[("Year 1: ", {"bold": True}), ("%s while the pod is onboarded    " % money_range(
+                    m["y1_lo"], m["y1_hi"]), {}),
+                  ("Over %d years: " % YEARS, {"bold": True}), (money_range(m["multi_lo"], m["multi_hi"]), {})]],
+                size=8, color=MUTE)
 
     # ---- both pods
     by, bh = 5.55, 1.08
     cv.rect(X0, by, W, bh, BLACK)
     cv.text(X0 + 0.25, by + 0.1, 3.0, 0.2, "BOTH PODS TOGETHER", size=7.5, bold=True, color=YELLOW, track=200)
-    cells = [("Today", money(tot), "%d people" % heads),
-             ("With agent-first squads", money_range(m_lo, m_hi), "%d people + %d agents" % (people, squads)),
-             ("Saved every year", money_range(sv_lo, sv_hi),
-              "%d%% lower · %d fewer people" % (round(100 * (sv_lo + sv_hi) / 2 / tot), heads - people)),
-             ("Conservative floor", money_range(tot * FLOOR_LO, tot * FLOOR_HI),
-              "20-25% · business outcomes slide")]
+    cells = [("Today", money(tot), "a year"),
+             ("With MAD", money_range(m_lo, m_hi), "a year, agents included"),
+             ("Saved every year", money_range(sv_lo, sv_hi), "%s lower" % pct_range(sv_lo, sv_hi, tot)),
+             ("Saved over %d years" % YEARS,
+              money_range(sum(m["multi_lo"] for m in models), sum(m["multi_hi"] for m in models)),
+              "year 1 at %d-%d%% while pods onboard" % (YEAR1_LO * 100, YEAR1_HI * 100))]
     cwid = W / 4
     for i, (lab, big, small) in enumerate(cells):
         cx = X0 + 0.25 + i * cwid
         cv.text(cx, by + 0.32, cwid - 0.3, 0.18, lab, size=8, color=SOFT)
-        hero = i == 2
+        hero = i >= 2
         cv.text(cx, by + 0.5, cwid - 0.3, 0.38, big, size=22 if hero else 18, font=TXT if hero else LIGHT,
-                bold=hero, color=CYAN if hero else (SOFT if i == 3 else WHITE), anchor=MSO_ANCHOR.MIDDLE)
+                bold=hero, color=(CYAN if i == 2 else YELLOW) if hero else WHITE, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(cx, by + 0.86, cwid - 0.3, 0.18, small, size=7.5, color=SOFT)
     cv.text(X0, 6.68, W, 0.24,
-            "Spend and headcount as provided by Ascension, per year; cost per person is pod spend divided by "
-            "headcount. Role mix assumed, to be confirmed with each pod lead. Agent run cost $%dK-%dK per squad a "
-            "year (model usage and cloud runtime); the shared MAD platform and run team are priced once for all "
-            "pods on the commercials slide. Planning estimates; each pod's Phase 0 baseline confirms them."
-            % (AGENT_LO // 1000, AGENT_HI // 1000), size=6.5, color=MUTE)
+            "Spend as provided by Ascension, per year. With MAD keeps today's cost for the people who stay (a "
+            "developer and QA per squad, plus a tech lead in VBC) and adds agent run cost of $%dK-%dK per squad a "
+            "year; the shared MAD platform is priced once for all pods on the commercials slide. Target once a pod "
+            "runs fully on MAD; the 20-25%% on the business outcomes slide is the floor. Each pod's Phase 0 "
+            "baseline confirms it." % (AGENT_LO // 1000, AGENT_HI // 1000), size=6.5, color=MUTE)
     set_notes(s, POD_NOTES)
     return s
 
@@ -519,23 +517,23 @@ IF ASKED
 POD_NOTES = """SLIDE: What it means for two pods   (about 3 minutes)
 
 KEY MESSAGE
-The agent-first squad. Today a squad is 4-5 developers and a QA. With MAD it is 1 developer directing 1 MAD agent, plus 1 QA, for the same scope. For these two pods that is about $1.25M back every year, roughly half of today's $2.59M.
+Two pods cost $2.59M a year today. With agent-first squads they cost $0.79-0.99M: $1.59-1.80M back every year, and $4.1-4.8M over three years. That is from two pods alone; every further pod on MAD adds to it.
 
 WALK IT
-- Top strip: the squad shift. The "agent" is the MAD agent team working for that squad (requirements, build, test, review, release prep) on the shared platform. It drafts; the developer designs, directs and approves; QA verifies and signs off tests. Every human gate stays.
-- VBC (Salesforce Core / Flex): $2.47M and 14 people today. Pod lead, BA and tech lead stay; 8 developers, 2 QA and the release role become 2 squads. 7 people + 2 agents: $1.25-1.27M. Saves $1.20-1.22M a year, 49%.
-- Network Services: $117K and 4 people (3 developers, 1 QA) become 1 squad: 2 people + 1 agent, $68-76K. Saves $41-50K a year, about 38%.
-- Both pods: $2.59M to $1.32-1.35M, 18 people to 9 plus 3 agents. Saves $1.24-1.27M a year, 48%.
-- The grey figure on the right is the conservative floor from the business outcomes slide (20-25%). We commit to the floor; the agent-first squad is the target once a pod runs fully on MAD.
+- Top strip: the agent-first squad. Today a squad is 4-5 developers and a QA. With MAD it is 1 developer directing the MAD agent team (requirements, build, test, review, release prep), plus 1 QA, for the same scope. The agent drafts overnight; the developer designs, directs and approves; QA verifies. Every human gate stays.
+- VBC (Salesforce Core / Flex): $2.47M today, $0.72-0.92M with MAD. Saves $1.55-1.75M a year (63-71%).
+- Network Services: $117K today, $68-76K with MAD. Saves $40-50K a year (35-42%).
+- Both pods: saves $1.59-1.80M a year (62-69%). Year 1 realises 60-70% while each pod is onboarded; full savings from year 2.
 
-HOW THE NUMBERS ARE BUILT
+HOW THE NUMBERS ARE BUILT (for you, not the slide)
 - Cost per person = Ascension's pod spend / headcount: about $176K a year in VBC, $29K in Network Services. The people who stay keep today's cost.
+- VBC, 14 people today, assumed mix 1 pod lead, 1 BA, 1 tech lead, 8 developers, 2 QA, 1 release. With MAD 4-5 people: a tech lead who also leads the pod, 2 squads (1 developer + agent each) and 1-2 QA. BA and release preparation are drafted by the Requirements and Release agents; Ascension's product owner signs the requirements.
+- Network Services, 4 people (3 developers, 1 QA) become 1 squad: 1 developer + agent + 1 QA.
 - Agent run cost: $9-18K per squad a year for model usage and cloud runtime. Codex Enterprise is already licensed by Ascension.
-- The shared MAD platform and run team (about $0.97M a year, commercials slide) serve every pod. Spread over the eight pods named in this deck that is about $121K a pod; load it on these two pods and they still save about $1.0M a year.
-- Year 1 realises 60-70% while each pod is onboarded to the graph.
-- Role mix is assumed from a typical pod; confirm it with each pod lead before quoting the per-pod figures.
+- The shared MAD platform and run team (commercials slide) serve every pod and are not loaded onto these two pods.
+- Confirm the role mix with each pod lead before quoting per-pod figures.
 
 IF ASKED
-- Can one developer really replace four? Not alone: the agent drafts the code, tests and deployment package overnight, and the developer reviews and approves. Measured so far: Health Cloud changes in 2-4 days instead of 1-2 weeks, campaigns in 15-20 days instead of about 90.
-- What still needs people? Workshops, business decisions, legal review, UAT and CAB. Pod lead, BA and tech lead stay.
-- Do people lose jobs? Ascension chooses: move people to other pods and backlog, absorb through attrition, or keep the team and clear more work. Changes are reviewed quarterly."""
+- How does this square with 20-25% on the business outcomes slide? That is the conservative floor we commit to across all pods. This is the target once a pod runs fully on agent-first squads.
+- Can one developer really do the work of four? Not alone: the agent drafts the code, tests and deployment package, and the developer reviews and approves. Measured so far: Health Cloud changes in 2-4 days instead of 1-2 weeks, campaigns in 15-20 days instead of about 90.
+- What happens to the people? Ascension chooses: move them to other pods and backlog, absorb through attrition, or keep them and clear more work. Changes are reviewed quarterly."""
