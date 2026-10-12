@@ -19,7 +19,7 @@ from build_mad_ig_deck import (BLACK, CONTENT_FLOOR, CYAN, CYAN_T, GREEN, GREEN_
                                set_notes)
 
 HOURS = 160             # per FTE-month
-RISK = 0.10             # fixed-fee risk premium
+RISK = 0.13             # fixed-fee risk premium
 PLATFORM_EARLY, PLATFORM_SCALE = 8000, 20000   # USD per month, GCP + model usage allowance, at cost
 
 # phase, months (first, last), gate
@@ -34,37 +34,39 @@ PHASES = [("0", "Mobilise", 1, 1, "Access and decisions signed"),
 # role, technology, ASSUMED offshore bill rate (USD/h), FTE per phase (0..6), category colour.
 # Every role is offshore. Rates are for sizing only: replace with the Insight Global rate card.
 ROLES = [
-    ("Engagement / delivery lead", "Delivery governance, gates, pod onboarding plan", 80,
+    ("Engagement / delivery lead", "Delivery governance, gates, pod onboarding plan", 85,
      [1, 1, 1, 1, 1, 1, 1], NAVY),
     ("Project manager / scrum master", "Sprint plans, RAID log, Jira, gate evidence packs", 60,
-     [1, 1, 1, 1, 1, 1, 0], NAVY),
-    ("Solution architect", "GCP + Salesforce architecture, Spanner Graph model, security design", 85,
      [1, 1, 1, 1, 1, 1, 1], NAVY),
-    ("AI agent lead", "OpenAI Agents SDK, Codex SDK, MCP, prompts, skills, evaluations", 85,
+    ("Solution architect", "GCP + Salesforce architecture, Spanner Graph model, security design", 95,
+     [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("AI agent lead", "OpenAI Agents SDK, Codex SDK, MCP, prompts, skills, evaluations", 90,
      [1, 1, 1, 1, 1, 1, 1], CYAN),
-    ("AI agent engineers", "Python, Agents SDK, headless Codex, MCP tools, JSON Schema outputs", 65,
-     [0, 2, 3, 3, 3, 2, 1], CYAN),
-    ("GCP platform engineers", "Terraform, Cloud Run, Workflows, Firestore, IAM, VPC-SC, Cloud Build", 55,
+    ("AI agent engineers", "Python, Agents SDK, headless Codex, MCP tools, JSON Schema outputs", 70,
+     [0, 3, 4, 4, 4, 3, 1], CYAN),
+    ("GCP platform engineers", "Terraform, Cloud Run, Workflows, Firestore, IAM, VPC-SC, Cloud Build", 60,
      [1, 2, 3, 2, 2, 2, 1], NAVY),
-    ("Knowledge graph engineers", "Python connectors, Spanner Graph (GQL), DLP, Jira / Confluence / SF APIs", 60,
-     [0, 3, 3, 2, 3, 3, 1], VIOLET),
-    ("Python backend engineer", "FastAPI services: gateway, approval, Guardian; OPA (Rego)", 55,
-     [0, 1, 1, 1, 1, 1, 0], MAGENTA),
+    ("Site reliability engineer", "Cloud Monitoring, Logging, Trace, alerting, runbooks, DR tests", 60,
+     [0, 1, 1, 1, 1, 1, 1], NAVY),
+    ("Knowledge graph engineers", "Python connectors, Spanner Graph (GQL), DLP, Jira / Confluence / SF APIs", 65,
+     [0, 3, 4, 3, 3, 3, 1], VIOLET),
+    ("Python backend engineers", "FastAPI services: gateway, approval, Guardian; OPA (Rego)", 55,
+     [0, 1, 2, 2, 2, 2, 0], MAGENTA),
     ("Salesforce Health Cloud developers", "Apex, LWC, Flow, Metadata + Tooling API, sf CLI, pod skills", 55,
-     [0, 1, 3, 3, 4, 4, 1], NAVY),
+     [0, 2, 4, 4, 5, 5, 2], NAVY),
     ("Marketing / Data Cloud developers", "SFMC SQL, AMPscript, Journey Builder, Data Cloud, mcdev", 55,
-     [0, 0, 2, 2, 2, 2, 0], NAVY),
+     [0, 1, 2, 2, 3, 3, 1], NAVY),
     ("DevOps / Copado engineers", "Copado pipelines and API, Git, CI checks, Code Analyzer", 55,
-     [0, 1, 1, 1, 1, 2, 1], NAVY),
+     [0, 1, 1, 1, 2, 2, 1], NAVY),
     ("QA automation engineers", "Copado Robotic Testing, Zephyr Scale, Apex + Jest, agent evaluations", 45,
-     [0, 1, 3, 3, 3, 3, 1], CYAN),
-    ("Security and compliance engineer", "HIPAA controls, DLP, IAM review, pen test, data terms", 70,
+     [0, 2, 4, 4, 5, 5, 2], CYAN),
+    ("Security and compliance engineer", "HIPAA controls, DLP, IAM review, pen test, data terms", 75,
      [0.5, 0.5, 1, 1, 0.5, 0.5, 0], MAGENTA),
     ("Business analysts / change leads", "Pod baselines, process mapping, training, adoption measures", 50,
-     [1, 1, 1, 1, 2, 2, 1], YELLOW),
+     [1, 2, 2, 2, 2, 2, 1], YELLOW),
 ]
 RUN_TEAM = "1 run lead + 5 engineers (GCP, graph, agents, Salesforce, QA), all offshore"
-RUN_MONTHLY = (80 + 55 + 60 + 65 + 55 + 45) * HOURS
+RUN_MONTHLY = (85 + 60 + 65 + 70 + 55 + 45) * HOURS
 
 
 def months(p):
@@ -284,7 +286,7 @@ def team_slide(prs, layout):
         ax.format.line.color.rgb = rgb(RULE)
     ch.value_axis.has_major_gridlines = True
     ch.value_axis.major_gridlines.format.line.color.rgb = rgb("EDEDED")
-    ch.value_axis.maximum_scale = 30
+    ch.value_axis.maximum_scale = 5 * math.ceil(peak_fte / 5 + 0.5)
     ch.value_axis.major_unit = 5
     # what Ascension provides
     by = 4.45
@@ -412,7 +414,7 @@ def commercials_slide(prs, layout):
         [("Example: one 14-person pod at about $2.47M a year saves $0.49-0.62M a year.", {"color": "BFBFBF"})],
     ], size=9, after=6)
     cv.text(X0, CONTENT_FLOOR - 0.36, tw, 0.34,
-            "Assumed offshore bill rates for sizing, by role: $45-85/h, blended $%.0f/h, %d h per FTE-month, "
+            "Assumed offshore bill rates for sizing, by role: $45-95/h, blended $%.0f/h, %d h per FTE-month, "
             "%g FTE-months. Replace with the Insight Global rate card before sharing. Excludes Ascension staff time "
             "and existing licences (Salesforce, Copado, Atlassian, OpenAI terms)." % (blended_rate(), HOURS, fm),
             size=6, color=MUTE)
@@ -453,10 +455,11 @@ HOW THE NUMBERS ARE BUILT
 Each role has an FTE per phase (plan_slides.py). Peak is that role's highest phase; "On team" is first to last month with any allocation. The security engineer is part-time except during the pilot and hardening, when the pen test and production authorisation happen.
 
 WHY THE TEAM IS THIS SIZE
-- Scale waves run pods in parallel: 4 Health Cloud developers and 3 QA engineers in months 12-17 so three to five pods onboard at once without lowering the pilots' quality bar.
-- 3 knowledge graph engineers: six connectors first, then every new pod's sources in each wave.
-- 3 AI agent engineers + an AI lead: the agents, prompts, skills and the evaluation set are the product.
-- 2 Marketing / Data Cloud developers: the Nudge pilot and the Marketing Cloud pods in the waves.
+- Scale waves run pods in parallel: 5 Health Cloud developers, 3 Marketing / Data Cloud developers and 5 QA engineers in months 12-17, so three to five pods onboard at once without lowering the pilots' quality bar.
+- A site reliability engineer from month 2: monitoring, alerting, runbooks and disaster-recovery tests, so the platform is production-grade before Gate 3.
+- 4 knowledge graph engineers at the pilot, then 3: six connectors first, then every new pod's sources in each wave.
+- 4 AI agent engineers + an AI lead: the agents, prompts, skills and the evaluation set are the product.
+- 2 to 3 Marketing / Data Cloud developers: the Nudge pilot and the Marketing Cloud pods in the waves.
 - A project manager alongside the engagement lead: 18 months, seven gates, nine to ten pods.
 
 NOT IN THE COUNT
@@ -474,7 +477,7 @@ def commercial_notes():
     low_risk = tm * 1.05
     return """SLIDE: Commercials   (about 3 minutes)
 
-INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by role ($45-85/h, blended $%.0f/h). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension.
+INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by role ($45-95/h, blended $%.0f/h). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension.
 
 KEY MESSAGE
 %s as a fixed fee over 18 months, invoiced only when each gate is signed. Platform usage is passed through at cost. After month 18, a managed service.
