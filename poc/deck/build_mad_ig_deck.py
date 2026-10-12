@@ -1047,14 +1047,30 @@ def main():
     for num, k in report:
         if k < 1:
             print("slide %d: scaled to %.3f to clear the footer" % (num, k))
-    architecture_slide(prs, layout)
-    execution_slide(prs, layout)
-    move_new_slides(prs, 2, NEW_AFTER)
+    lst = prs.slides._sldIdLst
+    orig = list(lst)
+
+    def add(fn):
+        fn(prs, layout)
+        return list(lst)[-1]
+
     import plan_slides
-    plan_slides.timeline_slide(prs, layout)
-    plan_slides.team_slide(prs, layout)
-    plan_slides.commercials_slide(prs, layout)
-    move_new_slides(prs, 3, PLAN_AFTER)
+    import story_slides
+    opener = add(story_slides.opener_slide)
+    platform = add(story_slides.platform_slide)
+    arch = add(architecture_slide)
+    exe = add(execution_slide)
+    guard = add(story_slides.guardrails_slide)
+    pods = add(story_slides.pod_economics_slide)
+    timeline = add(plan_slides.timeline_slide)
+    team = add(plan_slides.team_slide)
+    money = add(plan_slides.commercials_slide)
+    order = ([orig[0], opener, orig[1], platform, arch, exe, guard] + orig[2:9] +
+             [pods, timeline, team, money] + orig[9:])
+    for el in list(lst):
+        lst.remove(el)
+    for el in order:
+        lst.append(el)
     prs.save(out)
     print("wrote", os.path.abspath(out), "-", len(prs.slides), "slides")
 
