@@ -52,8 +52,8 @@ ROLES = [
      "templates; review agent output", 115, [0, 0, 1, 1, 1, 1, 0], NAVY),
     ("QA automation engineers", "Test Agent skills, Copado Robotic Testing, Zephyr; the evaluation set that "
      "gates every agent change", 100, [0, 1, 3, 3, 3, 3, 1], CYAN),
-    ("Security and compliance engineer", "HIPAA controls, DLP rules, IAM review, pen test, data terms "
-     "(part-time)", 145, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
+    ("Cloud security engineer (HIPAA)", "HIPAA controls, DLP rules, IAM and VPC-SC review, pen test, BAA "
+     "and data terms", 145, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
 ]
 RUN_ROLES = [("Forward deployed AI engineer, run lead", 165), ("Knowledge graph and cloud engineer", 135),
              ("Salesforce developer", 120), ("QA automation engineer", 100)]
@@ -121,7 +121,7 @@ def when(r):
 
 def peak(r):
     pk = max(r[3])
-    return "1 (part)" if pk < 1 else ("%g" % pk)
+    return "%g" % math.ceil(pk)
 
 
 # ------------------------------------------------------------------ timeline
@@ -424,7 +424,6 @@ def commercials_slide(prs, layout):
             "and existing licences (Salesforce, Copado, Atlassian, Codex Enterprise)." % (
                 rate_span(), blended_rate(), HOURS, fm),
             size=6, color=MUTE)
-    set_notes(s, commercial_notes())
     return s
 
 
@@ -466,44 +465,10 @@ WHO DOES WHAT
 - Cloud and DevOps engineers (2 from month 2): landing zone, Cloud Run, IAM, VPC-SC, monitoring and the Copado pipeline (covers what a separate SRE would).
 - Salesforce Health Cloud developers and the Marketing / Data Cloud developer do NOT build features for the pods. They build the pod skill packs the agents follow: approved Apex, LWC and Flow patterns, Health Cloud data-model rules, SFMC SQL, AMPscript and Journey templates, and the golden examples. In the pilots they review every agent-written change, which is how the agents reach Ascension's quality bar. Without them the agents would write generic Salesforce code.
 - QA automation engineers (3 from the pilot): the Test Agent's skills, Copado Robotic Testing and Zephyr, and the evaluation set that gates every change to an agent.
-- Security and compliance engineer, part-time: HIPAA controls, DLP rules, IAM review, pen test.
+- Cloud security engineer (HIPAA), half-time across the 18 months: HIPAA controls, DLP rules, IAM and VPC-SC review, pen test, BAA and data terms.
 
 NOT IN THE COUNT
 Ascension's product owners, approvers, release owner, security reviewers, cloud team and Salesforce / Copado admins.
 
 AFTER MONTH 18
 %s.""" % (people_at_peak(), len(ROLES), fm, ramp, RUN_TEAM[0].upper() + RUN_TEAM[1:])
-
-
-def commercial_notes():
-    tm, fixed = build_price()
-    wave2 = phase_cost(5) * (1 - GATE_DISCOUNT)
-    handover = phase_cost(6) * (1 - GATE_DISCOUNT)
-    return """SLIDE: Commercials   (about 3 minutes)
-
-INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by role (%s, blended $%.0f/h). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension. Delete these notes before sending the deck.
-
-KEY MESSAGE
-%s as a fixed fee over 18 months, invoiced only when each gate is signed, against %s on time and materials. Platform usage is passed through at cost. After month 18, a managed service.
-
-WHY FIXED IS LOWER THAN TIME AND MATERIALS
-- Time and materials bills every hour at the rate card, whatever the outcome, and Ascension carries any overrun.
-- The fixed fee prices the outcome. Insight Global brings its own agent accelerators (the agents already used for UI, backend and QA delivery, and the knowledge graph work already done), so it can commit to each gate for %d%% less and take the delivery risk. Ascension pays nothing for a phase whose gate does not pass.
-
-THE OPTIONS (A or B pays for the build, months 1-18; C is the separate monthly service from month 19)
-- A, fixed fee by gate (recommended): %s.
-- B, time and materials: %s estimated, on actual hours.
-- C, managed service, only from month 19 once all pods are live: %s a month for %s, plus platform at cost of about $20K a month. Not part of the build fee.
-
-IF ASCENSION ASKS FOR A LOWER NUMBER: TRADE SCOPE, NOT RATES
-- Contract wave 2 later, as a per-pod onboarding fee once wave 1 has proved the savings: removes %s now, so the fixed fee becomes %s.
-- Fold the month-18 handover into the managed service: removes a further %s.
-Both together: about %s.
-
-VALUE CHECK
-The two-pod slide: VBC and Network Services alone save $1.59-1.80M a year with agent-first squads, so the fixed fee pays back in under three years from those two pods; every further pod shortens it. The floor across all pods is 20-25%% lower net run cost (business outcomes slide).
-
-NOT INCLUDED
-Ascension staff time; existing Salesforce, Copado and Atlassian licences; Codex Enterprise.""" % (
-        rate_span(), blended_rate(), m(fixed), m(tm), round(GATE_DISCOUNT * 100), m(fixed), m(tm),
-        k(RUN_MONTHLY), RUN_TEAM, m(wave2), m(fixed - wave2), k(handover), m(fixed - wave2 - handover))
