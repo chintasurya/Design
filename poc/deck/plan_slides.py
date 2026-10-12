@@ -4,8 +4,10 @@ Called by build_mad_ig_deck.py. One staffing plan drives all three, so the
 timeline's phases, the team's headcount and the price cannot disagree.
 
 Rates are ASSUMED bill rates for sizing, not an Insight Global rate card:
-replace ONSHORE_RATE and OFFSHORE_RATE before the numbers go to a client.
+replace the per-role rates in ROLES before the numbers go to a client.
 """
+import math
+
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.shapes import MSO_SHAPE
@@ -16,10 +18,8 @@ from build_mad_ig_deck import (BLACK, CONTENT_FLOOR, CYAN, CYAN_T, GREEN, GREEN_
                                MUTE, NAVY, RULE, TXT, VIOLET, VIOLET_T, WHITE, YELLOW, YELLOW_T, Canvas, rgb,
                                set_notes)
 
-ONSHORE_RATE = 150      # USD per hour, assumed
-OFFSHORE_RATE = 40      # USD per hour, assumed
 HOURS = 160             # per FTE-month
-RISK = 0.10             # fixed-fee risk premium
+RISK = 0.12             # fixed-fee risk premium
 PLATFORM_EARLY, PLATFORM_SCALE = 8000, 20000   # USD per month, GCP + model usage allowance, at cost
 
 # phase, months (first, last), gate
@@ -31,37 +31,40 @@ PHASES = [("0", "Mobilise", 1, 1, "Access and decisions signed"),
           ("5", "Scale wave 2", 15, 17, "All 9-10 pods live"),
           ("6", "Handover", 18, 18, "Run team takes over")]
 
-# role, technology, onshore?, FTE per phase (0..6), category colour
+# role, technology, ASSUMED offshore bill rate (USD/h), FTE per phase (0..6), category colour.
+# Every role is offshore. Rates are for sizing only: replace with the Insight Global rate card.
 ROLES = [
-    ("Engagement / delivery lead", "Delivery governance, gates, pod onboarding plan", True,
+    ("Engagement / delivery lead", "Delivery governance, gates, pod onboarding plan", 85,
      [1, 1, 1, 1, 1, 1, 1], NAVY),
-    ("Solution architect", "GCP + Salesforce architecture, Spanner Graph model, security design", True,
-     [1, 1, 1, 1, 1, 1, 0.5], NAVY),
-    ("AI agent lead", "OpenAI Agents SDK, Codex SDK, MCP, prompts, skills, evaluations", True,
+    ("Project manager / scrum master", "Sprint plans, RAID log, Jira, gate evidence packs", 60,
+     [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("Solution architect", "GCP + Salesforce architecture, Spanner Graph model, security design", 95,
+     [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("AI agent lead", "OpenAI Agents SDK, Codex SDK, MCP, prompts, skills, evaluations", 90,
      [1, 1, 1, 1, 1, 1, 1], CYAN),
-    ("AI agent engineers", "Python, Agents SDK, headless Codex, MCP tools, JSON Schema outputs", False,
-     [0, 1, 2, 2, 2, 1, 0], CYAN),
-    ("GCP platform engineers", "Terraform, Cloud Run, Workflows, Firestore, IAM, VPC-SC, Cloud Build", False,
-     [1, 2, 2, 2, 1, 1, 1], NAVY),
-    ("Knowledge graph engineers", "Python connectors, Spanner Graph (GQL), DLP, Jira / Confluence / SF APIs", False,
-     [0, 2, 2, 1, 2, 2, 1], VIOLET),
-    ("Python backend engineer", "FastAPI services: gateway, approval, Guardian; OPA (Rego)", False,
-     [0, 1, 1, 1, 1, 1, 0], MAGENTA),
-    ("Salesforce Health Cloud developers", "Apex, LWC, Flow, Metadata + Tooling API, sf CLI, pod skills", False,
-     [0, 1, 2, 2, 2, 2, 1], NAVY),
-    ("Marketing / Data Cloud developer", "SFMC SQL, AMPscript, Journey Builder, Data Cloud, mcdev", False,
-     [0, 0, 1, 1, 1, 1, 0], NAVY),
-    ("DevOps / Copado engineer", "Copado pipelines and API, Git, CI checks, Code Analyzer", False,
-     [0, 1, 1, 1, 1, 1, 0.5], NAVY),
-    ("QA automation engineers", "Copado Robotic Testing, Zephyr Scale, Apex + Jest, agent evaluations", False,
-     [0, 1, 2, 2, 2, 2, 1], CYAN),
-    ("Security and compliance engineer", "HIPAA controls, DLP, IAM review, pen test, data terms", True,
-     [0.5, 0.5, 0.5, 1, 0.5, 0.5, 0], MAGENTA),
-    ("Business analyst / change lead", "Pod baselines, process mapping, training, adoption measures", True,
-     [0.5, 0.5, 1, 1, 1, 1, 1], YELLOW),
+    ("AI agent engineers", "Python, Agents SDK, headless Codex, MCP tools, JSON Schema outputs", 70,
+     [0, 2, 3, 3, 3, 2, 1], CYAN),
+    ("GCP platform engineers", "Terraform, Cloud Run, Workflows, Firestore, IAM, VPC-SC, Cloud Build", 60,
+     [1, 2, 3, 2, 2, 2, 1], NAVY),
+    ("Knowledge graph engineers", "Python connectors, Spanner Graph (GQL), DLP, Jira / Confluence / SF APIs", 65,
+     [0, 3, 3, 2, 3, 3, 1], VIOLET),
+    ("Python backend engineers", "FastAPI services: gateway, approval, Guardian; OPA (Rego)", 55,
+     [0, 1, 2, 2, 1, 1, 0], MAGENTA),
+    ("Salesforce Health Cloud developers", "Apex, LWC, Flow, Metadata + Tooling API, sf CLI, pod skills", 55,
+     [0, 1, 3, 3, 4, 4, 1], NAVY),
+    ("Marketing / Data Cloud developers", "SFMC SQL, AMPscript, Journey Builder, Data Cloud, mcdev", 55,
+     [0, 0, 2, 2, 2, 2, 0], NAVY),
+    ("DevOps / Copado engineers", "Copado pipelines and API, Git, CI checks, Code Analyzer", 55,
+     [0, 1, 1, 1, 2, 2, 1], NAVY),
+    ("QA automation engineers", "Copado Robotic Testing, Zephyr Scale, Apex + Jest, agent evaluations", 45,
+     [0, 1, 3, 3, 4, 4, 1], CYAN),
+    ("Security and compliance engineer", "HIPAA controls, DLP, IAM review, pen test, data terms", 75,
+     [0.5, 0.5, 1, 1, 0.5, 0.5, 0], MAGENTA),
+    ("Business analysts / change leads", "Pod baselines, process mapping, training, adoption measures", 50,
+     [1, 1, 2, 2, 2, 2, 1], YELLOW),
 ]
-RUN_TEAM = "1 run lead (onshore) + 5 engineers (GCP, graph, agents, Salesforce, QA)"
-RUN_MONTHLY = ONSHORE_RATE * HOURS + 5 * OFFSHORE_RATE * HOURS
+RUN_TEAM = "1 run lead + 5 engineers (GCP, graph, agents, Salesforce, QA), all offshore"
+RUN_MONTHLY = (85 + 60 + 65 + 70 + 55 + 45) * HOURS
 
 
 def months(p):
@@ -69,7 +72,7 @@ def months(p):
 
 
 def phase_cost(i):
-    return sum(r[3][i] * months(PHASES[i]) * HOURS * (ONSHORE_RATE if r[2] else OFFSHORE_RATE) for r in ROLES)
+    return sum(r[3][i] * months(PHASES[i]) * HOURS * r[2] for r in ROLES)
 
 
 def fte_in_phase(i):
@@ -77,13 +80,29 @@ def fte_in_phase(i):
 
 
 def fte_months():
-    on = sum(r[3][i] * months(p) for r in ROLES if r[2] for i, p in enumerate(PHASES))
-    off = sum(r[3][i] * months(p) for r in ROLES if not r[2] for i, p in enumerate(PHASES))
-    return on, off
+    return sum(r[3][i] * months(p) for r in ROLES for i, p in enumerate(PHASES))
+
+
+def blended_rate():
+    return sum(phase_cost(i) for i in range(len(PHASES))) / (fte_months() * HOURS)
+
+
+def peak_phase():
+    return max(range(len(PHASES)), key=fte_in_phase)
+
+
+def people_at_peak():
+    i = peak_phase()
+    return sum(math.ceil(r[3][i]) for r in ROLES)
+
+
+def phase_span(i):
+    p = PHASES[i]
+    return "month %d" % p[2] if p[2] == p[3] else "months %d-%d" % (p[2], p[3])
 
 
 def k(v):
-    return "$%dK" % round(v / 1000)
+    return "$%.2fM" % (v / 1e6) if v >= 1e6 else "$%dK" % round(v / 1000)
 
 
 def m(v):
@@ -189,14 +208,13 @@ def timeline_slide(prs, layout):
 def team_slide(prs, layout):
     s = prs.slides.add_slide(layout)
     cv = Canvas(s)
-    on, off = fte_months()
-    peak_fte = max(fte_in_phase(i) for i in range(len(PHASES)))
-    people = sum(1 if max(r[3]) <= 1 else int(max(r[3])) for r in ROLES)
+    fm = fte_months()
+    peak_fte = fte_in_phase(peak_phase())
+    people = people_at_peak()
     cv.header("ASCENSION MAD APPROACH · DELIVERY TEAM",
-              "The team: %d people at peak across thirteen roles" % people,
-              "Sized from the phase plan: %g FTE at peak, %g FTE-months over eighteen months, %d%% onshore. "
-              "Ascension's approvers and pod leads are not in this count." % (peak_fte, on + off,
-                                                                              round(100 * on / (on + off))))
+              "The team: %d people at peak across %d roles, delivered offshore" % (people, len(ROLES)),
+              "Sized from the phase plan: %g FTE at peak, %g FTE-months over eighteen months, all roles offshore. "
+              "Ascension's approvers and pod leads are not in this count." % (peak_fte, fm))
     # table
     X0 = 0.45
     cols = [("Role", 2.35), ("Technology and skills", 3.85), ("Peak", 0.55), ("Where", 0.75), ("On team", 0.85)]
@@ -208,12 +226,12 @@ def team_slide(prs, layout):
     tw = sum(w for _, w in cols)
     cv.rect(X0, y + 0.26, tw, 0.015, BLACK)
     y += 0.3
-    rh = 0.355
-    for i, (role, tech, onshore, fte, col) in enumerate(ROLES):
+    rh = 0.33
+    for i, (role, tech, rate, fte, col) in enumerate(ROLES):
         if i % 2 == 0:
             cv.rect(X0, y, tw, rh, GREY)
         cv.rect(X0 + 0.06, y + rh / 2 - 0.05, 0.1, 0.1, col)
-        vals = [role, tech, peak(ROLES[i]), "Onshore" if onshore else "Offshore", when(ROLES[i])]
+        vals = [role, tech, peak(ROLES[i]), "Offshore", when(ROLES[i])]
         x = X0
         for j, ((_, w), v) in enumerate(zip(cols, vals)):
             pad = 0.22 if j == 0 else 0.05
@@ -229,8 +247,8 @@ def team_slide(prs, layout):
     # right column
     RX = X0 + tw + 0.3
     RW = 12.88 - RX
-    tiles = [("%g" % peak_fte, "FTE at peak (months 6-9)"), ("%g" % (on + off), "FTE-months, 18 months"),
-             ("%d%%" % round(100 * on / (on + off)), "onshore; the rest offshore")]
+    tiles = [("%g" % peak_fte, "FTE at peak (%s)" % phase_span(peak_phase())), ("%g" % fm, "FTE-months, 18 months"),
+             ("100%", "offshore delivery, every role")]
     tw3 = (RW - 0.2) / 3
     for i, (big, small) in enumerate(tiles):
         tx = RX + i * (tw3 + 0.1)
@@ -266,7 +284,7 @@ def team_slide(prs, layout):
         ax.format.line.color.rgb = rgb(RULE)
     ch.value_axis.has_major_gridlines = True
     ch.value_axis.major_gridlines.format.line.color.rgb = rgb("EDEDED")
-    ch.value_axis.maximum_scale = 20
+    ch.value_axis.maximum_scale = 30
     ch.value_axis.major_unit = 5
     # what Ascension provides
     by = 4.45
@@ -281,7 +299,7 @@ def team_slide(prs, layout):
         iy = by + 0.36 + i * 0.27
         cv.rect(RX + 0.14, iy + 0.06, 0.06, 0.06, BLACK)
         cv.text(RX + 0.28, iy, RW - 0.4, 0.2, t, size=7.5)
-    set_notes(s, TEAM_NOTES)
+    set_notes(s, team_notes())
     return s
 
 
@@ -292,7 +310,7 @@ def commercials_slide(prs, layout):
     tm = sum(phase_cost(i) for i in range(len(PHASES)))
     fixed = tm * (1 + RISK)
     plat = sum((PLATFORM_EARLY if p[3] <= 11 else PLATFORM_SCALE) * months(p) for p in PHASES)
-    on, off = fte_months()
+    fm = fte_months()
     cv.header("ASCENSION MAD APPROACH · COMMERCIALS",
               "Investment: %s over eighteen months, paid as each gate passes" % m(fixed),
               "A fixed fee for each phase, invoiced only when that phase's gate is signed. Platform usage is passed "
@@ -328,7 +346,7 @@ def commercials_slide(prs, layout):
         y += rh
     cv.rect(X0, y, tw, 0.015, BLACK)
     x = X0
-    tot = ["Total", "18 months", "", m(tm), m(fixed), "%g FTE-months" % (on + off)]
+    tot = ["Total", "18 months", "", m(tm), m(fixed), "%g FTE-months" % fm]
     for j, ((name, w), v) in enumerate(zip(cols, tot)):
         right = name in ("Time and materials", "Fixed fee", "Peak team")
         pad = 0.25 if name == "Invoiced when" else 0.05
@@ -382,17 +400,18 @@ def commercials_slide(prs, layout):
         [("Planned saving: 20-25% lower net run cost per pod ", {"color": WHITE}),
          ("(business outcomes slide).", {"color": "BFBFBF"})],
         [("Every $10M of pod delivery spend saves $2.0-2.5M a year, ", {"color": WHITE}),
-         ("so the fixed fee pays back in about 1.4 to 1.7 years once pods are live.", {"color": WHITE})],
+         ("so the fixed fee pays back in about %.1f to %.1f years once pods are live." % (fixed / 2.5e6, fixed / 2.0e6),
+          {"color": WHITE})],
         [("Example: one 14-person pod at about $2.47M a year saves $0.49-0.62M a year.", {"color": "BFBFBF"})],
         [("Payback is measured per pod against the Phase 0 baseline: cycle time, effort per story, escaped "
           "defects.", {"color": "BFBFBF"})],
     ], size=9, after=6)
     cv.text(X0, CONTENT_FLOOR - 0.36, tw, 0.34,
-            "Assumed bill rates for sizing: $%d/h onshore, $%d/h offshore, %d h per FTE-month (%g onshore, %g "
-            "offshore FTE-months). Replace with the Insight Global rate card before sharing. Excludes Ascension "
-            "staff time and existing licences (Salesforce, Copado, Atlassian, OpenAI terms)."
-            % (ONSHORE_RATE, OFFSHORE_RATE, HOURS, on, off), size=6, color=MUTE)
-    set_notes(s, COMMERCIAL_NOTES)
+            "Assumed offshore bill rates for sizing, by role: $45-95/h, blended $%.0f/h, %d h per FTE-month, "
+            "%g FTE-months. Replace with the Insight Global rate card before sharing. Excludes Ascension staff time "
+            "and existing licences (Salesforce, Copado, Atlassian, OpenAI terms)." % (blended_rate(), HOURS, fm),
+            size=6, color=MUTE)
+    set_notes(s, commercial_notes())
     return s
 
 
@@ -414,42 +433,63 @@ IF ASKED
 - Can it go faster? The waves can overlap once Gate 3 is passed; the pilot cannot be skipped.
 - Durations are planning estimates, confirmed at the Phase 0 gate."""
 
-TEAM_NOTES = """SLIDE: Delivery team   (about 2 minutes)
+def team_notes():
+    fm = fte_months()
+    ramp = ", ".join("%g in %s" % (fte_in_phase(i), phase_span(i)) for i in range(len(PHASES)))
+    return """SLIDE: Delivery team   (about 2 minutes)
 
 KEY MESSAGE
-Eighteen people at peak across thirteen roles, sized from the phase plan, about 30% onshore. The counts change by phase: five people in month 1, about seventeen in months 6-11, eight in the handover month.
+%d people at peak across %d roles, every role delivered offshore, sized from the phase plan: %g FTE-months over 18 months.
+
+RAMP (FTE by phase)
+%s.
 
 HOW THE NUMBERS ARE BUILT
-Each role has an FTE per phase (in plan_slides.py). Peak is the highest phase; "On team" is first to last month with any allocation. The security engineer is part-time except in Phase 3, when the pen test and production authorisation happen.
+Each role has an FTE per phase (plan_slides.py). Peak is that role's highest phase; "On team" is first to last month with any allocation. The security engineer is part-time except during the pilot and hardening, when the pen test and production authorisation happen.
 
-WHY THESE ROLES
-- AI agent lead + 2 engineers: the agents, prompts, skills and the evaluation set are the product.
-- 2 knowledge graph engineers: six connectors and the graph, then new pod sources in every wave.
-- 2 GCP platform engineers: landing zone, Terraform, Cloud Run, Workflows, security controls.
-- 2 Health Cloud + 1 Marketing Cloud developers: pod skills, pilots, and checking what the agents build.
-- 1 DevOps / Copado engineer: Guardian as a CI check, Copado API, promotions.
-- 2 QA automation engineers: Test Agent integration with Zephyr and Copado Robotic Testing, regression for each wave.
+WHY THE TEAM IS THIS SIZE
+- Scale waves run pods in parallel: 4 Health Cloud developers and 4 QA engineers in months 12-17 so three to five pods onboard at once without slowing the pilots' quality bar.
+- 3 knowledge graph engineers: six connectors first, then every new pod's sources in each wave.
+- 3 AI agent engineers + an AI lead: the agents, prompts, skills and the evaluation set are the product.
+- 2 Marketing / Data Cloud developers: the Nudge pilot and the Marketing Cloud pods in the waves.
+- A project manager alongside the engagement lead: 18 months, seven gates, nine to ten pods.
 
 NOT IN THE COUNT
-Ascension's product owners, approvers, release owner, security reviewers, cloud team and Salesforce/Copado admins.
+Ascension's product owners, approvers, release owner, security reviewers, cloud team and Salesforce / Copado admins.
 
 AFTER MONTH 18
-A run team of 6: one lead and five engineers (GCP, graph, agents, Salesforce, QA)."""
+A run team of 6, offshore: one lead and five engineers (GCP, graph, agents, Salesforce, QA).""" % (
+        people_at_peak(), len(ROLES), fm, ramp)
 
-COMMERCIAL_NOTES = """SLIDE: Commercials   (about 3 minutes)
 
-INTERNAL FIRST: the rates on this slide are ASSUMED bill rates used to size the work ($150/h onshore, $40/h offshore, 160 h per FTE-month). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension.
+def commercial_notes():
+    tm = sum(phase_cost(i) for i in range(len(PHASES)))
+    fixed = tm * (1 + RISK)
+    wave2 = phase_cost(5) * (1 + RISK)
+    low_risk = tm * 1.05
+    return """SLIDE: Commercials   (about 3 minutes)
+
+INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by role ($45-95/h, blended $%.0f/h). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension.
 
 KEY MESSAGE
-About $3.4M as a fixed fee over 18 months, invoiced only when each gate is signed. Platform usage is passed through at cost. After month 18, a managed service.
+%s as a fixed fee over 18 months, invoiced only when each gate is signed. Platform usage is passed through at cost. After month 18, a managed service.
 
 THE OPTIONS
-- A, fixed fee by gate (recommended): Ascension pays for a phase only when its gate passes; we carry delivery risk (10% in the price). Easiest to approve, because spend follows proof.
-- B, time and materials with a cap per phase: about $3.1M estimated; Ascension carries overrun risk up to the cap.
-- C, managed service from month 19: about $56K a month for a run team of 6, plus platform at cost.
+- A, fixed fee by gate (recommended): Ascension pays for a phase only when its gate passes; Insight Global carries delivery risk (%d%% in the price).
+- B, time and materials with a cap per phase: %s estimated; Ascension carries overrun risk up to the cap.
+- C, managed service from month 19: %s a month for a run team of 6, plus platform at cost.
+
+IF ASCENSION ASKS FOR A LOWER NUMBER: TRADE SCOPE OR RISK, NOT RATES
+- Move to option B (time and materials, capped): %s.
+- Contract wave 2 later, as a per-pod onboarding fee once wave 1 has proved the savings: removes %s now, so the fixed fee becomes %s.
+- Both levers together: about %s.
+- Lower the risk premium to 5%% in exchange for Ascension owning gate dates: %s.
+Each lever keeps the rate card intact and leaves the delivery plan honest.
 
 VALUE CHECK
-The business outcomes slide plans 20-25% lower net run cost per pod. Every $10M of pod delivery spend therefore saves $2.0-2.5M a year, which pays the fixed fee back in about 1.4 to 1.7 years. The 14-person pod example (about $2.47M a year, from the Agentic Delivery deck) alone saves $0.49-0.62M a year.
+The business outcomes slide plans 20-25%% lower net run cost per pod. Every $10M of pod delivery spend saves $2.0-2.5M a year, which pays the fixed fee back in about %.1f to %.1f years. The 14-person pod example (about $2.47M a year, from the Agentic Delivery deck) alone saves $0.49-0.62M a year.
 
 NOT INCLUDED
-Ascension staff time; existing Salesforce, Copado and Atlassian licences; OpenAI enterprise terms."""
+Ascension staff time; existing Salesforce, Copado and Atlassian licences; OpenAI enterprise terms.""" % (
+        blended_rate(), m(fixed), round(RISK * 100), m(tm), k(RUN_MONTHLY), m(tm), m(wave2), m(fixed - wave2),
+        m(tm - phase_cost(5)), m(low_risk), fixed / 2.5e6, fixed / 2.0e6)
