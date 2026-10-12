@@ -35,28 +35,28 @@ PHASES = [("0", "Mobilise", 1, 1, "Access and decisions signed"),
 # Every role is offshore. Rates are for sizing only: replace with the Insight Global rate card.
 ROLES = [
     ("Engagement lead / project manager", "Gates, sprint plans, RAID log, pod baselines and requirements "
-     "workshops (no separate BA)", 160, [1, 1, 1, 1, 1, 1, 1], NAVY),
+     "workshops (no separate BA)", 145, [1, 1, 1, 1, 1, 1, 1], NAVY),
     ("Solution architect", "End-to-end design: GCP landing zone, Spanner Graph model, Salesforce and "
-     "Copado integration, security", 195, [1, 1, 1, 1, 1, 1, 1], NAVY),
+     "Copado integration, security", 175, [1, 1, 1, 1, 1, 1, 1], NAVY),
     ("AI architect", "Agent design, OpenAI Agents SDK, Codex SDK, MCP tool gateway, guardrails, evaluation "
-     "strategy", 215, [1, 1, 1, 1, 1, 1, 1], CYAN),
+     "strategy", 195, [1, 1, 1, 1, 1, 1, 1], CYAN),
     ("Forward deployed AI engineers", "Build the 7 agents, the workflow, approval and Change Guardian "
-     "services; tune them inside each pod", 180, [0, 2, 3, 3, 3, 3, 1], CYAN),
+     "services; tune them inside each pod", 165, [0, 2, 3, 3, 3, 3, 1], CYAN),
     ("Knowledge graph engineers", "Six source connectors, DLP, Spanner Graph (GQL), Graph API + MCP; "
-     "add each wave's sources", 150, [0, 2, 2, 1, 1, 1, 0], VIOLET),
+     "add each wave's sources", 135, [0, 2, 2, 1, 1, 1, 0], VIOLET),
     ("Cloud and DevOps engineers", "Terraform, Cloud Run, Workflows, IAM, VPC-SC, monitoring; Copado "
-     "pipeline and CI checks", 140, [1, 2, 2, 2, 2, 2, 1], NAVY),
+     "pipeline and CI checks", 125, [1, 2, 2, 2, 2, 2, 1], NAVY),
     ("Salesforce Health Cloud developers", "Health Cloud skill packs: Apex, LWC and Flow patterns, golden "
-     "examples; review agent code in pilots", 130, [0, 1, 2, 2, 2, 2, 1], NAVY),
+     "examples; review agent code in pilots", 120, [0, 1, 2, 2, 2, 2, 1], NAVY),
     ("Marketing / Data Cloud developer", "Nudge skill pack: SFMC SQL, AMPscript, Journey and Data Cloud "
-     "templates; review agent output", 125, [0, 0, 1, 1, 1, 1, 0], NAVY),
+     "templates; review agent output", 115, [0, 0, 1, 1, 1, 1, 0], NAVY),
     ("QA automation engineers", "Test Agent skills, Copado Robotic Testing, Zephyr; the evaluation set that "
-     "gates every agent change", 110, [0, 1, 3, 3, 3, 3, 1], CYAN),
+     "gates every agent change", 100, [0, 1, 3, 3, 3, 3, 1], CYAN),
     ("Security and compliance engineer", "HIPAA controls, DLP rules, IAM review, pen test, data terms "
-     "(part-time)", 160, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
+     "(part-time)", 145, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
 ]
-RUN_ROLES = [("Forward deployed AI engineer, run lead", 180), ("Knowledge graph and cloud engineer", 150),
-             ("Salesforce developer", 130), ("QA automation engineer", 110)]
+RUN_ROLES = [("Forward deployed AI engineer, run lead", 165), ("Knowledge graph and cloud engineer", 135),
+             ("Salesforce developer", 120), ("QA automation engineer", 100)]
 RUN_TEAM = "a run team of %d, offshore: one AI engineer as lead, plus graph and cloud, Salesforce and QA" % len(
     RUN_ROLES)
 RUN_MONTHLY = sum(r for _, r in RUN_ROLES) * HOURS
