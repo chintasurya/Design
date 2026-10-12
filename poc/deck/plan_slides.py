@@ -44,14 +44,14 @@ ROLES = [
      "services; tune them inside each pod", 180, [0, 2, 3, 3, 3, 3, 1], CYAN),
     ("Knowledge graph engineers", "Six source connectors, DLP, Spanner Graph (GQL), Graph API + MCP; "
      "add each wave's sources", 150, [0, 2, 2, 1, 1, 1, 0], VIOLET),
-    ("Cloud and DevOps engineer", "Terraform, Cloud Run, Workflows, IAM, VPC-SC, monitoring; Copado "
-     "pipeline and CI checks", 140, [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("Cloud and DevOps engineers", "Terraform, Cloud Run, Workflows, IAM, VPC-SC, monitoring; Copado "
+     "pipeline and CI checks", 140, [1, 2, 2, 2, 2, 2, 1], NAVY),
     ("Salesforce Health Cloud developers", "Health Cloud skill packs: Apex, LWC and Flow patterns, golden "
      "examples; review agent code in pilots", 130, [0, 1, 2, 2, 2, 2, 1], NAVY),
     ("Marketing / Data Cloud developer", "Nudge skill pack: SFMC SQL, AMPscript, Journey and Data Cloud "
      "templates; review agent output", 125, [0, 0, 1, 1, 1, 1, 0], NAVY),
     ("QA automation engineers", "Test Agent skills, Copado Robotic Testing, Zephyr; the evaluation set that "
-     "gates every agent change", 110, [0, 1, 2, 2, 2, 2, 1], CYAN),
+     "gates every agent change", 110, [0, 1, 3, 3, 3, 3, 1], CYAN),
     ("Security and compliance engineer", "HIPAA controls, DLP rules, IAM review, pen test, data terms "
      "(part-time)", 160, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
 ]
@@ -463,9 +463,9 @@ WHO DOES WHAT
 - AI architect: agent design, the tool gateway, guardrails and the evaluation strategy.
 - Forward deployed AI engineers: build the seven agents, the workflow and the approval and Change Guardian services, and sit with each pod to tune them on real stories.
 - Knowledge graph engineers: the six connectors and Spanner Graph, then each wave's sources.
-- Cloud and DevOps engineer: landing zone, Cloud Run, IAM, VPC-SC, monitoring and the Copado pipeline (covers what a separate SRE would).
+- Cloud and DevOps engineers (2 from month 2): landing zone, Cloud Run, IAM, VPC-SC, monitoring and the Copado pipeline (covers what a separate SRE would).
 - Salesforce Health Cloud developers and the Marketing / Data Cloud developer do NOT build features for the pods. They build the pod skill packs the agents follow: approved Apex, LWC and Flow patterns, Health Cloud data-model rules, SFMC SQL, AMPscript and Journey templates, and the golden examples. In the pilots they review every agent-written change, which is how the agents reach Ascension's quality bar. Without them the agents would write generic Salesforce code.
-- QA automation engineers: the Test Agent's skills, Copado Robotic Testing and Zephyr, and the evaluation set that gates every change to an agent.
+- QA automation engineers (3 from the pilot): the Test Agent's skills, Copado Robotic Testing and Zephyr, and the evaluation set that gates every change to an agent.
 - Security and compliance engineer, part-time: HIPAA controls, DLP rules, IAM review, pen test.
 
 NOT IN THE COUNT
