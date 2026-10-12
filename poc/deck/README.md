@@ -104,3 +104,11 @@ It does two separate things:
    proven yet are in the speaker notes only.
 
 `assets/ig-mark-black.png` is the ●●●IG footer mark, cut from the template guide.
+
+## Reordered master deck
+
+The deck's slide order and any hand edits now live in
+`source/Ascension MAD Approach - master.pptx` (the user's reordered copy).
+`python update_master.py` rebuilds only the delivery team and commercials
+slides from `plan_slides.py` inside that master and writes
+`../Ascension MAD Approach.pptx`; every other slide is left as it is.

@@ -19,7 +19,7 @@ from build_mad_ig_deck import (BLACK, CONTENT_FLOOR, CYAN, CYAN_T, GREEN, GREEN_
                                set_notes)
 
 HOURS = 160             # per FTE-month
-RISK = 0.13             # fixed-fee risk premium
+GATE_DISCOUNT = 0.13    # fixed fee by gate vs time and materials: IG prices the outcome and brings its accelerators
 PLATFORM_EARLY, PLATFORM_SCALE = 8000, 20000   # USD per month, GCP + model usage allowance, at cost
 
 # phase, months (first, last), gate
@@ -31,42 +31,45 @@ PHASES = [("0", "Mobilise", 1, 1, "Access and decisions signed"),
           ("5", "Scale wave 2", 15, 17, "All 9-10 pods live"),
           ("6", "Handover", 18, 18, "Run team takes over")]
 
-# role, technology, ASSUMED offshore bill rate (USD/h), FTE per phase (0..6), category colour.
+# role, what they build, ASSUMED offshore bill rate (USD/h), FTE per phase (0..6), category colour.
 # Every role is offshore. Rates are for sizing only: replace with the Insight Global rate card.
 ROLES = [
-    ("Engagement / delivery lead", "Delivery governance, gates, pod onboarding plan", 85,
-     [1, 1, 1, 1, 1, 1, 1], NAVY),
-    ("Project manager / scrum master", "Sprint plans, RAID log, Jira, gate evidence packs", 60,
-     [1, 1, 1, 1, 1, 1, 1], NAVY),
-    ("Solution architect", "GCP + Salesforce architecture, Spanner Graph model, security design", 95,
-     [1, 1, 1, 1, 1, 1, 1], NAVY),
-    ("AI agent lead", "OpenAI Agents SDK, Codex SDK, MCP, prompts, skills, evaluations", 90,
-     [1, 1, 1, 1, 1, 1, 1], CYAN),
-    ("AI agent engineers", "Python, Agents SDK, headless Codex, MCP tools, JSON Schema outputs", 70,
-     [0, 3, 4, 4, 4, 3, 1], CYAN),
-    ("GCP platform engineers", "Terraform, Cloud Run, Workflows, Firestore, IAM, VPC-SC, Cloud Build", 60,
-     [1, 2, 3, 2, 2, 2, 1], NAVY),
-    ("Site reliability engineer", "Cloud Monitoring, Logging, Trace, alerting, runbooks, DR tests", 60,
-     [0, 1, 1, 1, 1, 1, 1], NAVY),
-    ("Knowledge graph engineers", "Python connectors, Spanner Graph (GQL), DLP, Jira / Confluence / SF APIs", 65,
-     [0, 3, 4, 3, 3, 3, 1], VIOLET),
-    ("Python backend engineers", "FastAPI services: gateway, approval, Guardian; OPA (Rego)", 55,
-     [0, 1, 2, 2, 2, 2, 0], MAGENTA),
-    ("Salesforce Health Cloud developers", "Apex, LWC, Flow, Metadata + Tooling API, sf CLI, pod skills", 55,
-     [0, 2, 4, 4, 5, 5, 2], NAVY),
-    ("Marketing / Data Cloud developers", "SFMC SQL, AMPscript, Journey Builder, Data Cloud, mcdev", 55,
-     [0, 1, 2, 2, 3, 3, 1], NAVY),
-    ("DevOps / Copado engineers", "Copado pipelines and API, Git, CI checks, Code Analyzer", 55,
-     [0, 1, 1, 1, 2, 2, 1], NAVY),
-    ("QA automation engineers", "Copado Robotic Testing, Zephyr Scale, Apex + Jest, agent evaluations", 45,
-     [0, 2, 4, 4, 5, 5, 2], CYAN),
-    ("Security and compliance engineer", "HIPAA controls, DLP, IAM review, pen test, data terms", 75,
-     [0.5, 0.5, 1, 1, 0.5, 0.5, 0], MAGENTA),
-    ("Business analysts / change leads", "Pod baselines, process mapping, training, adoption measures", 50,
-     [1, 2, 2, 2, 2, 2, 1], YELLOW),
+    ("Engagement lead / project manager", "Gates, sprint plans, RAID log, pod baselines and requirements "
+     "workshops (no separate BA)", 160, [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("Solution architect", "End-to-end design: GCP landing zone, Spanner Graph model, Salesforce and "
+     "Copado integration, security", 195, [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("AI architect", "Agent design, OpenAI Agents SDK, Codex SDK, MCP tool gateway, guardrails, evaluation "
+     "strategy", 215, [1, 1, 1, 1, 1, 1, 1], CYAN),
+    ("Forward deployed AI engineers", "Build the 7 agents, the workflow, approval and Change Guardian "
+     "services; tune them inside each pod", 180, [0, 2, 3, 3, 3, 3, 1], CYAN),
+    ("Knowledge graph engineers", "Six source connectors, DLP, Spanner Graph (GQL), Graph API + MCP; "
+     "add each wave's sources", 150, [0, 2, 2, 1, 1, 1, 0], VIOLET),
+    ("Cloud and DevOps engineer", "Terraform, Cloud Run, Workflows, IAM, VPC-SC, monitoring; Copado "
+     "pipeline and CI checks", 140, [1, 1, 1, 1, 1, 1, 1], NAVY),
+    ("Salesforce Health Cloud developers", "Health Cloud skill packs: Apex, LWC and Flow patterns, golden "
+     "examples; review agent code in pilots", 130, [0, 1, 2, 2, 2, 2, 1], NAVY),
+    ("Marketing / Data Cloud developer", "Nudge skill pack: SFMC SQL, AMPscript, Journey and Data Cloud "
+     "templates; review agent output", 125, [0, 0, 1, 1, 1, 1, 0], NAVY),
+    ("QA automation engineers", "Test Agent skills, Copado Robotic Testing, Zephyr; the evaluation set that "
+     "gates every agent change", 110, [0, 1, 2, 2, 2, 2, 1], CYAN),
+    ("Security and compliance engineer", "HIPAA controls, DLP rules, IAM review, pen test, data terms "
+     "(part-time)", 160, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
 ]
-RUN_TEAM = "1 run lead + 5 engineers (GCP, graph, agents, Salesforce, QA), all offshore"
-RUN_MONTHLY = (85 + 60 + 65 + 70 + 55 + 45) * HOURS
+RUN_ROLES = [("Forward deployed AI engineer, run lead", 180), ("Knowledge graph and cloud engineer", 150),
+             ("Salesforce developer", 130), ("QA automation engineer", 110)]
+RUN_TEAM = "a run team of %d, offshore: one AI engineer as lead, plus graph and cloud, Salesforce and QA" % len(
+    RUN_ROLES)
+RUN_MONTHLY = sum(r for _, r in RUN_ROLES) * HOURS
+
+
+def rate_span():
+    rates = [r[2] for r in ROLES]
+    return "$%d-%d/h" % (min(rates), max(rates))
+
+
+def build_price():
+    tm = sum(phase_cost(i) for i in range(len(PHASES)))
+    return tm, tm * (1 - GATE_DISCOUNT)
 
 
 def months(p):
@@ -219,7 +222,7 @@ def team_slide(prs, layout):
               "Ascension's approvers and pod leads are not in this count." % (peak_fte, fm))
     # table
     X0 = 0.45
-    cols = [("Role", 2.35), ("Technology and skills", 3.85), ("Peak", 0.55), ("Where", 0.75), ("On team", 0.85)]
+    cols = [("Role", 2.35), ("What they build", 3.85), ("Peak", 0.55), ("Where", 0.75), ("On team", 0.85)]
     y = 1.28
     x = X0
     for name, w in cols:
@@ -228,7 +231,7 @@ def team_slide(prs, layout):
     tw = sum(w for _, w in cols)
     cv.rect(X0, y + 0.26, tw, 0.015, BLACK)
     y += 0.3
-    rh = 0.33
+    rh = 0.44
     for i, (role, tech, rate, fte, col) in enumerate(ROLES):
         if i % 2 == 0:
             cv.rect(X0, y, tw, rh, GREY)
@@ -243,7 +246,7 @@ def team_slide(prs, layout):
         y += rh
     cv.rect(X0, y, tw, 0.015, BLACK)
     cv.text(X0, y + 0.05, tw, 0.2,
-            [[("From month 19, run as a service: ", {"bold": True}), (RUN_TEAM + ".", {})]], size=7.5,
+            [[("From month 19, run as a service by ", {"bold": True}), (RUN_TEAM + ".", {})]], size=7.5,
             anchor=MSO_ANCHOR.MIDDLE)
 
     # right column
@@ -309,8 +312,7 @@ def team_slide(prs, layout):
 def commercials_slide(prs, layout):
     s = prs.slides.add_slide(layout)
     cv = Canvas(s)
-    tm = sum(phase_cost(i) for i in range(len(PHASES)))
-    fixed = tm * (1 + RISK)
+    tm, fixed = build_price()
     plat = sum((PLATFORM_EARLY if p[3] <= 11 else PLATFORM_SCALE) * months(p) for p in PHASES)
     fm = fte_months()
     cv.header("ASCENSION MAD APPROACH · COMMERCIALS",
@@ -337,7 +339,7 @@ def commercials_slide(prs, layout):
             cv.rect(X0, y, tw, rh, GREY)
         tmc = phase_cost(i)
         mon = "M%d" % p[2] if p[2] == p[3] else "M%d-M%d" % (p[2], p[3])
-        vals = [p[0] + "  " + p[1], mon, "%g" % fte_in_phase(i), k(tmc), k(tmc * (1 + RISK)), p[4]]
+        vals = [p[0] + "  " + p[1], mon, "%g" % fte_in_phase(i), k(tmc), k(tmc * (1 - GATE_DISCOUNT)), p[4]]
         x = X0
         for j, ((name, w), v) in enumerate(zip(cols, vals)):
             right = name in ("Time and materials", "Fixed fee", "Peak team")
@@ -377,7 +379,7 @@ def commercials_slide(prs, layout):
         cv.text(ix + 0.12, iy + 0.06, iw - 1.5, 0.2, title, size=8.5, bold=True, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(ix + iw - 1.42, iy + 0.04, 1.3, 0.26, price, size=12, font="Trenda IG Text Light",
                 align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(ix + 0.12, iy + 0.32, iw - 0.24, 0.36, body, size=7)
+        cv.text(ix + 0.12, iy + 0.32, iw - 0.24, 0.4, body, size=7)
         if extra:
             cv.rect(ix + 0.1, iy + ih - 0.36, iw - 0.2, 0.28, GREY)
             cv.text(ix + 0.18, iy + ih - 0.36, iw - 0.36, 0.28, extra, size=7, anchor=MSO_ANCHOR.MIDDLE)
@@ -388,35 +390,39 @@ def commercials_slide(prs, layout):
                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=150)
 
     cv.label(RX, 1.28, RW, "Build · months 1-18 · choose one")
-    card(1.5, 0.84, "A · Fixed fee by gate", m(fixed),
-         "Each phase priced up front and invoiced only when its gate is signed. Insight Global carries delivery "
-         "risk (%d%% included)." % round(RISK * 100), rec=True, tag="RECOMMENDED")
-    card(2.42, 0.74, "B · Time and materials, capped", m(tm),
-         "Billed monthly on actuals, with a not-to-exceed cap per phase. Lower price; Ascension carries the "
-         "overrun risk up to the cap.")
-    cv.label(RX, 3.3, RW, "Run · from month 19, after the build ends")
+    card(1.5, 0.98, "A · Fixed fee by gate", m(fixed),
+         "Priced on the outcome, %d%% below time and materials: Insight Global brings its agent accelerators "
+         "and carries delivery risk. Paid only when each gate is signed." % round(GATE_DISCOUNT * 100),
+         rec=True, tag="RECOMMENDED")
+    card(2.56, 0.74, "B · Time and materials", m(tm),
+         "Every hour billed monthly at the rate card, on actuals. Ascension carries the risk of overruns "
+         "and pays whether or not a gate passes.")
+    cv.label(RX, 3.42, RW, "Run · from month 19, after the build ends")
     run_total = RUN_MONTHLY + PLATFORM_SCALE
-    card(3.52, 1.12, "C · Managed service, monthly", "%s / month" % k(RUN_MONTHLY),
-         "Starts only once all pods are live. A run team of 6, offshore, keeps the graph, agents, Guardian rules "
-         "and evaluations current, fixes failed runs and adds new sources.",
+    card(3.62, 1.12, "C · Managed service, monthly", "%s / month" % k(RUN_MONTHLY),
+         "Starts only once all pods are live. A run team of %d, offshore, keeps the graph, agents, Guardian "
+         "rules and evaluations current, fixes failed runs and adds new sources." % len(RUN_ROLES),
          extra=[[("Team %s + platform ~%s = " % (k(RUN_MONTHLY), k(PLATFORM_SCALE)), {}),
                  ("about %s a month (%s a year)" % (k(run_total), m(run_total * 12)), {"bold": True})]])
-    vy = 4.76
+    vy = 4.86
     vh = CONTENT_FLOOR - 0.02 - vy
     cv.rect(RX, vy, RW, vh, BLACK)
     cv.text(RX + 0.14, vy + 0.08, RW - 0.28, 0.2, "VALUE CHECK", size=7, bold=True, color=YELLOW, track=150)
+    import story_slides
+    pm = [story_slides.pod_model(pd) for pd in story_slides.PODS]
+    s_lo, s_hi = sum(x["save_lo"] for x in pm), sum(x["save_hi"] for x in pm)
     cv.text(RX + 0.14, vy + 0.3, RW - 0.28, vh - 0.36, [
-        [("Planned saving: 20-25% lower net run cost per pod ", {"color": WHITE}),
-         ("(business outcomes slide).", {"color": "BFBFBF"})],
-        [("Every $10M of pod delivery spend saves $2.0-2.5M a year, ", {"color": WHITE}),
-         ("so the build fee pays back in about %.1f to %.1f years once pods are live." % (fixed / 2.5e6, fixed / 2.0e6),
-          {"color": WHITE})],
-        [("Example: one 14-person pod at about $2.47M a year saves $0.49-0.62M a year.", {"color": "BFBFBF"})],
+        [("Two pods alone, VBC and Network Services, save %s-%s a year " % (m(s_lo), m(s_hi)),
+          {"color": WHITE}), ("with agent-first squads.", {"color": "BFBFBF"})],
+        [("The build fee pays back in about %.1f to %.1f years from those two pods; " % (fixed / s_hi, fixed / s_lo),
+          {"color": WHITE}), ("every further pod on MAD shortens it.", {"color": WHITE})],
+        [("Floor across all pods: 20-25% lower net run cost (business outcomes slide).", {"color": "BFBFBF"})],
     ], size=9, after=6)
     cv.text(X0, CONTENT_FLOOR - 0.36, tw, 0.34,
-            "Assumed offshore bill rates for sizing, by role: $45-95/h, blended $%.0f/h, %d h per FTE-month, "
+            "Assumed offshore bill rates for sizing, by role: %s, blended $%.0f/h, %d h per FTE-month, "
             "%g FTE-months. Replace with the Insight Global rate card before sharing. Excludes Ascension staff time "
-            "and existing licences (Salesforce, Copado, Atlassian, OpenAI terms)." % (blended_rate(), HOURS, fm),
+            "and existing licences (Salesforce, Copado, Atlassian, Codex Enterprise)." % (
+                rate_span(), blended_rate(), HOURS, fm),
             size=6, color=MUTE)
     set_notes(s, commercial_notes())
     return s
@@ -446,58 +452,58 @@ def team_notes():
     return """SLIDE: Delivery team   (about 2 minutes)
 
 KEY MESSAGE
-%d people at peak across %d roles, every role delivered offshore, sized from the phase plan: %g FTE-months over 18 months.
+A lean, senior team: %d people at peak across %d roles, every role offshore, %g FTE-months over 18 months. MAD's own agents do much of the build, so the team is small and senior rather than large.
 
 RAMP (FTE by phase)
 %s.
 
-HOW THE NUMBERS ARE BUILT
-Each role has an FTE per phase (plan_slides.py). Peak is that role's highest phase; "On team" is first to last month with any allocation. The security engineer is part-time except during the pilot and hardening, when the pen test and production authorisation happen.
-
-WHY THE TEAM IS THIS SIZE
-- Scale waves run pods in parallel: 5 Health Cloud developers, 3 Marketing / Data Cloud developers and 5 QA engineers in months 12-17, so three to five pods onboard at once without lowering the pilots' quality bar.
-- A site reliability engineer from month 2: monitoring, alerting, runbooks and disaster-recovery tests, so the platform is production-grade before Gate 3.
-- 4 knowledge graph engineers at the pilot, then 3: six connectors first, then every new pod's sources in each wave.
-- 4 AI agent engineers + an AI lead: the agents, prompts, skills and the evaluation set are the product.
-- 2 to 3 Marketing / Data Cloud developers: the Nudge pilot and the Marketing Cloud pods in the waves.
-- A project manager alongside the engagement lead: 18 months, seven gates, nine to ten pods.
+WHO DOES WHAT
+- Engagement lead / project manager: one person runs governance, gates, sprints and the requirements workshops; no separate business analyst, because the Requirements Agent drafts the stories and Ascension's product owners sign them.
+- Solution architect: the end-to-end design across Google Cloud, the graph, Salesforce and Copado.
+- AI architect: agent design, the tool gateway, guardrails and the evaluation strategy.
+- Forward deployed AI engineers: build the seven agents, the workflow and the approval and Change Guardian services, and sit with each pod to tune them on real stories.
+- Knowledge graph engineers: the six connectors and Spanner Graph, then each wave's sources.
+- Cloud and DevOps engineer: landing zone, Cloud Run, IAM, VPC-SC, monitoring and the Copado pipeline (covers what a separate SRE would).
+- Salesforce Health Cloud developers and the Marketing / Data Cloud developer do NOT build features for the pods. They build the pod skill packs the agents follow: approved Apex, LWC and Flow patterns, Health Cloud data-model rules, SFMC SQL, AMPscript and Journey templates, and the golden examples. In the pilots they review every agent-written change, which is how the agents reach Ascension's quality bar. Without them the agents would write generic Salesforce code.
+- QA automation engineers: the Test Agent's skills, Copado Robotic Testing and Zephyr, and the evaluation set that gates every change to an agent.
+- Security and compliance engineer, part-time: HIPAA controls, DLP rules, IAM review, pen test.
 
 NOT IN THE COUNT
 Ascension's product owners, approvers, release owner, security reviewers, cloud team and Salesforce / Copado admins.
 
 AFTER MONTH 18
-A run team of 6, offshore: one lead and five engineers (GCP, graph, agents, Salesforce, QA).""" % (
-        people_at_peak(), len(ROLES), fm, ramp)
+%s.""" % (people_at_peak(), len(ROLES), fm, ramp, RUN_TEAM[0].upper() + RUN_TEAM[1:])
 
 
 def commercial_notes():
-    tm = sum(phase_cost(i) for i in range(len(PHASES)))
-    fixed = tm * (1 + RISK)
-    wave2 = phase_cost(5) * (1 + RISK)
-    low_risk = tm * 1.05
+    tm, fixed = build_price()
+    wave2 = phase_cost(5) * (1 - GATE_DISCOUNT)
+    handover = phase_cost(6) * (1 - GATE_DISCOUNT)
     return """SLIDE: Commercials   (about 3 minutes)
 
-INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by role ($45-95/h, blended $%.0f/h). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension.
+INTERNAL FIRST: the rates behind this slide are ASSUMED offshore bill rates by role (%s, blended $%.0f/h). Replace them with the Insight Global rate card in plan_slides.py and rebuild before this slide goes to Ascension. Delete these notes before sending the deck.
 
 KEY MESSAGE
-%s as a fixed fee over 18 months, invoiced only when each gate is signed. Platform usage is passed through at cost. After month 18, a managed service.
+%s as a fixed fee over 18 months, invoiced only when each gate is signed, against %s on time and materials. Platform usage is passed through at cost. After month 18, a managed service.
 
-THE OPTIONS (A or B pays for the build, months 1-18; C is the separate monthly service that starts at month 19)
-- A, fixed fee by gate (recommended): Ascension pays for a phase only when its gate passes; Insight Global carries delivery risk (%d%% in the price).
-- B, time and materials with a cap per phase: %s estimated; Ascension carries overrun risk up to the cap.
-- C, managed service, only from month 19 once all pods are live: %s a month for a run team of 6 (graph, agents, Guardian rules, evaluations, failed runs, new sources), plus platform at cost of about $20K a month. It is not part of the build fee and not charged during months 1-18.
+WHY FIXED IS LOWER THAN TIME AND MATERIALS
+- Time and materials bills every hour at the rate card, whatever the outcome, and Ascension carries any overrun.
+- The fixed fee prices the outcome. Insight Global brings its own agent accelerators (the agents already used for UI, backend and QA delivery, and the knowledge graph work already done), so it can commit to each gate for %d%% less and take the delivery risk. Ascension pays nothing for a phase whose gate does not pass.
 
-IF ASCENSION ASKS FOR A LOWER NUMBER: TRADE SCOPE OR RISK, NOT RATES
-- Move to option B (time and materials, capped): %s.
+THE OPTIONS (A or B pays for the build, months 1-18; C is the separate monthly service from month 19)
+- A, fixed fee by gate (recommended): %s.
+- B, time and materials: %s estimated, on actual hours.
+- C, managed service, only from month 19 once all pods are live: %s a month for %s, plus platform at cost of about $20K a month. Not part of the build fee.
+
+IF ASCENSION ASKS FOR A LOWER NUMBER: TRADE SCOPE, NOT RATES
 - Contract wave 2 later, as a per-pod onboarding fee once wave 1 has proved the savings: removes %s now, so the fixed fee becomes %s.
-- Both levers together: about %s.
-- Lower the risk premium to 5%% in exchange for Ascension owning gate dates: %s.
-Each lever keeps the rate card intact and leaves the delivery plan honest.
+- Fold the month-18 handover into the managed service: removes a further %s.
+Both together: about %s.
 
 VALUE CHECK
-The business outcomes slide plans 20-25%% lower net run cost per pod. Every $10M of pod delivery spend saves $2.0-2.5M a year, which pays the fixed fee back in about %.1f to %.1f years. The 14-person pod example (about $2.47M a year, from the Agentic Delivery deck) alone saves $0.49-0.62M a year.
+The two-pod slide: VBC and Network Services alone save $1.59-1.80M a year with agent-first squads, so the fixed fee pays back in under three years from those two pods; every further pod shortens it. The floor across all pods is 20-25%% lower net run cost (business outcomes slide).
 
 NOT INCLUDED
-Ascension staff time; existing Salesforce, Copado and Atlassian licences; OpenAI enterprise terms.""" % (
-        blended_rate(), m(fixed), round(RISK * 100), m(tm), k(RUN_MONTHLY), m(tm), m(wave2), m(fixed - wave2),
-        m(tm - phase_cost(5)), m(low_risk), fixed / 2.5e6, fixed / 2.0e6)
+Ascension staff time; existing Salesforce, Copado and Atlassian licences; Codex Enterprise.""" % (
+        rate_span(), blended_rate(), m(fixed), m(tm), round(GATE_DISCOUNT * 100), m(fixed), m(tm),
+        k(RUN_MONTHLY), RUN_TEAM, m(wave2), m(fixed - wave2), k(handover), m(fixed - wave2 - handover))
