@@ -79,21 +79,8 @@ def set_bg(slide, color):
 
 
 def dark_footer(slide):
-    """White mark and page number on black slides (the layout's are black)."""
-    slide.shapes.add_picture(MARK_WHITE, Inches(0.55), Inches(FOOTER_TOP), Inches(0.5425), Inches(0.1133))
-    tb = slide.shapes.add_textbox(Inches(12.28), Inches(FOOTER_TOP), Inches(0.52), Inches(0.1133))
-    tb.name = "IG Footer Page Number (dark)"
-    body = tb.text_frame._txBody
-    for para in body.findall(a("p")):
-        body.remove(para)
-    body.append(etree.fromstring(
-        '<a:p xmlns:a="%s"><a:pPr algn="r"/><a:fld id="{8E1A6C3B-2F4D-4B7A-9C1E-5D2F3A4B6C7D}" type="slidenum">'
-        '<a:rPr lang="en-US" sz="800"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>'
-        '<a:latin typeface="Trenda IG Text"/></a:rPr><a:t>&#8249;#&#8250;</a:t></a:fld></a:p>' % A))
-    bp = body.find(a("bodyPr"))
-    for k in ("lIns", "tIns", "rIns", "bIns"):
-        bp.set(k, "0")
-    bp.set("anchor", "ctr")
+    """No-op: the white footer comes from the DEFAULT DARK layout (footer.py), so it cannot be dragged."""
+    return None
 
 
 def dark_header(cv, eyebrow, title, standfirst=None):
@@ -1147,12 +1134,16 @@ BG_MAGENTA = os.path.join(HERE, "assets", "bg-glow-magenta.jpg")
 
 
 def set_bg_image(slide, path):
-    """Full-bleed template background, sent behind everything else."""
-    pic = slide.shapes.add_picture(path, 0, 0, Inches(13.333), Inches(7.5))
-    pic.name = "Template Background"
-    tree = slide.shapes._spTree
-    tree.remove(pic._element)
-    tree.insert(2, pic._element)
+    """Template background as the slide's own background fill: full-bleed, and it cannot be moved."""
+    _, rid = slide.part.get_or_add_image_part(path)
+    cSld = slide._element.find(p("cSld"))
+    old = cSld.find(p("bg"))
+    if old is not None:
+        cSld.remove(old)
+    cSld.insert(0, etree.fromstring(
+        '<p:bg xmlns:p="%s" xmlns:a="%s" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<p:bgPr><a:blipFill dpi="0" rotWithShape="1"><a:blip r:embed="%s"/><a:srcRect/>'
+        '<a:stretch><a:fillRect/></a:stretch></a:blipFill><a:effectLst/></p:bgPr></p:bg>' % (P, A, rid)))
 
 
 def glass(cv, x, y, w, h, line=None, alpha=55, radius=0.06, lw=1.25):

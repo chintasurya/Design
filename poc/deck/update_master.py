@@ -15,6 +15,7 @@ from pptx.util import Inches, Pt
 
 import plan_slides
 import story_slides
+from footer import fix_footers
 from build_mad_ig_deck import HERE, TXT, rgb
 from reword import reword_slide
 
@@ -30,6 +31,8 @@ REFRESH = {
 # New slides, inserted right after the slide with this eyebrow
 INSERT_AFTER = {
     "ASCENSION MAD APPROACH · PLATFORM": [story_slides.harness_slide, story_slides.autonomy_slide],
+    "ASCENSION MAD APPROACH · SECURITY, RELIABILITY AND INPUT GUARDRAILS": [story_slides.evals_combined_slide,
+                                                                          story_slides.evals_scorecard_slide],
     "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.exits_slide,
 }
 
@@ -108,6 +111,8 @@ def main(src=MASTER, out=OUT):
         color = LINK_ON.get(eyebrow(slide))
         if color and add_lld_link(slide, color):
             print("draw.io link on slide %d: %s" % (i + 1, eyebrow(slide)))
+    for line in fix_footers(prs):
+        print(line)
     prs.save(out)
     print("wrote", os.path.abspath(out), "-", len(prs.slides), "slides")
 

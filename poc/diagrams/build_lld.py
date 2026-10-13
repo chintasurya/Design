@@ -313,7 +313,7 @@ s3, s4 = seq_ids[5], seq_ids[6]
 x3, y3, w3, h3 = shapes[s3]
 x4, y4, w4, h4 = shapes[s4]
 edge(s4, s3, [(x4, y4 + h4 / 2), (1572, y4 + h4 / 2), (1572, y3 + h3 / 2), (x3, y3 + h3 / 2)],
-     "fix ≤ 2", color=MAGENTA, dashed=True, width=1.5)
+     "fix ≤ 5", color=MAGENTA, dashed=True, width=1.5)
 
 appr = box(1550, 1362, 410, 150,
            T("Harness approvals · Cloud Run + IAP",
@@ -383,7 +383,7 @@ text(2016, 1330, 650, 34, "<b>No production identity exists for any agent.</b>",
 fail = box(2000, 1408, 680, 142,
            T("Failure and recovery",
              small("transient error → retry ×3 with backoff, idempotent steps · bad output → schema reject, "
-                   "re-run once, then owner · failed tests → fix loop ≤ 2, then tech lead · budget breach → "
+                   "re-run once, then owner · failed tests → fix loop ≤ 5, then owner · budget breach → "
                    "pause + escalate · outage → resume from the Firestore checkpoint", "#2B2B2B")),
            fill=WHITE, stroke=NAVY, align="left", valign="top")
 acc = box(2000, 1572, 680, 114,
