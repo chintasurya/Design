@@ -20,10 +20,16 @@ from reword import reword_slide
 MASTER = os.path.join(HERE, "source", "Ascension MAD Approach - master.pptx")
 OUT = os.path.join(HERE, "..", "Ascension Agentic Harness.pptx")
 REFRESH = {
+    "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.timeline_slide,
     "ASCENSION MAD APPROACH · DELIVERY TEAM": plan_slides.team_slide,
     "ASCENSION MAD APPROACH · COMMERCIALS": plan_slides.commercials_slide,
 }
 
+
+# New slides, inserted right after the slide with this eyebrow
+INSERT_AFTER = {
+    "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.exits_slide,
+}
 
 # The detailed design, opened straight in the draw.io web app from the public repo.
 LLD_RAW = ("https://raw.githubusercontent.com/chintasurya/Design/refs/heads/claude/funny-babbage-t29499/"
@@ -66,12 +72,23 @@ def eyebrow(slide):
 def main(src=MASTER, out=OUT):
     prs = Presentation(src)
     lst = prs.slides._sldIdLst
+    originals = list(prs.slides)              # only the master's own slides drive refreshes and inserts
     swaps = []
-    for i, slide in enumerate(list(prs.slides)):
+    for i, slide in enumerate(originals):
         build = REFRESH.get(eyebrow(slide))
         if build:
             build(prs, slide.slide_layout)       # build every slide first, so part names stay unique
             swaps.append((list(lst)[i], list(lst)[-1], eyebrow(slide)))
+    inserts = []
+    for i, slide in enumerate(originals):
+        build = INSERT_AFTER.get(eyebrow(slide))
+        if build:
+            build(prs, slide.slide_layout)
+            inserts.append((list(lst)[i], list(lst)[-1], eyebrow(slide)))
+    for after, new, name in inserts:
+        lst.remove(new)
+        after.addnext(new)
+        print("inserted slide %d after: %s" % (list(lst).index(new) + 1, name))
     for old, new, name in swaps:
         lst.remove(new)
         old.addnext(new)

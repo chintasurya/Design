@@ -23,13 +23,58 @@ GATE_DISCOUNT = 0.13    # fixed fee by gate vs time and materials: IG prices the
 PLATFORM_EARLY, PLATFORM_SCALE = 8000, 20000   # USD per month, GCP + model usage allowance, at cost
 
 # phase, months (first, last), gate
-PHASES = [("0", "Mobilise", 1, 1, "Access and decisions signed"),
-          ("1", "Knowledge graph", 2, 5, "Gate 1 · graph proven on 10-15 past changes"),
-          ("2", "MAD pilot", 6, 9, "Gate 2 · two pilots measured"),
-          ("3", "Harden", 10, 11, "Gate 3 · production authorised"),
-          ("4", "Scale wave 1", 12, 14, "5 pods live"),
-          ("5", "Scale wave 2", 15, 17, "All 9-10 pods live"),
-          ("6", "Handover", 18, 18, "Run team takes over")]
+PHASES = [("0", "Mobilise", 1, 1, "Access, environments and baselines signed"),
+          ("1", "Knowledge graph", 2, 5, "Graph proven on 10-15 past changes"),
+          ("2", "Harness pilot", 6, 9, "Two pilot pods measured against baseline"),
+          ("3", "Harden", 10, 11, "Production use authorised"),
+          ("4", "Scale wave 1", 12, 14, "5 pods live and measured"),
+          ("5", "Scale wave 2", 15, 17, "All 9-10 pods live and measured"),
+          ("6", "Handover", 18, 18, "Run team operating, handover signed")]
+
+# What each phase hands over, how we prove it is done, who signs, and what it depends on.
+# Thresholds are proposed targets; Ascension and Insight Global confirm them at the Phase 0 exit.
+EXITS = [
+    ("Ready to build: access, environments, approvers and baselines in place",
+     ["Google Cloud landing zone with VPC-SC live; three harness identities created",
+      "Read-only access tested to all six sources: Jira, Confluence, Salesforce, Git, Copado, Drive",
+      "Approvers named for H1-H4; baselines for the two pilot pods: cycle time, effort per story, "
+      "escaped defects"],
+     "Ascension sponsor + security", "Contract signed; Ascension grants access"),
+    ("The Engineering Context Knowledge Graph live for the two pilot pods",
+     ["All six connectors syncing on schedule; every fact traceable to its source",
+      "Replayed on 10-15 past changes: exists, impact and owner answers match the architects' at "
+      "least 90% of the time",
+      "DLP scan: no patient data or secrets stored in the graph"],
+     "Ascension architects", "Phase 0 exit signed"),
+    ("Two pods delivering real stories through the harness: Network Services (Health Cloud) and "
+     "Nudge (Marketing Cloud)",
+     ["At least 10 stories per pod through all nine steps and every human gate",
+      "Cycle time vs baseline: Health Cloud change toward 2-4 days; campaign toward 15-20 days",
+      "Escaped defects no worse than baseline; no action outside the gateway's allow list"],
+     "Pilot pod leads + product owners", "Graph proven (Phase 1 exit); platform build may start in "
+     "month 5"),
+    ("A harness authorised for production use",
+     ["Pen test: no open critical or high findings; disaster-recovery test resumes a run from its "
+      "checkpoint",
+      "Evaluation set passes on every prompt, skill or model change",
+      "CAB accepts the change passport as release evidence; runbooks and on-call in place"],
+     "Ascension security + CAB", "Both pilots measured (Phase 2 exit)"),
+    ("Five pods live: the two pilots plus three more",
+     ["Each new pod: sources in the graph and skills loaded in about two weeks",
+      "Each new pod's first stories through all nine steps and every gate",
+      "Pod dashboard live: cycle time, effort per story, defects, cost against baseline"],
+     "Pod leads + sponsor", "Production authorised (Phase 3 exit)"),
+    ("All 9-10 pods live on the harness",
+     ["Same onboarding checklist passed by every remaining pod",
+      "Wave 1 pods on track to 10-20% lower net cost in year 1 (business outcomes slide)",
+      "No severity-1 incident caused by the harness in the last 30 days"],
+     "Pod leads + sponsor", "Wave 1 pods measured and stable (Phase 4 exit)"),
+    ("The run team operating the harness without the build team",
+     ["Runbooks, evaluation set, Guardian rulebook and graph pipelines handed over",
+      "Run team clears failed runs and adds a source unaided during a four-week shadow period",
+      "Baseline vs actual report for every pod signed"],
+     "Ascension sponsor", "All pods live (Phase 5 exit)"),
+]
 
 # role, what they build, ASSUMED offshore bill rate (USD/h), FTE per phase (0..6), category colour.
 # Every role is offshore. Rates are for sizing only: replace with the Insight Global rate card.
@@ -188,14 +233,15 @@ def timeline_slide(prs, layout):
         y += rh
 
     # milestones
-    cv.label(0.45, y + 0.12, 2.0, "Gates and milestones")
+    cv.label(0.45, y + 0.04, 2.0, "Phase exit · signed")
+    cv.text(0.45, y + 0.2, 2.0, 0.3, "next phase starts only after", size=6.5, color=MUTE)
     my = y + 0.1
     cv.rect(X0, my + 0.1, X1 - X0, 0.012, BLACK)
     level = [0, 1, 0, 1, 0, 1, 0]
     for (num, name, a, b, gate), lv in zip(PHASES, level):
         gx = min(mx(b) + mw, X1 - 0.1)
         cv.rect(gx - 0.09, my + 0.015, 0.18, 0.18, YELLOW, BLACK, 0.75, MSO_SHAPE.DIAMOND)
-        lw = 1.75
+        lw = 1.5
         lx = min(max(gx - lw / 2, X0 - 0.4), X1 - lw)
         al = PP_ALIGN.RIGHT if lx == X1 - lw else PP_ALIGN.CENTER
         ly = my + 0.24 + lv * 0.3
@@ -203,9 +249,71 @@ def timeline_slide(prs, layout):
                 anchor=MSO_ANCHOR.TOP)
     cv.text(0.45, CONTENT_FLOOR - 0.2, 12.4, 0.18,
             "Pods live: 0 until month 8 · 2 at month 9 (Network Services, Nudge) · 5 at month 14 · all 9-10 at "
-            "month 17. Durations are planning estimates, confirmed at the Phase 0 gate.",
+            "month 17. Each phase starts only after the previous exit is signed; the next slide shows how each exit is "
+            "measured.",
             size=6.5, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, TIMELINE_NOTES)
+    return s
+
+
+# ------------------------------------------------------------------ phase exits
+PHASE_FILL = [GREY, VIOLET_T, CYAN_T, MAGENTA_T, YELLOW_T, YELLOW_T, GREEN_T]
+PHASE_LINE = ["BFBFBF", VIOLET, "0097AD", MAGENTA, "C9A800", "C9A800", GREEN]
+
+
+def exits_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    cv = Canvas(s)
+    cv.header("ASCENSION MAD APPROACH · PHASE EXIT CRITERIA",
+              "How we know a phase is done, and when the next one can start",
+              "Every phase hands over a working outcome, proven by measures Ascension signs. The next phase starts "
+              "only after that sign-off, and the phase's fixed fee is invoiced only then.")
+    X0 = 0.45
+    cols = [("Phase", 1.75), ("Outcome we hand over", 2.65), ("How we measure success (exit criteria)", 4.95),
+            ("Signed by", 1.4), ("Starts only after", 1.68)]
+    tw = sum(w for _, w in cols)
+    y = 1.28
+    x = X0
+    for name, w in cols:
+        cv.text(x + (0.05 if x == X0 else 0.08), y, w - 0.1, 0.24, name, size=8, bold=True,
+                anchor=MSO_ANCHOR.MIDDLE)
+        x += w
+    cv.rect(X0, y + 0.26, tw, 0.015, BLACK)
+    y += 0.3
+    rh = (CONTENT_FLOOR - 0.3 - y) / len(PHASES)
+    y0 = y
+    for i, (p, (outcome, measures, signer, after)) in enumerate(zip(PHASES, EXITS)):
+        if i % 2 == 0:
+            cv.rect(X0, y, tw, rh, GREY)
+        # phase chip; arrows chain each phase to the next
+        cv.rect(X0 + 0.06, y + 0.1, 0.34, 0.34, PHASE_FILL[i], PHASE_LINE[i], 1.25)
+        cv.text(X0 + 0.06, y + 0.1, 0.34, 0.34, p[0], size=11, bold=True, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+        mon = "Month %d" % p[2] if p[2] == p[3] else "Months %d-%d" % (p[2], p[3])
+        cv.text(X0 + 0.5, y + 0.08, cols[0][1] - 0.55, rh - 0.12,
+                [[(p[1], {"bold": True, "size": 8.5})], [(mon, {"color": MUTE})]], size=7.5)
+        x = X0 + cols[0][1]
+        cv.text(x + 0.08, y + 0.08, cols[1][1] - 0.16, rh - 0.12, outcome, size=7.5, bold=True)
+        x += cols[1][1]
+        cv.text(x + 0.08, y + 0.07, cols[2][1] - 0.16, rh - 0.1,
+                [[("\u2713  ", {"bold": True, "color": "0097AD"}), (m_, {})] for m_ in measures], size=7,
+                after=1.5)
+        x += cols[2][1]
+        cv.text(x + 0.08, y + 0.08, cols[3][1] - 0.16, rh - 0.12, signer, size=7.5)
+        x += cols[3][1]
+        cv.text(x + 0.08, y + 0.08, cols[4][1] - 0.12, rh - 0.12, after, size=7.5,
+                bold=(i > 0))
+        y += rh
+    for i in range(len(PHASES) - 1):           # drawn last so the row shading never hides an arrowhead
+        ay = y0 + i * rh
+        cv.arrow(X0 + 0.23, ay + 0.45, X0 + 0.23, ay + rh + 0.09, BLACK, 1.0)
+    cv.rect(X0, y, tw, 0.015, BLACK)
+    cv.text(X0, y + 0.05, tw, 0.22,
+            "Thresholds are proposed targets, confirmed with Ascension at the Phase 0 exit. Evidence comes from the "
+            "change passport, the gateway log, the evaluation set and each pod's Phase 0 baseline. If an exit is not "
+            "met, the phase extends and the next phase does not start.", size=6.5, color=MUTE,
+            anchor=MSO_ANCHOR.MIDDLE)
+    set_notes(s, EXITS_NOTES)
     return s
 
 
@@ -444,6 +552,25 @@ IF ASKED
 - Why so long for the graph? Six sources, PHI controls and proving accuracy on real past changes come before any agent touches code.
 - Can it go faster? The waves can overlap once Gate 3 is passed; the pilot cannot be skipped.
 - Durations are planning estimates, confirmed at the Phase 0 gate."""
+
+EXITS_NOTES = """SLIDE: Phase exit criteria   (about 3 minutes)
+
+KEY MESSAGE
+Nothing moves forward on a date alone. Each phase hands over a working outcome, we prove it with measures Ascension signs, and only then does the next phase start and the phase's fee get invoiced.
+
+WALK IT (left to right on any row)
+Outcome: what Ascension has at the end of the phase. Measures: how we prove it, from evidence the harness records (change passport, gateway log, evaluation set) and the Phase 0 baseline. Signed by: who decides. Starts only after: the dependency on the previous phase.
+
+THE THREE THAT MATTER MOST
+- Phase 1 exit: the graph is replayed on 10-15 past changes and must match the architects' answers at least 90% of the time. If the graph is wrong, no agent is allowed to build on it.
+- Phase 2 exit: real stories in two pods, measured against the Phase 0 baseline: cycle time down, defects no worse, nothing outside the gateway.
+- Phase 3 exit: Ascension security and CAB authorise production use. Scaling to more pods waits for this.
+
+IF ASKED
+- What if a phase misses its exit? It extends, the next phase does not start, and under the fixed fee Insight Global carries the cost of the extension.
+- Are the thresholds fixed? They are proposed; we agree them with Ascension at the Phase 0 exit, once the baselines are measured.
+- The one overlap: platform build starts in month 5 while the graph is being proven, but no pilot story runs until the Phase 1 exit is signed."""
+
 
 def team_notes():
     fm = fte_months()
