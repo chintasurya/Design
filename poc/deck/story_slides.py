@@ -11,6 +11,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches
 
+from build_mad_ig_deck import rgb
 from build_mad_ig_deck import (A, BLACK, CONTENT_FLOOR, CYAN, CYAN_T, EMU, FOOTER_TOP, GREY, GREEN_T, HERE,
                                MAGENTA, MAGENTA_T, MUTE, NAVY, P, RULE, TXT, VIOLET, VIOLET_T, WHITE, YELLOW,
                                YELLOW_T, Canvas, a, p, set_notes)
@@ -1128,3 +1129,166 @@ WALK IT
 IF ASKED
 - What are the targets? Set from the Phase 0 baseline and agreed with Ascension, reviewed monthly.
 - What happens when a score falls? That agent goes back through diagnose and tune on the closed loop; the fix must pass the golden set before release."""
+
+
+# ================================================================== glow-background slides (template pages 43-44)
+BG_BLUE = os.path.join(HERE, "assets", "bg-glow-blue.jpg")
+BG_MAGENTA = os.path.join(HERE, "assets", "bg-glow-magenta.jpg")
+
+
+def set_bg_image(slide, path):
+    """Full-bleed template background, sent behind everything else."""
+    pic = slide.shapes.add_picture(path, 0, 0, Inches(13.333), Inches(7.5))
+    pic.name = "Template Background"
+    tree = slide.shapes._spTree
+    tree.remove(pic._element)
+    tree.insert(2, pic._element)
+
+
+def glass(cv, x, y, w, h, line=None, alpha=55, radius=0.06, lw=1.25):
+    """Translucent dark card, so the glow shows through but text stays readable."""
+    sp = cv.rect(x, y, w, h, BLACK, line, lw, MSO_SHAPE.ROUNDED_RECTANGLE, radius)
+    clr = sp._element.spPr.find(a("solidFill")).find(a("srgbClr"))
+    etree.SubElement(clr, a("alpha"), val=str(alpha * 1000))
+    return sp
+
+
+EVAL_STEPS = [
+    ("Golden set", "Past Ascension changes labelled by your experts against a written rubric: every pod, cloud, "
+                   "change type and risk level."),
+    ("Offline gate", "No prompt, skill or model change goes live unless it passes: per-agent scores, pass@1 to "
+                     "pass@5."),
+    ("Guarded run", None),
+    ("Sample + label", "Each week a sample of approved changes is re-reviewed blind by Ascension experts, same "
+                       "rubric."),
+    ("Diagnose", "A diagnoser run pins each miss to the agent, step or missing context that caused it."),
+    ("Tune + re-test", "Fix the harness: context, skill, rule or prompt. Re-run the golden set, then release."),
+]
+RUN_REPORT = [
+    ("pass@k", "steps passing on attempt 1, and by attempt 5"),
+    ("Time", "per step and end to end, story to release"),
+    ("Re-run time", "time and cost spent on attempts 2 to 5"),
+    ("Waiting time", "how long each human gate held the run"),
+    ("Agent scores", "each agent on its own job; Review Agent vs tech leads"),
+    ("Escaped defects", "found in UAT or production, vs baseline"),
+    ("Stopped runs", "where it stopped, why, and who took over"),
+]
+
+
+def evals_combined_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg_image(s, BG_BLUE)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · CLOSED-LOOP EVALS",
+                "Closed-loop evals: every attempt bounded, every miss makes it better",
+                "Offline tests and live results feed one loop. No step runs forever: after %d attempts it stops and "
+                "a named owner takes over." % MAX_ATTEMPTS)
+    bw, gx = 2.2, 0.26
+    xs = [0.5 + i * (bw + gx) for i in range(3)]
+    y1, h1 = 1.4, 1.62
+    y2, h2 = 4.44, 1.36
+    pos = [(xs[0], y1, h1), (xs[1], y1, h1), (xs[2], y1, h1), (xs[2], y2, h2), (xs[1], y2, h2), (xs[0], y2, h2)]
+    for i, (name, desc) in enumerate(EVAL_STEPS):
+        bx, by, bh = pos[i]
+        if i == 2:                                           # the bounded loop lives here
+            fx, fy, fw, fh = cv.frame(bx, by, bw, bh, BLACK, 0.04)
+            bx, by, bw_, bh = fx, fy, fw, fh
+        else:
+            glass(cv, bx, by, bw, bh, "F5A623")
+            bw_ = bw
+        cv.text(bx + 0.12, by + 0.08, 0.32, 0.28, str(i + 1), size=13, font=LIGHT, color=CYAN,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(bx + 0.44, by + 0.08, bw_ - 0.52, 0.28, name, size=10.5, bold=True, color=WHITE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        if desc:
+            cv.text(bx + 0.14, by + 0.42, bw_ - 0.26, bh - 0.46, desc, size=7.5, color=SOFT)
+        else:
+            cv.text(bx + 0.14, by + 0.4, bw_ - 0.26, 0.3, "Every step checked; at most %d attempts" % MAX_ATTEMPTS,
+                    size=7.5, color=SOFT)
+            for k in range(MAX_ATTEMPTS):
+                last = k == MAX_ATTEMPTS - 1
+                ox = bx + 0.16 + k * 0.38
+                cv.rect(ox, by + 0.74, 0.28, 0.28, MAGENTA if last else None, MAGENTA if last else CYAN, 1.25,
+                        MSO_SHAPE.OVAL)
+                cv.text(ox, by + 0.74, 0.28, 0.28, str(k + 1), size=8, bold=True, color=WHITE,
+                        align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+            cv.text(bx + 0.14, by + 1.08, bw_ - 0.26, 0.42,
+                    [[("STOP: ", {"bold": True, "color": YELLOW}),
+                      ("nothing released; the owner gets every attempt in Jira.", {"color": WHITE})]], size=7.5)
+    for i in (0, 1):
+        cv.arrow(xs[i] + bw + 0.02, y1 + h1 / 2, xs[i + 1] - 0.02, y1 + h1 / 2, CYAN, 1.5)
+    for i in (2, 1):
+        cv.arrow(xs[i] - 0.02, y2 + h2 / 2, xs[i - 1] + bw + 0.02, y2 + h2 / 2, CYAN, 1.5)
+    cv.arrow(xs[2] + bw / 2, y1 + h1 + 0.04, xs[2] + bw / 2, y2 - 0.04, CYAN, 1.5)
+    cv.arrow(xs[0] + bw / 2, y2 - 0.04, xs[0] + bw / 2, y1 + h1 + 0.04, CYAN, 1.5)
+    mid = (y1 + h1 + y2) / 2
+    cv.text(xs[1], mid - 0.5, bw, 0.3, "CLOSED-LOOP", size=11, bold=True, color=CYAN, track=150,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(xs[1], mid - 0.2, bw, 0.4, "EVALS", size=22, bold=True, color=WHITE, track=150,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(xs[1] - 0.3, mid + 0.22, bw + 0.6, 0.3, "one loop that never stops; no step that never ends",
+            size=7.5, color=SOFT, align=PP_ALIGN.CENTER)
+    # run report
+    mx, my, mw, mh = 7.75, 1.4, 5.13, 3.28
+    glass(cv, mx, my, mw, mh, CYAN)
+    cv.label(mx + 0.22, my + 0.16, mw - 0.4, "Every run reports", color=YELLOW)
+    rh_ = (mh - 0.52) / len(RUN_REPORT)
+    for i, (k, d) in enumerate(RUN_REPORT):
+        y = my + 0.42 + i * rh_
+        if i:
+            cv.rect(mx + 0.22, y - 0.02, mw - 0.44, 0.006, "3A5A70")
+        cv.text(mx + 0.22, y, 1.5, rh_ - 0.04, k, size=9.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(mx + 1.75, y, mw - 1.95, rh_ - 0.04, d, size=8, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+    # proven at scale
+    py_ = my + mh + 0.14
+    fx, fy, fw, fh = cv.frame(mx, py_, mw, 5.8 - py_, BLACK, 0.04)
+    cv.text(fx + 0.18, fy + 0.08, fw - 0.36, 0.24, "PROVEN AT SCALE", size=7.5, bold=True, color=YELLOW, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(fx + 0.18, fy + 0.34, fw - 0.36, fh - 0.4,
+            [[("Uber Eats runs its food-photo agent on the same closed loop: ", {"bold": True, "color": WHITE}),
+              ("labelled golden sets, pass@k, a QA gate before publishing, human labels on production samples and "
+               "a diagnoser that triggers tuning (AI Engineer World's Fair 2026).", {"color": SOFT})]], size=7.5)
+    # bottom band
+    gy, gh = 6.0, 0.52
+    glass(cv, 0.45, gy, 12.43, gh, WHITE, alpha=45, radius=0.25)
+    cv.text(0.7, gy, 2.4, gh, "NO GAMING THE EVALS", size=7.5, bold=True, color=MAGENTA, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(3.0, gy, 9.7, gh,
+            [[("Agents cannot edit tests or the evaluation set; ", {"bold": True, "color": WHITE}),
+              ("a held-out set no agent ever sees; any change that deletes or weakens a test is blocked by the "
+               "Guardian.", {"color": SOFT})]], size=9, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, EVALS_COMBINED_NOTES)
+    return s
+
+
+def evals_scorecard_glow_slide(prs, layout):
+    """The agent scorecard on the template's magenta glow."""
+    s = evals_scorecard_slide(prs, layout)
+    for sh in list(s.shapes):                   # drop the black row stripes; the glass cards replace them
+        if sh.shape_type == 1 and sh.fill.type == 1 and str(sh.fill.fore_color.rgb) == "141414":
+            sh._element.getparent().remove(sh._element)
+    cSld = s._element.find(p("cSld"))
+    bg = cSld.find(p("bg"))
+    if bg is not None:
+        cSld.remove(bg)
+    for sh in s.shapes:                          # magenta labels vanish on the magenta glow: make them yellow
+        if sh.has_text_frame:
+            for para in sh.text_frame.paragraphs:
+                for r in para.runs:
+                    if r.font.color and r.font.color.type is not None and str(r.font.color.rgb) == MAGENTA:
+                        r.font.color.rgb = rgb(YELLOW)
+    set_bg_image(s, BG_MAGENTA)
+    return s
+
+
+EVALS_COMBINED_NOTES = EVALS_LOOP_NOTES.replace(
+    "SLIDE: Closed-loop evals   (about 2 minutes)", "SLIDE: Closed-loop evals with bounded loops   (about 3 minutes)").replace(
+    "3 Guarded run: every live step is checked; a step stops after five attempts; when the system is unsure it stops rather than ships.",
+    "3 Guarded run, the bounded loop: every live step is checked. If the outcome is not met the agent tries again with the failure as feedback, at most five times. After the fifth attempt the step stops: nothing is released, and a named owner gets every attempt, the failures and the evidence in Jira. Budgets and timeouts can stop it sooner. When the system is unsure, it stops rather than ships.") + """
+
+EVERY RUN REPORTS (right panel)
+Every step, attempt and wait is logged (change passport in BigQuery and Cloud Logging), so we report pass@1 to pass@5, time per step and end to end, time and cost spent re-running, waiting time at human gates, agent scores, escaped defects, and stopped runs with where, why and who took over. Weekly to each pod lead.
+
+WHY FIVE
+Enough for an agent to correct itself on most failures, low enough to keep cost and time predictable. It is a setting; Ascension can change it per step."""
