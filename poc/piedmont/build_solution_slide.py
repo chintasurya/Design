@@ -251,22 +251,22 @@ def build():
     # ------------------------------------------------ 2. roadmap
     badge(s, "S2", 0.55, 4.28, 2, YELLOW, "Implementation Roadmap")
     text(s, "Roadmap Duration", 5.0, 4.28, 4.6, 0.36,
-         [P("About 12 to 17 weeks to a governed foundation, then ongoing support", 9.5, MUTED,
+         [P("About 9 months to a governed foundation, then ongoing support", 9.5, MUTED,
             italic=True, align=PP_ALIGN.RIGHT)], anchor=MSO_ANCHOR.MIDDLE)
     phases = [
-        ("PHASE 0  ·  2–3 WKS", "Assess", CYAN,
+        ("PHASE 0  ·  MONTHS 1–2", "Assess", CYAN,
          ["Profile the sync and every DE", "Find root causes of bad data",
           "Agree the BU access model"],
          "Data-quality baseline and target design"),
-        ("PHASE 1  ·  4–6 WKS", "Stabilize", YELLOW,
+        ("PHASE 1  ·  MONTHS 3–5", "Stabilize", YELLOW,
          ["Subscriber Key to Contact ID", "Dedupe, standardize records",
           "Fix the Epic upsert at source"],
          "One clean patient master"),
-        ("PHASE 2  ·  6–8 WKS", "Structure", GREEN,
+        ("PHASE 2  ·  MONTHS 6–9", "Structure", GREEN,
          ["Build the 4-layer data model", "Set up BUs and shared DEs",
           "Align consent, add providers"],
          "Governed foundation, data dictionary, runbooks"),
-        ("PHASE 3  ·  ONGOING", "Sustain", ORANGE,
+        ("PHASE 3  ·  MONTH 10+", "Sustain", ORANGE,
          ["Monitor quality, exceptions", "Build new audiences",
           "Train, hand over to the team"],
          "Monthly scorecard; provider outreach live"),
@@ -307,8 +307,9 @@ def build():
         "rules), use one Subscriber Key, and layer SFMC data from raw to clean to golden to shared. "
         "Business units give each department only its own data, which is the separation they asked "
         "for. Four phases: assess, stabilize, structure, sustain. The IG pod works inside the "
-        "Foundation Team, so knowledge stays with Piedmont. Durations are estimates to confirm "
-        "in discovery.")
+        "Foundation Team, so knowledge stays with Piedmont. The plan allows about nine months to a "
+        "governed foundation: time for Epic team dependencies, privacy and security review of PHI "
+        "changes, and the Foundation Team's limited capacity. Confirm durations in discovery.")
 
     prs.save(OUT)
     print("wrote", os.path.relpath(OUT))
