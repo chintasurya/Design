@@ -648,13 +648,13 @@ IF ASKED
 
 
 # ================================================================== today -> AGI
-# How the harness itself evolves: this proposal is human-harnessed and human-approved;
+# How the harness itself evolves: this proposal is the Agentic Harness;
 # the AGI horizon is self-harnessed.
 AUTONOMY_STAGES = [
-    ("TODAY · THIS PROPOSAL", "Human-harnessed + human-approved",
-     "People build the harness and approve every change; agents work inside it and propose improvements."),
-    ("HORIZON", "Self-harnessed",
-     "Artificial General Intelligence: the harness improves itself; people set goals and limits."),
+    ("TODAY · THIS PROPOSAL", "Agentic Harness",
+     "Agents work inside a harness we design, and propose improvements to it."),
+    ("FUTURE STATE", "Dynamic self-harness",
+     "Artificial General Intelligence: the harness tunes itself, inside the limits Ascension sets."),
 ]
 AUTONOMY_ROWS = [
     ("Context", [("connect the sources and write the AGENTS.md maps",
@@ -679,10 +679,10 @@ def autonomy_slide(prs, layout):
     s = prs.slides.add_slide(layout)
     set_bg(s, BLACK)
     cv = Canvas(s)
-    dark_header(cv, "ASCENSION MAD APPROACH · WHERE THIS GOES",
-                "From a harness people build to a harness that builds itself",
-                "Today people build the harness and approve what agents propose. Toward AGI, the harness improves "
-                "itself, and people move from writing rules to setting goals and limits.")
+    dark_header(cv, "ASCENSION MAD APPROACH · FUTURE STATE",
+                "Future state: from Agentic Harness to dynamic self-harness",
+                "Today the Agentic Harness runs our agents inside guardrails we design. Toward AGI, it becomes a dynamic "
+                "self-harness that tunes itself inside the limits Ascension sets.")
     X0, W = 0.45, 12.43
     lw, gap = 1.6, 0.3
     w1 = 6.25
@@ -766,20 +766,20 @@ def autonomy_slide(prs, layout):
     return s
 
 
-AUTONOMY_NOTES = """SLIDE: From a human-built harness to a self-harnessing one   (about 2 minutes)
+AUTONOMY_NOTES = """SLIDE: Future state, from Agentic Harness to dynamic self-harness   (about 2 minutes)
 
 KEY MESSAGE
-What we propose is a harness people build and approve: people decide the context, the tools, the steps, the rules and how it learns; agents work inside it and propose improvements, and people approve each one. As models move toward AGI, the harness starts to improve itself inside limits people set. What never changes is who sets the goals and holds the final say.
+What we propose is the Agentic Harness: a harness we design: people decide the context, the tools, the steps, the rules and how it learns; agents work inside it and propose improvements, and people approve each one. As models move toward AGI, the harness starts to improve itself inside limits people set. What never changes is who sets the goals and holds the final say.
 
 WALK IT (left to right, then down the five pillars from the previous slide)
-- This proposal, human-harnessed and human-approved: people connect the sources and write the maps, grant each tool, design the nine-step run, write the Guardian rules and approve every fix. Agents propose: missing context, a new tool with its reason, a step to add or skip by risk, a rule drafted from an incident, a fix tested on the evaluation set. Nothing changes without a person's approval.
-- Horizon, AGI (Artificial General Intelligence), self-harnessed: the harness curates its own context, builds its own tools in a sandbox, plans its own workflow and writes and tests its own rules, continuously.
+- This proposal, the Agentic Harness: people connect the sources and write the maps, grant each tool, design the nine-step run, write the Guardian rules and approve every fix. Agents propose: missing context, a new tool with its reason, a step to add or skip by risk, a rule drafted from an incident, a fix tested on the evaluation set. Nothing changes without a person's approval.
+- Future state, AGI (Artificial General Intelligence), dynamic self-harness: the harness curates its own context, builds its own tools in a sandbox, plans its own workflow and writes and tests its own rules, continuously.
 
 WHY IT MATTERS FOR ASCENSION
 Investing in the harness now is not throw-away work: every run, approval, rejection and incident recorded today is exactly the evidence the next stage needs to earn more autonomy safely.
 
 IF ASKED
-- Is AGI part of this price or plan? No. The AGI column is a direction. The 18-month plan delivers the human-harnessed, human-approved harness, with the records the next stage needs.
+- Is AGI part of this price or plan? No. The AGI column is a direction. The 18-month plan delivers the Agentic Harness, with the records the next stage needs.
 - When does autonomy increase? Only when the evaluation set and change passport show it is safe, and only with Ascension's approval, one pillar at a time.
 - Could it ever reach production on its own? Not in this design. Production stays with Ascension's owning teams and CAB at every stage.
 
@@ -788,7 +788,145 @@ At every stage, Ascension sets the goals and the limits, keeps the final say on 
 
 HOW WE TRUST AGI (the highlighted panel)
 Why trust it at all: it is held to the same evidence as a person, and checked every time, which people cannot always do. How:
-1 Earned step by step: autonomy grows one pillar at a time, only when the evaluation set shows it performs at least as well as the human-approved process.
+1 Earned step by step: autonomy grows one pillar at a time, only when the evaluation set shows it performs at least as well as today's process.
 2 Every action on record: the change passport records what it did, why, and on which evidence, so any decision can be audited.
 3 Hard limits it cannot change: no production credential, patient-data rules and Ascension's goals sit outside its reach.
 4 People can always stop it: any run can be paused, any change rolled back, and CAB keeps the final say."""
+
+
+# ================================================================== bounded loops + run reports
+MAX_ATTEMPTS = 5
+GREEN = "56E13B"
+REPORT_FIELDS = [
+    ("Time", "per step and end to end, story to release"),
+    ("Attempts", "how many times each step ran (1-5), and why"),
+    ("Re-run time", "time and cost spent on attempts 2 to 5"),
+    ("Waiting time", "how long each human gate held the run"),
+    ("Cost", "tokens and cloud cost per run, per pod"),
+    ("Stopped runs", "where it stopped, why, and who took over"),
+]
+
+
+def loops_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg(s, BLACK)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · BOUNDED LOOPS AND RUN REPORTS",
+                "No endless loops: every step stops after %d attempts" % MAX_ATTEMPTS,
+                "An agent retries until its output passes the checks, but never more than %d times. Then the run stops, "
+                "a named owner takes over, and every attempt is in the run report." % MAX_ATTEMPTS)
+    ORANGE_LINE = "F5A623"
+    X0 = 0.45
+    LW = 7.55                                   # loop panel width
+    # ---- the loop
+    py, ph = 1.32, 4.42
+    cv.rect(X0, py, LW, ph, None, ORANGE_LINE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.04)
+    cv.label(X0 + 0.22, py + 0.16, 4, "How every step runs", color=YELLOW)
+    by, bh, bw = py + 0.62, 0.78, 1.7
+
+    def node(x, t, sub, line=WHITE, fill=None, tcol=WHITE):
+        cv.rect(x, by, bw, bh, fill, line, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.15)
+        cv.text(x + 0.1, by + 0.08, bw - 0.2, 0.28, t, size=10, bold=True, color=tcol, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.1, by + 0.38, bw - 0.2, 0.34, sub, size=7, color=SOFT if fill is None else BLACK,
+                align=PP_ALIGN.CENTER)
+
+    x1 = X0 + 0.25
+    x2 = x1 + bw + 0.42
+    node(x1, "Agent attempt", "drafts the output for this step")
+    node(x2, "Checks", "schema, tests, Code Analyzer, Guardian, review")
+    # decision
+    dx, dw = x2 + bw + 0.36, 1.5
+    cv.rect(dx, by - 0.16, dw, bh + 0.32, None, CYAN, 1.25, MSO_SHAPE.DIAMOND)
+    cv.text(dx + 0.3, by - 0.16, dw - 0.6, bh + 0.32, ["Outcome", "met?"], size=8.5, bold=True, color=WHITE,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    cv.arrow(x1 + bw, by + bh / 2, x2, by + bh / 2, WHITE, 1.5)
+    cv.arrow(x2 + bw, by + bh / 2, dx, by + bh / 2, WHITE, 1.5)
+    # yes
+    yx = dx + dw + 0.15
+    cv.arrow(dx + dw, by + bh / 2, X0 + LW - 0.2, by + bh / 2, GREEN, 1.75)
+    cv.text(yx, by + bh / 2 - 0.42, X0 + LW - 0.25 - yx, 0.38, [[("YES", {"bold": True, "color": GREEN})],
+                                                                   [("next step or human gate", {"color": SOFT})]],
+            size=7, anchor=MSO_ANCHOR.BOTTOM)
+    # no -> back to attempt
+    ly = by + bh + 0.42
+    cv.arrow(dx + dw / 2, by + bh + 0.16, dx + dw / 2, ly, MAGENTA, 1.5, head=False)
+    cv.arrow(dx + dw / 2, ly, x1 + bw / 2, ly, MAGENTA, 1.5, head=False)
+    cv.arrow(x1 + bw / 2, ly, x1 + bw / 2, by + bh, MAGENTA, 1.5)
+    cv.text(x1 + bw / 2 + 0.1, ly + 0.04, 4.0, 0.22,
+            [[("NO  ", {"bold": True, "color": MAGENTA}),
+              ("try again with the failure as feedback: attempt + 1", {"color": SOFT})]], size=7.5)
+    # attempt counter
+    cy = ly + 0.48
+    cv.text(X0 + 0.25, cy, 2.0, 0.42, "Attempt counter", size=8.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+    for i in range(MAX_ATTEMPTS):
+        cx_ = X0 + 1.85 + i * 0.62
+        last = i == MAX_ATTEMPTS - 1
+        cv.rect(cx_, cy + 0.03, 0.36, 0.36, MAGENTA if last else None, MAGENTA if last else CYAN, 1.25,
+                MSO_SHAPE.OVAL)
+        cv.text(cx_, cy + 0.03, 0.36, 0.36, str(i + 1), size=10, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+        if not last:
+            cv.arrow(cx_ + 0.37, cy + 0.21, cx_ + 0.61, cy + 0.21, LINE_D, 1.0, head=False)
+    # stop card: the differentiator
+    sx = X0 + 1.85 + MAX_ATTEMPTS * 0.62 + 0.1
+    fx, fy, fw, fh = cv.frame(sx, cy - 0.12, X0 + LW - 0.22 - sx, 1.32, BLACK, 0.04)
+    cv.text(fx + 0.14, fy + 0.08, fw - 0.28, 0.3, "STOP AFTER %d" % MAX_ATTEMPTS, size=12, bold=True, color=YELLOW,
+            track=100, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(fx + 0.14, fy + 0.42, fw - 0.28, fh - 0.48,
+            ["The run pauses; nothing is released.",
+             "A named owner gets every attempt, the failures and the evidence, in Jira.",
+             "Run budgets and timeouts can stop it sooner."], size=7.5, color=WHITE, after=3)
+    cv.text(X0 + 0.25, cy + 0.55, 3.5, 0.62,
+            "Applies to every agent step, not one: build, test, review, release preparation.", size=7.5,
+            color=SOFT)
+    # ---- the run report
+    rx = X0 + LW + 0.2
+    rw = 12.88 - rx
+    cv.rect(rx, py, rw, ph, None, CYAN, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.04)
+    cv.label(rx + 0.22, py + 0.16, rw - 0.4, "Run report · from the log of every run", color=YELLOW)
+    cv.text(rx + 0.22, py + 0.38, rw - 0.44, 0.4,
+            "Every step, attempt and wait is logged, so each run can be reported, per story, per pod and per agent.",
+            size=8, color=SOFT)
+    fy0 = py + 0.9
+    rh_ = (ph - 1.42) / len(REPORT_FIELDS)
+    for i, (k, d) in enumerate(REPORT_FIELDS):
+        y = fy0 + i * rh_
+        if i:
+            cv.rect(rx + 0.22, y - 0.03, rw - 0.44, 0.006, LINE_D)
+        cv.text(rx + 0.22, y, 1.3, rh_ - 0.06, k, size=9.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(rx + 1.55, y, rw - 1.8, rh_ - 0.06, d, size=8, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(rx + 0.22, py + ph - 0.5, rw - 0.44, 0.4,
+            "Source: change passport in BigQuery and Cloud Logging; weekly report to each pod lead.", size=7,
+            color=CYAN)
+    # ---- why it matters
+    wy, wh = py + ph + 0.16, 0.56
+    cv.rect(X0, wy, 12.43, wh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.2)
+    cv.text(X0 + 0.25, wy, 2.2, wh, "WHY IT MATTERS", size=7.5, bold=True, color=MAGENTA, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(X0 + 2.4, wy, 12.43 - 2.65, wh,
+            [[("Time and cost stay predictable: no run burns budget silently. ", {"bold": True, "color": WHITE}),
+              ("Steps that often need several attempts show exactly where the harness needs a fix.",
+               {"color": SOFT})]], size=10, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, LOOPS_NOTES)
+    return s
+
+
+LOOPS_NOTES = """SLIDE: Bounded loops and run reports   (about 2 minutes)
+
+KEY MESSAGE
+Agents are allowed to try again, but never forever. Every step stops after five attempts if the outcome is not met, a named owner takes over, and every attempt is in the run report.
+
+WALK IT
+- The loop: an agent attempts the step; the output goes through the checks (schema, tests, Code Analyzer, Change Guardian, review). If the outcome is met, the run moves on to the next step or the human gate. If not, the agent tries again with the failure as feedback.
+- The counter: up to five attempts. After the fifth, the run stops: nothing is released, and the owner gets all attempts, failures and evidence in Jira. Per-run budgets and timeouts can stop it earlier.
+- The run report: every step, attempt and wait is logged in the change passport and Cloud Logging, so we can report time per step and end to end, attempts and why, time and cost spent re-running, waiting time at human gates, token and cloud cost, and stopped runs. Weekly per pod lead.
+
+WHY IT MATTERS
+No runaway cost, no silent loops, and repeated attempts on the same kind of step point to the exact place the harness needs improving (the Feedback pillar).
+
+IF ASKED
+- Why five? Enough for an agent to correct itself on most failures, low enough to keep cost and time predictable. It is a setting; Ascension can change it per step.
+- What does a stopped run cost us? Only the attempts made, and they are in the report. Nothing reaches any environment beyond DEV without passing the checks.
+- Can we see this live? Yes: the same log feeds a dashboard per story, pod and agent."""
