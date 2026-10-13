@@ -20,6 +20,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "Codex-to-Production Agentic Harness LLD.drawio")
 
 W, H = 3400, 2020
+DX = 320          # lane 1 (user + SDLC plugin) is this much wider; everything right of it shifts
+X_SPLIT = 670
+FROZEN = set()    # cells laid out in final coordinates, not shifted
 
 # IG palette, as in the deck
 NAVY, BLACK, WHITE = "#00273B", "#000000", "#FFFFFF"
@@ -120,74 +123,13 @@ for i, (name, f, s, d) in enumerate(lg):
     box(lx, ly, 34, 22, "", fill=f, stroke=s, dashed=d, sw=2)
     text(lx + 44, ly - 3, 240, 28, name, size=13)
 badge(2470, 96, "n")
-text(2506, 94, 850, 32, "the user's journey: 1 type · 2 start the run · 3 agents read the graph (graph.* over MCP, cited facts) · 4 act through the gateway · 5 see results", size=13)
+text(2506, 94, 850, 32, "the user's journey: 1 invoke a skill · 2 start the run · 3 agents read the graph (graph.* over MCP, cited facts) · 4 act through the gateway · 5 see results", size=13)
 
 # =========================================================== lanes
 LY, LH = 140, 1570
-lane(40, LY, 620, LH, "1 · USER + CODEX  (what the user sees)", BLACK)
 lane(690, LY, 800, LH, "2 · PHASE 1 · HARNESS CONTEXT · KNOWLEDGE GRAPH", VIOLET)
 lane(1520, LY, 1180, LH, "3 · PHASE 2 · AGENTIC HARNESS RUNTIME  (Google Cloud)", NAVY)
 lane(2730, LY, 630, LH, "4 · OUTPUT  (what lands where)", "#3A3A3A")
-
-# =========================================================== lane 1: user + codex
-user = nid("u")
-cells.append((user, "v", "User<br>" + small("PM · Tech Lead · Developer"),
-              "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;"
-              "fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;fontSize=14;fontStyle=1;",
-              (80, 212, 44, 80)))
-shapes[user] = (80, 212, 44, 80)
-codex = box(220, 200, 420, 112,
-            T("CODEX", small("OpenAI Codex (CLI, IDE or app) · MCP client<br>"
-                             "Harness tools: harness.start_run · harness.status · graph.*", "#D9D9D9"), 20),
-            fill=BLACK, stroke=BLACK, font=WHITE, size=13)
-
-screen_lines = [
-    ("#FFFFFF", "&gt; Implement Jira NS-1234"),
-    ("#8C8C8C", ""),
-    (CYAN, "[01] Reading NS-1234 · drafting acceptance criteria"),
-    (YELLOW, "[H1] waiting: product owner approval  (link)"),
-    (CYAN, "[02] Graph: exists? no · reuse: 1 flow"),
-    (CYAN, "[02] Blast radius: automations on object, 2 pods"),
-    (MAGENTA, "[02] Guardian: NEEDS OWNER APPROVAL"),
-    (YELLOW, "[H2] waiting: architect + affected pod owner"),
-    (CYAN, "[03] Branch mad/NS-1234 · deploy to DEV"),
-    (CYAN, "[03] Apex tests passing · pull request opened"),
-    (CYAN, "[04] Review: 0 blocking · regression: 2 pods"),
-    (YELLOW, "[H3] waiting: tech lead + security"),
-    (CYAN, "[05] Copado: promoted to SIT, then UAT"),
-    (YELLOW, "[H4] waiting: business UAT sign-off"),
-    (CYAN, "[07] Release bundle, rollback plan, CAB pack"),
-    (YELLOW, "[CAB] approved · owner pipeline deploys"),
-    (CYAN, "[09] Done · Jira closed · graph refreshed"),
-    ("#8C8C8C", ""),
-    ("#8C8C8C", "links: brief · design · PR · UAT · passport"),
-]
-body = "<br>".join("<font color='%s'>%s</font>" % (c, l if l else "&nbsp;") for c, l in screen_lines)
-screen = box(60, 352, 580, 640,
-             "<font color='#8C8C8C'>CODEX SESSION · illustrative run</font><br><br>" + body,
-             fill="#0D1117", stroke="#3A3A3A", font=WHITE, size=16, align="left", valign="top",
-             extra="fontFamily=Courier New;spacingLeft=16;spacingTop=16;")
-note1 = box(60, 1016, 580, 190,
-            T("How Codex reaches the harness",
-              "Codex is the front door. It calls the harness over MCP (<i>harness.start_run</i>). The run itself is long and "
-              "durable, so it lives in Google Cloud; Codex shows progress from <i>harness.status</i> and "
-              "the approval links. The user's Codex never holds Jira, Salesforce or Copado credentials."),
-            fill=WHITE, stroke=GREY_D, align="left", valign="top", size=13)
-note2 = box(60, 1226, 580, 170,
-            T("Two Codex roles",
-              "<b>Front-door Codex</b>: where people ask and approve.<br>"
-              "<b>Worker Codex</b>: the coding engine inside the Developer and Test Agent containers, "
-              "headless (Codex SDK / codex exec), on its own branch, DEV sandbox only."),
-            fill=CYAN_T, stroke=CYAN_D, align="left", valign="top", size=13)
-note3 = box(60, 1416, 580, 270,
-            T("What the user can do in Codex",
-              "• Start: a Jira key or a plain request<br>"
-              "• Watch: each step's status as it runs<br>"
-              "• Open: brief, design page, PR, UAT build<br>"
-              "• Approve: opens the approval page (SSO)<br>"
-              "• Ask: graph questions (does X exist, who owns Y)<br>"
-              "• Stop or send back with a comment"),
-            fill=WHITE, stroke=GREY_D, align="left", valign="top", size=13)
 
 # =========================================================== lane 2: phase 1
 src = box(720, 196, 740, 160, "", fill=WHITE, stroke=GREY_D)
@@ -427,10 +369,6 @@ meas = box(2750, oy, 590, 1686 - oy,
            align="left", valign="top")
 
 # =========================================================== cross-lane edges (the journey)
-edge(user, codex, [(124, 256), (220, 256)], "types a request", color=BLACK)
-badge(150, 228, 1)
-edge(codex, run, [(640, 240), (668, 240), (668, 118), (1755, 118), (1755, 196)],
-     "harness.start_run(NS-1234) over MCP", color=BLACK, width=2.5)
 badge(900, 104, 2)
 edge(run, fs, [(1960, 252), (2000, 252)])
 edge(run, wf, [(1755, 308), (1755, 340)], "start", off=(28, 0))
@@ -457,9 +395,6 @@ xp, yp, wp, hp = shapes[oid["prod"]]
 edge(oid["cop"], oid["prod"], [(3340, y_ + h_ / 2), (3352, y_ + h_ / 2), (3352, yp + hp / 2), (3340, yp + hp / 2)],
      "", color=MUTE, dashed=True)
 xb, yb, wb, hb = shapes[back]
-edge(back, screen, [(2750, yb + hb / 2), (2722, yb + hb / 2), (2722, 1700), (650, 1700), (650, 900), (640, 900)],
-     "results and links shown in Codex", color=BLACK, width=2.5)
-badge(1170, 1686, 5)
 
 # =========================================================== platform band
 BY = 1740
@@ -476,10 +411,240 @@ plat = [("IAM service accounts", "sa-graph-sync · sa-orchestrator · sa-ai-read
         ("BigQuery", "change passport · gateway decisions · delivery measures"),
         ("Artifact Registry + Binary Authorization", "scanned, trusted agent and service images"),
         ("Terraform + Cloud Build", "infrastructure as code · CI · evaluation gate")]
+pw = (3320 + DX - 32) / 5
 for i, (n, d) in enumerate(plat):
-    px = 56 + (i % 5) * 660
+    px = 56 + (i % 5) * pw
     py = BY + 60 + (i // 5) * 92
-    box(px, py, 644, 80, T(n, small(d)), fill=SVC_T, stroke=NAVY, size=14, sw=1)
+    FROZEN.add(box(px, py, pw - 16, 80, T(n, small(d)), fill=SVC_T, stroke=NAVY, size=14, sw=1))
+
+
+# =========================================================== widen lane 1: shift everything to its right
+def widen():
+    global W
+    for k, (cid, kind, value, style, geo) in enumerate(cells):
+        if cid in FROZEN:
+            continue
+        if kind == "v":
+            x, y, w, h = geo
+            if x >= X_SPLIT:
+                x += DX
+            elif x + w > X_SPLIT + 50:
+                w += DX
+            cells[k] = (cid, kind, value, style, (x, y, w, h))
+            shapes[cid] = (x, y, w, h)
+        else:
+            s_, t_, way, pts, off = geo
+            way = [(px + DX if px >= X_SPLIT else px, py) for px, py in way]
+            pts = [(px + DX if px >= X_SPLIT else px, py) for px, py in pts]
+            cells[k] = (cid, kind, value, style, (s_, t_, way, pts, off))
+    W += DX
+
+
+widen()
+
+# =========================================================== lane 1: user + SDLC plugin (final coordinates)
+L1W = 620 + DX
+lane(40, LY, L1W, LH, "1 · USER + SDLC PLUGIN  (what the user sees in Codex)", BLACK)
+user = nid("u")
+cells.append((user, "v", "",
+              "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;"
+              "fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=2;", (80, 200, 40, 70)))
+shapes[user] = (80, 200, 40, 70)
+text(140, 198, 700, 30, "<b>User</b>", size=17)
+text(140, 228, 700, 26, "PM, tech lead, developer or QA engineer", size=14, color=MUTE)
+MONO = "fontFamily=Courier New;"
+PX, PW = 60, L1W - 40                 # plugin card
+PY = 330
+head = box(PX, PY, PW, 118, "", fill=BLACK, stroke=BLACK, sw=2)
+text(PX + 22, PY + 8, 420, 42, "<b>Agentic Harness SDLC plugin</b>", size=24, color=WHITE)
+text(PX + 440, PY + 14, PW - 460, 32, "installed once in Codex (CLI, IDE or app)", size=14, color="#BFBFBF")
+
+
+def chip(x, y, t, fill="#2B2B2B", stroke="#2B2B2B", font=WHITE, w=None, dashed=False, mono=True):
+    w = w or (16 + 8.4 * len(t))
+    return box(x, y, w, 24, t, fill=fill, stroke=stroke, font=font, size=13, rounded=True, dashed=dashed, sw=1,
+               extra=MONO if mono else "")
+
+
+text(PX + 22, PY + 52, 90, 28, "Package", size=14, color="#BFBFBF")
+cx_ = PX + 105
+for t in ("plugin.json", "skills/", "mcp.json"):
+    chip(cx_, PY + 54, t)
+    cx_ += 16 + 8.4 * len(t) + 8
+text(PX + 22, PY + 84, 200, 28, "MCP server <b>harness</b>", size=14, color="#BFBFBF")
+cx_ = PX + 195
+for t in ("harness.start_run", "harness.status", "graph.*"):
+    chip(cx_, PY + 86, t)
+    cx_ += 16 + 8.4 * len(t) + 8
+
+C1, C2, C3, C4 = PX + 20, PX + 270, PX + 580, PX + PW - 20     # skill · what · runs through · step (right edge)
+RH = 29
+rows_y = [PY + 128]
+
+
+def y_next(h=RH):
+    y = rows_y[0]
+    rows_y[0] += h
+    return y
+
+
+def colhead():
+    y = y_next(26)
+    for x, t in ((C1, "Skill"), (C2, "What it does"), (C3, "Runs through")):
+        text(x, y, 300, 24, t, size=13, color=MUTE)
+    text(C4 - 160, y, 160, 24, "Step, gate", size=13, color=MUTE, align="right")
+
+
+def rule(x, y, w):
+    box(x, y, w, 1, "", fill=GREY_D, stroke=GREY_D, rounded=False, sw=0, size=1)
+
+
+def section(title, sub):
+    y = y_next(34)
+    text(C1, y + 4, PW - 40, 28, "<b>%s</b>&nbsp;&nbsp;%s" % (title, small(sub, MUTE, 13)), size=16)
+    rule(C1, y + 32, PW - 40)
+
+
+def step_tags(y, steps, gate):
+    x = C4
+    if gate:
+        w = 14 + 9 * len(gate)
+        x -= w
+        box(x, y + 3, w, 22, "<b>%s</b>" % gate, fill=YELLOW, stroke=YELLOW, size=12, sw=1)
+        x -= 6
+    for st in reversed(steps):
+        w = 14 + 9 * len(st)
+        x -= w
+        box(x, y + 3, w, 22, st, fill=GREY, stroke=GREY, size=12, sw=1)
+        x -= 6
+
+
+def row(skill, what, runs, steps=(), gate=None, kind="tool", lock=False, sub=False, italic=False):
+    y = y_next()
+    sx = C1 + (34 if sub else 0)
+    if sub:
+        box(C1 + 14, y - 2, 2, RH + 2, "", fill=GREY_D, stroke=GREY_D, rounded=False, sw=0)
+    label = ("&#128274; " if lock else "") + ("<i>%s</i>" % skill if italic else "<b>%s</b>" % skill)
+    text(sx, y, C2 - sx - 6, RH, label, size=14, extra=MONO if not italic else "")
+    text(C2, y, C3 - C2 - 10, RH, what, size=13)
+    if kind == "agent":
+        chip(C3, y + 2, runs, fill=CYAN_T, stroke=CYAN_D, font="#00586A", mono=False, w=12 + 7.8 * len(runs))
+    elif kind == "service":
+        chip(C3, y + 2, runs, fill=WHITE, stroke=MUTE, font=BLACK, mono=False, w=12 + 7.8 * len(runs))
+    elif kind == "none":
+        chip(C3, y + 2, runs, fill=WHITE, stroke=MUTE, font=MUTE, mono=False, dashed=True, w=12 + 7.8 * len(runs))
+    elif kind == "id":
+        chip(C3, y + 2, runs, fill=MAGENTA_T, stroke=MAGENTA, font=MAGENTA)
+    else:
+        chip(C3, y + 2, runs, fill=GREY, stroke=GREY_D, font=BLACK)
+    step_tags(y, steps, gate)
+
+
+colhead()
+section("Drive the run", "one run per story; <font face='Courier New'>$harness-deliver</font> runs seven SDLC skills")
+row("$harness-deliver", "runs the SDLC skills below in order, waits at gates", "harness.start_run", ["01-09"],
+    lock=True)
+for sk, what, agent, st, g in [
+        ("sdlc-understand", "acceptance criteria, cited", "Requirements Agent", "01", "H1"),
+        ("sdlc-design", "design, blast radius, Guardian check", "Architect Agent", "02", "H2"),
+        ("sdlc-build", "branch, DEV deploy, pull request", "Developer Agent", "03", None),
+        ("sdlc-verify", "review and tests, findings report", "Review + Test Agents", "04", "H3"),
+        ("sdlc-promote", "Copado SIT, then UAT", "Release Agent", "05", "H4"),
+        ("sdlc-release", "bundle, rollback plan, CAB pack", "Release Agent", "07", "CAB")]:
+    row(sk, what, agent, [st], g, kind="agent", sub=True)
+row("no skill", "production deploy, no agent", "team pipeline", ["08"], kind="none", sub=True, italic=True)
+row("sdlc-close", "resync graph, close passport", "Workflows", ["09"], kind="service", sub=True)
+y = y_next(44)
+box(C1 + 14, y - 2, 2, 44, "", fill=GREY_D, stroke=GREY_D, rounded=False, sw=0)
+text(C1 + 34, y, PW - 80, 42, small("SDLC skills ship in <font face='Courier New'>skills/</font> and are not invoked "
+                                   "directly. The Dispatcher loads each one into its agent; "
+                                   "<font face='Courier New'>$harness-redo</font> sends one back.", MUTE, 13), size=13)
+row("$harness-redo", "send a step back with a comment", "Approval service", ["any"], kind="service", lock=True)
+section("Watch and decide", "anyone on the story")
+row("$harness-status", "watch each step as it runs", "harness.status")
+row("$harness-approve", "approve at a gate (SSO page)", "Approval service", (), "H1-CAB", kind="service")
+row("$harness-stop", "stop the run", "Approval service", kind="service", lock=True)
+row("$harness-ask-graph", "does X exist, who owns Y", "graph.*")
+section("QA skills", "for QA engineers, read first")
+row("$harness-test-scope", "what to test: blast radius, gaps", "graph.*")
+row("$harness-test-cases", "review drafted Zephyr cases", "sa-ai-read", ["04"], kind="id")
+row("$harness-regression", "rerun regression + Robotic in SIT", "sa-ai-release", (), "QA lead", kind="id", lock=True)
+row("$harness-test-report", "results, failures, flaky tests", "sa-ai-read", ["04", "05"], kind="id")
+row("$harness-uat", "UAT pack for business testers", "sa-ai-read", ["06"], "H4", kind="id")
+y = y_next(34)
+rule(C1, y, PW - 40)
+text(C1, y + 4, PW - 40, 28, small("&#128274; Explicit only: Codex never starts, redoes or stops work on its own",
+                                   MUTE, 13), size=13)
+plugin_h = rows_y[0] + 8 - PY
+plugin = box(PX, PY, PW, plugin_h, "", fill="none", stroke=BLACK, sw=2.5, extra="arcSize=3;")
+# send the plugin outline behind its contents
+cells.insert(next(i for i, c in enumerate(cells) if c[0] == head), cells.pop())
+
+# notes and the illustrative session
+NY = PY + plugin_h + 20
+NW = 410
+note1 = box(PX, NY, NW, 300,
+            T("How the plugin reaches the harness",
+              "Each skill is a <font face='Courier New'>SKILL.md</font> that tells Codex which harness tool to call "
+              "and what to show back; <font face='Courier New'>mcp.json</font> registers the harness MCP server.<br><br>"
+              "The run lives in Google Cloud. Workflows carries it from step to step; people only approve, send "
+              "back or stop. Skills that start, redo or stop work set "
+              "<font face='Courier New'>allow_implicit_invocation: false</font>. The plugin holds no Jira, "
+              "Salesforce or Copado credentials.<br><br>"
+              "QA skills read Zephyr Scale and Copado results as <font face='Courier New'>sa-ai-read</font>. Only "
+              "<font face='Courier New'>$harness-regression</font> starts work, as "
+              "<font face='Courier New'>sa-ai-release</font>, after a QA lead approves.", 17),
+            fill=WHITE, stroke=GREY_D, align="left", valign="top", size=13)
+note2 = box(PX, NY + 316, NW, LY + LH - 16 - (NY + 316),
+            T("Two Codex roles",
+              "<b>Front-door Codex:</b> loads the plugin; people invoke skills and approve here.<br>"
+              "<b>Worker Codex:</b> headless (Codex SDK / <font face='Courier New'>codex exec</font>) inside the "
+              "Developer and Test Agents; own branch, DEV sandbox only.", 17),
+            fill=CYAN_T, stroke=CYAN_D, align="left", valign="top", size=13)
+screen_lines = [
+    ("#FFFFFF", "&gt; $harness-deliver NS-1234"),
+    ("#8C8C8C", "[skill] harness-deliver → harness.start_run(NS-1234)"),
+    (CYAN, "[01] Reading NS-1234 · drafting acceptance criteria"),
+    (YELLOW, "[H1] waiting: product owner approval (link)"),
+    (CYAN, "[02] Graph: exists? no · reuse: 1 flow"),
+    (CYAN, "[02] Blast radius: automations on object, 2 pods"),
+    (MAGENTA, "[02] Guardian: NEEDS OWNER APPROVAL"),
+    (YELLOW, "[H2] waiting: architect + affected pod owner"),
+    (CYAN, "[03] Branch harness/NS-1234 · deploy to DEV"),
+    (CYAN, "[03] Apex tests passing · pull request opened"),
+    (CYAN, "[04] Review: 0 blocking · regression: 2 pods"),
+    (YELLOW, "[H3] waiting: tech lead + security"),
+    (CYAN, "[05] Copado: promoted to SIT, then UAT"),
+    (YELLOW, "[H4] waiting: business UAT sign-off"),
+    (CYAN, "[07] Release bundle, rollback plan, CAB pack"),
+    (YELLOW, "[CAB] approved · owner pipeline deploys"),
+    (CYAN, "[09] Done · Jira closed · graph refreshed"),
+    ("#8C8C8C", ""),
+    ("#FFFFFF", "&gt; $harness-ask-graph who owns HealthcareFacility?"),
+    ("#B39DDB", "[graph] 3 automations · 2 owning pods · cited"),
+    ("#8C8C8C", ""),
+    ("#8C8C8C", "links: brief · design · PR · UAT · passport"),
+]
+body = "<br>".join("<font color='%s'>%s</font>" % (c, l if l else "&nbsp;") for c, l in screen_lines)
+SX = PX + NW + 20
+screen = box(SX, NY, PX + PW - SX, LY + LH - 16 - NY,
+             "<font color='#8C8C8C'>● ● ●&nbsp;&nbsp; Codex session with the plugin, illustrative run</font><br><br>"
+             + body, fill="#0D1117", stroke="#0D1117", font=WHITE, size=12, align="left", valign="top",
+             extra="fontFamily=Courier New;spacingLeft=14;spacingTop=12;")
+
+# journey edges into and out of lane 1
+edge(user, head, [(100, 270), (100, PY)], "", color=BLACK)
+badge(86, 286, 1)
+text(122, 284, 200, 30, "<b>invokes a skill</b>", size=14)
+xr, yr, wr, hr = shapes[run]
+edge(head, run, [(PX + PW, PY + 40), (L1W + 55, PY + 40), (L1W + 55, 118), (xr + wr / 2, 118), (xr + wr / 2, yr)],
+     "harness.start_run(NS-1234) over MCP", color=BLACK, width=2.5)
+xb, yb, wb, hb = shapes[back]
+sx_, sy_, sw_, sh_ = shapes[screen]
+edge(back, screen, [(xb, yb + hb / 2), (xb - 28, yb + hb / 2), (xb - 28, 1722), (L1W + 50, 1722),
+                    (L1W + 50, sy_ + sh_ / 2), (sx_ + sw_, sy_ + sh_ / 2)],
+     "results and links shown in Codex", color=BLACK, width=2.5)
+badge(1490, 1708, 5)
 
 
 # =========================================================== write
