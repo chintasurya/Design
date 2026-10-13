@@ -38,9 +38,9 @@ ROLES = [
      "workshops (no separate BA)", 145, [1, 1, 1, 1, 1, 1, 1], NAVY),
     ("Solution architect", "End-to-end design: GCP landing zone, Spanner Graph model, Salesforce and "
      "Copado integration, security", 175, [1, 1, 1, 1, 1, 1, 1], NAVY),
-    ("AI architect", "Agent design, OpenAI Agents SDK, Codex SDK, MCP tool gateway, guardrails, evaluation "
+    ("AI harness architect", "Harness design: agent loop, OpenAI Agents SDK, Codex SDK, MCP tool gateway, guardrails, evaluation "
      "strategy", 195, [1, 1, 1, 1, 1, 1, 1], CYAN),
-    ("Forward deployed AI engineers", "Build the 7 agents, the workflow, approval and Change Guardian "
+    ("Harness engineers", "Build the 7 agents, the run loop, tool gateway, approval and Change Guardian "
      "services; tune them inside each pod", 165, [0, 2, 3, 3, 3, 3, 1], CYAN),
     ("Knowledge graph engineers", "Six source connectors, DLP, Spanner Graph (GQL), Graph API + MCP; "
      "add each wave's sources", 135, [0, 2, 2, 1, 1, 1, 0], VIOLET),
@@ -55,9 +55,9 @@ ROLES = [
     ("Cloud security engineer (HIPAA)", "HIPAA controls, DLP rules, IAM and VPC-SC review, pen test, BAA "
      "and data terms", 145, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0], MAGENTA),
 ]
-RUN_ROLES = [("Forward deployed AI engineer, run lead", 165), ("Knowledge graph and cloud engineer", 135),
+RUN_ROLES = [("Harness engineer, run lead", 165), ("Knowledge graph and cloud engineer", 135),
              ("Salesforce developer", 120), ("QA automation engineer", 100)]
-RUN_TEAM = "a run team of %d, offshore: one AI engineer as lead, plus graph and cloud, Salesforce and QA" % len(
+RUN_TEAM = "a run team of %d, offshore: one harness engineer as lead, plus graph and cloud, Salesforce and QA" % len(
     RUN_ROLES)
 RUN_MONTHLY = sum(r for _, r in RUN_ROLES) * HOURS
 
@@ -459,8 +459,8 @@ RAMP (FTE by phase)
 WHO DOES WHAT
 - Engagement lead / project manager: one person runs governance, gates, sprints and the requirements workshops; no separate business analyst, because the Requirements Agent drafts the stories and Ascension's product owners sign them.
 - Solution architect: the end-to-end design across Google Cloud, the graph, Salesforce and Copado.
-- AI architect: agent design, the tool gateway, guardrails and the evaluation strategy.
-- Forward deployed AI engineers: build the seven agents, the workflow and the approval and Change Guardian services, and sit with each pod to tune them on real stories.
+- AI harness architect: designs the harness around Codex Enterprise: the agent loop, which tools each step may use, what context it reads, the guardrails, the approval points and the evaluation strategy.
+- Harness engineers: build the harness: the seven agents, the run loop with checkpoints and retries, the MCP tool gateway, context assembly from the graph, the guardrails, the approval and Change Guardian services; they sit with each pod to tune it on real stories.
 - Knowledge graph engineers: the six connectors and Spanner Graph, then each wave's sources.
 - Cloud and DevOps engineers (2 from month 2): landing zone, Cloud Run, IAM, VPC-SC, monitoring and the Copado pipeline (covers what a separate SRE would).
 - Salesforce Health Cloud developers and the Marketing / Data Cloud developer do NOT build features for the pods. They build the pod skill packs the agents follow: approved Apex, LWC and Flow patterns, Health Cloud data-model rules, SFMC SQL, AMPscript and Journey templates, and the golden examples. In the pilots they review every agent-written change, which is how the agents reach Ascension's quality bar. Without them the agents would write generic Salesforce code.

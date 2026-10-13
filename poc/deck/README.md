@@ -110,5 +110,6 @@ It does two separate things:
 The deck's slide order and any hand edits now live in
 `source/Ascension MAD Approach - master.pptx` (the user's reordered copy).
 `python update_master.py` rebuilds only the delivery team and commercials
-slides from `plan_slides.py` inside that master and writes
-`../Ascension MAD Approach.pptx`; every other slide is left as it is.
+slides from `plan_slides.py` inside that master, renames MAD to the Agentic
+Harness on every slide and in the notes (`reword.py`), adds the draw.io link to
+the two architecture slides, and writes `../Ascension Agentic Harness.pptx`.

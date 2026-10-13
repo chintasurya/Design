@@ -2,7 +2,7 @@
 
     python3 build_lld.py [--preview out.png]
 
-Writes "Codex-to-Production MAD LLD.drawio" beside this script. Open it at
+Writes "Codex-to-Production Agentic Harness LLD.drawio" beside this script. Open it at
 https://app.diagrams.net (File > Open from > Device). Every edge is attached
 to its shapes with explicit exit and entry points and waypoints, so the file
 opens exactly as laid out here and stays connected when boxes are moved.
@@ -17,7 +17,7 @@ import sys
 from xml.sax.saxutils import quoteattr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "Codex-to-Production MAD LLD.drawio")
+OUT = os.path.join(HERE, "Codex-to-Production Agentic Harness LLD.drawio")
 
 W, H = 3400, 2020
 
@@ -105,7 +105,7 @@ def small(s, color=MUTE, size=12):
 
 
 # =========================================================== title + legend
-text(40, 18, 2300, 44, "Codex to Production · MAD end-to-end low-level design", size=30, bold=True)
+text(40, 18, 2300, 44, "Codex to Production · Agentic Harness end-to-end low-level design", size=30, bold=True)
 text(40, 62, 2400, 30,
      "Ascension · what the user sees in Codex, what runs behind it on Google Cloud "
      "(Phase 1 Engineering Context Knowledge Graph, Phase 2 Multi-Agent Delivery), and where each output lands",
@@ -125,8 +125,8 @@ text(2506, 94, 850, 32, "the user's journey: 1 type · 2 start the run · 3 agen
 # =========================================================== lanes
 LY, LH = 140, 1570
 lane(40, LY, 620, LH, "1 · USER + CODEX  (what the user sees)", BLACK)
-lane(690, LY, 800, LH, "2 · PHASE 1 · ENGINEERING CONTEXT KNOWLEDGE GRAPH", VIOLET)
-lane(1520, LY, 1180, LH, "3 · PHASE 2 · MAD DELIVERY RUNTIME  (Google Cloud)", NAVY)
+lane(690, LY, 800, LH, "2 · PHASE 1 · HARNESS CONTEXT · KNOWLEDGE GRAPH", VIOLET)
+lane(1520, LY, 1180, LH, "3 · PHASE 2 · AGENTIC HARNESS RUNTIME  (Google Cloud)", NAVY)
 lane(2730, LY, 630, LH, "4 · OUTPUT  (what lands where)", "#3A3A3A")
 
 # =========================================================== lane 1: user + codex
@@ -138,7 +138,7 @@ cells.append((user, "v", "User<br>" + small("PM · Tech Lead · Developer"),
 shapes[user] = (80, 212, 44, 80)
 codex = box(220, 200, 420, 112,
             T("CODEX", small("OpenAI Codex (CLI, IDE or app) · MCP client<br>"
-                             "MAD tools: mad.start_run · mad.status · graph.*", "#D9D9D9"), 20),
+                             "Harness tools: harness.start_run · harness.status · graph.*", "#D9D9D9"), 20),
             fill=BLACK, stroke=BLACK, font=WHITE, size=13)
 
 screen_lines = [
@@ -168,9 +168,9 @@ screen = box(60, 352, 580, 640,
              fill="#0D1117", stroke="#3A3A3A", font=WHITE, size=16, align="left", valign="top",
              extra="fontFamily=Courier New;spacingLeft=16;spacingTop=16;")
 note1 = box(60, 1016, 580, 190,
-            T("How Codex reaches MAD",
-              "Codex is the front door. It calls MAD over MCP (<i>mad.start_run</i>). The run itself is long and "
-              "durable, so it lives in Google Cloud; Codex shows progress from <i>mad.status</i> and "
+            T("How Codex reaches the harness",
+              "Codex is the front door. It calls the harness over MCP (<i>harness.start_run</i>). The run itself is long and "
+              "durable, so it lives in Google Cloud; Codex shows progress from <i>harness.status</i> and "
               "the approval links. The user's Codex never holds Jira, Salesforce or Copado credentials."),
             fill=WHITE, stroke=GREY_D, align="left", valign="top", size=13)
 note2 = box(60, 1226, 580, 170,
@@ -270,16 +270,16 @@ edge(spn, api, [(1285, 1072), (1285, 1104)], "GQL", off=(26, 0))
 
 # =========================================================== lane 3: phase 2
 run = box(1550, 196, 410, 112,
-          T("Run API · Cloud Run", small("validates the story · idempotency key = story + revision · "
+          T("Harness entry · Run API · Cloud Run", small("validates the story · idempotency key = story + revision · "
                                          "creates the run · starts one Workflows execution")),
           fill=SVC_T, stroke=NAVY)
 fs = box(2000, 196, 680, 112,
-         T("Firestore · runs/{runId}", small("current step · status · attempts · minutes and token budget · "
+         T("Harness state · Firestore runs/{runId}", small("current step · status · attempts · minutes and token budget · "
                                              "artifact URIs · commit SHA · approval ids · checkpoints<br>"
                                              "a run can be inspected or resumed from this document alone")),
          fill=SVC_T, stroke=NAVY)
 wf = box(1550, 340, 410, 990, "", fill=WHITE, stroke=NAVY, sw=2, valign="top")
-text(1566, 346, 380, 52, "<b>Cloud Workflows</b> · the nine steps (YAML)<br>" +
+text(1566, 346, 380, 52, "<b>Harness run loop</b> · Cloud Workflows, 9 steps<br>" +
      small("try / retry with backoff · callbacks for every gate"), size=14)
 
 seq = [("step", "<b>01 Understand</b> · Requirements Agent → brief.json"),
@@ -316,19 +316,19 @@ edge(s4, s3, [(x4, y4 + h4 / 2), (1572, y4 + h4 / 2), (1572, y3 + h3 / 2), (x3, 
      "fix ≤ 2", color=MAGENTA, dashed=True, width=1.5)
 
 appr = box(1550, 1362, 410, 150,
-           T("Approval service · Cloud Run + IAP",
+           T("Harness approvals · Cloud Run + IAP",
              small("Ascension SSO · shows the evidence for that gate · decision signed with Cloud KMS, bound to "
                    "run, scope, commit SHA and target · resumes the run through its Workflows callback",
                    "#2B2B2B")),
            fill=YELLOW_T, stroke="#C9A800", sw=2)
 learn = box(1550, 1544, 410, 142,
-            T("Learning loop · no model trained on our data",
-              small("step 09 resyncs the graph · incidents become Guardian rules · rejected outputs become "
+            T("Evaluation + learning loop",
+              small("no model trained on our data · step 09 resyncs the graph · incidents become Guardian rules · rejected outputs become "
                     "evaluation cases that run in Cloud Build before any prompt or model change", "#2B2B2B")),
             fill=GREEN_T, stroke=GREEN, sw=2)
 
 disp = box(2000, 340, 330, 112,
-           T("Dispatcher · Cloud Run", small("starts one Cloud Run Job per step with: runId, step, agent, skills, "
+           T("Harness dispatcher · Cloud Run", small("starts one Cloud Run Job per step with: runId, step, agent, skills, "
                                              "identity, inputs, allowedTools, budget, outputSchema")),
            fill=SVC_T, stroke=NAVY)
 ps = box(2350, 340, 330, 112,
@@ -370,7 +370,7 @@ grd = box(2350, 1036, 330, 112,
                                                        "nightly drift", "#2B2B2B")),
           fill=MAGENTA_T, stroke=MAGENTA, sw=2)
 gw = box(2000, 1180, 680, 196, "", fill=MAGENTA_T, stroke=MAGENTA, sw=2)
-text(2016, 1186, 650, 64, "<b>MCP tool gateway · Cloud Run + Open Policy Agent</b><br>" +
+text(2016, 1186, 650, 64, "<b>Harness tool gateway · MCP · Cloud Run + Open Policy Agent</b><br>" +
      small("checks identity · tool · target · approval for the current SHA → runs the action with that "
            "identity's credential from Secret Manager → logs the decision to BigQuery", "#2B2B2B"), size=14)
 ids = [("sa-ai-read", "graph, Jira, Confluence (read)"), ("sa-ai-dev", "Git branch + DEV sandbox"),
@@ -395,7 +395,7 @@ acc = box(2000, 1572, 680, 114,
 
 # =========================================================== lane 4: output
 outs = [
-    ("jira", "Jira", "brief posted (01) · status: Ready for MAD → In progress → QA → Done", 92, GREY_D, False),
+    ("jira", "Jira", "brief posted (01) · status: Ready for Harness → In progress → QA → Done", 92, GREY_D, False),
     ("conf", "Confluence", "design page draft (02) · as-built record (09)", 80, GREY_D, False),
     ("git", "Git", "branch mad/NS-1234 · pull request · commit SHA (03, 04)", 80, GREY_D, False),
     ("sfdev", "Salesforce DEV sandbox", "change deployed, Apex tests run (03)", 80, GREY_D, False),
@@ -410,7 +410,7 @@ for k, n, d, h, s, dash in outs:
     oid[k] = box(2750, oy, 590, h, T(n, small(d)), fill=WHITE, stroke=s, dashed=dash, sw=2 if dash else 1.5)
     oy += h + 16
 pas = box(2750, oy, 590, 150,
-          T("Change passport · BigQuery",
+          T("Harness audit trail · change passport · BigQuery",
             small("story → source snapshot → design → approvals → commit SHA → test evidence → deployment → "
                   "outcome<br>one row per event, each hashed with the previous row: tamper-evident", "#2B2B2B")),
           fill=WHITE, stroke=BLACK, sw=2)
@@ -430,7 +430,7 @@ meas = box(2750, oy, 590, 1686 - oy,
 edge(user, codex, [(124, 256), (220, 256)], "types a request", color=BLACK)
 badge(150, 228, 1)
 edge(codex, run, [(640, 240), (668, 240), (668, 118), (1755, 118), (1755, 196)],
-     "mad.start_run(NS-1234) over MCP", color=BLACK, width=2.5)
+     "harness.start_run(NS-1234) over MCP", color=BLACK, width=2.5)
 badge(900, 104, 2)
 edge(run, fs, [(1960, 252), (2000, 252)])
 edge(run, wf, [(1755, 308), (1755, 340)], "start", off=(28, 0))
@@ -485,7 +485,7 @@ for i, (n, d) in enumerate(plat):
 # =========================================================== write
 def to_xml():
     out = ['<mxfile host="app.diagrams.net" agent="build_lld.py" version="24.7.17">',
-           '<diagram id="mad-lld" name="Codex to Production · MAD LLD">',
+           '<diagram id="harness-lld" name="Codex to Production · Agentic Harness LLD">',
            '<mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" '
            'arrows="1" fold="1" page="1" pageScale="1" pageWidth="%d" pageHeight="%d" math="0" shadow="0">' % (W, H),
            '<root><mxCell id="0"/><mxCell id="1" parent="0"/>']

@@ -14,9 +14,11 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
 import plan_slides
-from build_mad_ig_deck import HERE, OUT, TXT, rgb
+from build_mad_ig_deck import HERE, TXT, rgb
+from reword import reword_slide
 
 MASTER = os.path.join(HERE, "source", "Ascension MAD Approach - master.pptx")
+OUT = os.path.join(HERE, "..", "Ascension Agentic Harness.pptx")
 REFRESH = {
     "ASCENSION MAD APPROACH · DELIVERY TEAM": plan_slides.team_slide,
     "ASCENSION MAD APPROACH · COMMERCIALS": plan_slides.commercials_slide,
@@ -25,10 +27,10 @@ REFRESH = {
 
 # The detailed design, opened straight in the draw.io web app from the public repo.
 LLD_RAW = ("https://raw.githubusercontent.com/chintasurya/Design/refs/heads/claude/funny-babbage-t29499/"
-           "poc/diagrams/Codex-to-Production%20MAD%20LLD.drawio")
+           "poc/diagrams/Codex-to-Production%20Agentic%20Harness%20LLD.drawio")
 LLD_URL = "https://app.diagrams.net/#U" + quote(LLD_RAW, safe="")
-LINK_ON = {"ASCENSION MAD APPROACH · PLATFORM": "00D6F2",            # dark slide: cyan
-           "ASCENSION MAD APPROACH · TARGET ARCHITECTURE": "00273B"}  # light slide: navy
+LINK_ON = {"ASCENSION AGENTIC HARNESS · PLATFORM": "00D6F2",            # dark slide: cyan
+           "ASCENSION AGENTIC HARNESS · TARGET ARCHITECTURE": "00273B"}  # light slide: navy
 LINK_NAME = "draw.io link"
 
 
@@ -76,6 +78,9 @@ def main(src=MASTER, out=OUT):
         prs.part.drop_rel(old.rId)
         lst.remove(old)
         print("refreshed slide %d: %s" % (list(lst).index(new) + 1, name))
+    for i, slide in enumerate(prs.slides):
+        for t in reword_slide(slide):
+            print("still says MAD on slide %d: %s" % (i + 1, t[:90]))
     for i, slide in enumerate(prs.slides):
         color = LINK_ON.get(eyebrow(slide))
         if color and add_lld_link(slide, color):
