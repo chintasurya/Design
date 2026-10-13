@@ -571,32 +571,35 @@ HARNESS_PILLARS = [
 
 
 def harness_slide(prs, layout):
+    """Black, in the same style as the platform slide: outlined rounded panels, white type."""
     s = prs.slides.add_slide(layout)
+    set_bg(s, BLACK)
     cv = Canvas(s)
-    cv.header("ASCENSION MAD APPROACH · HARNESS ENGINEERING",
-              "Harness engineering: we build the system around the model",
-              "Codex Enterprise is the engine. Harness engineering is the discipline of building everything around it, "
-              "so agents stay reliable at scale. Six disciplines, and where each lives in our harness.")
+    dark_header(cv, "ASCENSION MAD APPROACH · HARNESS ENGINEERING",
+                "Harness engineering: we build the system around the model",
+                "Codex Enterprise is the engine. Harness engineering is the discipline of building everything around "
+                "it, so agents stay reliable at scale. Six disciplines, and where each lives in our harness.")
+    ORANGE_LINE = "F5A623"
     X0, W, gap = 0.45, 12.43, 0.2
     cw = (W - 2 * gap) / 3
     ch = 2.12
     for i, (name, means, items) in enumerate(HARNESS_PILLARS):
         x = X0 + (i % 3) * (cw + gap)
         y = 1.32 + (i // 3) * (ch + 0.16)
-        cv.rect(x, y, cw, ch, WHITE, RULE)
-        cv.rect(x, y, 0.06, ch, CYAN)
-        cv.text(x + 0.22, y + 0.14, 0.4, 0.3, "%02d" % (i + 1), size=16, font=LIGHT, color=MUTE,
+        cv.rect(x, y, cw, ch, None, ORANGE_LINE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.06)
+        cv.text(x + 0.22, y + 0.14, 0.42, 0.3, "%02d" % (i + 1), size=16, font=LIGHT, color=CYAN,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.66, y + 0.12, cw - 0.8, 0.34, name, size=12, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.22, y + 0.5, cw - 0.4, 0.22, means, size=8.5, color=MUTE)
-        cv.rect(x + 0.22, y + 0.78, cw - 0.4, 0.01, RULE)
-        cv.label(x + 0.22, y + 0.86, cw - 0.4, "In our harness")
+        cv.text(x + 0.66, y + 0.12, cw - 0.8, 0.34, name, size=12, bold=True, color=WHITE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.22, y + 0.5, cw - 0.4, 0.22, means, size=8.5, color=SOFT)
+        cv.rect(x + 0.22, y + 0.78, cw - 0.4, 0.008, LINE_D)
+        cv.label(x + 0.22, y + 0.86, cw - 0.4, "In our harness", color=YELLOW)
         cv.text(x + 0.22, y + 1.06, cw - 0.4, ch - 1.12,
-                [[("\u25aa  ", {"color": CYAN}), (t, {})] for t in items], size=8, after=3)
+                [[("\u25aa  ", {"color": CYAN}), (t, {})] for t in items], size=8, color=WHITE, after=3)
     by = 1.32 + 2 * ch + 0.16 + 0.14
     bh = 0.62
-    cv.rect(X0, by, W, bh, BLACK)
-    cv.text(X0 + 0.25, by, 2.4, bh, "THE OPERATING RULE", size=7.5, bold=True, color=YELLOW, track=200,
+    cv.rect(X0, by, W, bh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.2)
+    cv.text(X0 + 0.25, by, 2.4, bh, "THE OPERATING RULE", size=7.5, bold=True, color=MAGENTA, track=200,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.text(X0 + 2.6, by, W - 2.85, bh,
             [[("When an agent struggles, we fix the harness, not the prompt: ", {"bold": True, "color": WHITE}),
@@ -605,7 +608,8 @@ def harness_slide(prs, layout):
     cv.text(X0, by + bh + 0.06, W, 0.2,
             "Harness engineering as described by OpenAI's Codex team (\"Harness engineering\", February 2026) and "
             "Martin Fowler; mapped here to the Ascension design. Health reports are read-only Review Agent runs: they "
-            "change nothing in the org.", size=6.5, color=MUTE)
+            "change nothing in the org.", size=6.5, color=SOFT)
+    dark_footer(s)
     set_notes(s, HARNESS_NOTES)
     return s
 
