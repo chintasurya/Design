@@ -53,7 +53,7 @@ def pct_range(lo, hi, base):
 
 def money(v):
     if v >= 1e6:
-        return "$%.2fM" % (v / 1e6)
+        return "$%sM" % ("%.2f" % (v / 1e6)).rstrip("0").rstrip(".")
     return "$%dK" % round(v / 1000)
 
 
@@ -343,18 +343,24 @@ def guardrails_slide(prs, layout):
 
 
 # ================================================================== pod economics
+# All pods: Ascension's spend and the savings ramp as pods go live on the harness.
+ALL_PODS_SPEND = 16.0e6                      # a year, across all pods, as provided
+YEAR_SAVINGS = [3.0e6, 5.5e6, 6.0e6]         # year 1 while pods onboard; years 2-3 with every pod live
+YEAR_NOTES = ["Pods go live through the year; savings start with the pilot pods.",
+              "Every pod on agent-first squads for the full year.",
+              "Full run rate; the harness is tuned on two years of evals."]
+
+
 def pod_economics_slide(prs, layout):
+    import plan_slides
     s = prs.slides.add_slide(layout)
     cv = Canvas(s)
-    models = [pod_model(pd) for pd in PODS]
-    tot = sum(pd["cost"] for pd in PODS)
-    m_lo, m_hi = sum(m["lo"] for m in models), sum(m["hi"] for m in models)
-    sv_lo, sv_hi = tot - m_hi, tot - m_lo
-    cv.header("ASCENSION MAD APPROACH · WHAT IT MEANS FOR TWO PODS",
-              "Two pods spend %s a year today. With MAD: %s back every year" % (
-                  money(tot), money_range(sv_lo, sv_hi)),
-              "Every squad of 4-5 developers becomes 1 developer directing 1 MAD agent, plus 1 QA. "
-              "The agent drafts; people review, approve and own every change.")
+    total_save = sum(YEAR_SAVINGS)
+    spend3 = ALL_PODS_SPEND * 3
+    cv.header("ASCENSION MAD APPROACH · WHAT IT MEANS FOR ASCENSION",
+              "All pods: %s a year today. About %s back over three years" % (money(ALL_PODS_SPEND), money(total_save)),
+              "Across every pod, each squad of 4-5 developers becomes 1 developer directing 1 MAD agent, plus 1 QA. "
+              "Savings grow as pods go live.")
     X0, W = 0.45, 12.43
 
     # ---- the squad shift
@@ -395,45 +401,36 @@ def pod_economics_slide(prs, layout):
     cv.text(rx, y + 0.34, rw, 0.85, [[(r + "  ", {"bold": True}), (d, {"color": MUTE})] for r, d in roles],
             size=7.5, after=3)
 
-    # ---- the two pods
-    y = 2.7
-    cw, ch = 6.1, 2.72
-    for i, (pd, m) in enumerate(zip(PODS, models)):
+    # ---- three years
+    y, ch = 2.7, 2.55
+    cw = (W - 2 * 0.23) / 3
+    for i, sv in enumerate(YEAR_SAVINGS):
         x = X0 + i * (cw + 0.23)
         cv.rect(x, y, cw, ch, WHITE, RULE)
-        cv.text(x + 0.2, y + 0.1, cw - 0.4, 0.3, pd["name"], size=12, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-        cv.label(x + 0.2, y + 0.55, 2.4, "Today")
-        cv.text(x + 0.2, y + 0.72, 2.6, 0.6, money(pd["cost"]), size=30, font=LIGHT, color=MUTE,
+        cv.text(x + 0.2, y + 0.12, cw - 0.4, 0.3, "Year %d" % (i + 1), size=13, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        cv.label(x + 0.2, y + 0.52, 1.6, "Today")
+        cv.text(x + 0.2, y + 0.68, 1.6, 0.46, money(ALL_PODS_SPEND), size=22, font=LIGHT, color=MUTE,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.2, y + 1.34, 2.6, 0.2, "a year", size=9, color=MUTE)
-        cv.arrow(x + 2.78, y + 1.02, x + 3.13, y + 1.02, BLACK, 2.0)
-        cv.label(x + 3.3, y + 0.55, 2.6, "With MAD")
-        cv.text(x + 3.3, y + 0.72, 2.7, 0.6, money_range(m["lo"], m["hi"]), size=28, font=LIGHT, color=BLACK,
+        cv.arrow(x + 1.55, y + 0.91, x + 1.9, y + 0.91, BLACK, 2.0)
+        cv.label(x + 2.0, y + 0.52, cw - 2.2, "With the harness")
+        cv.text(x + 2.0, y + 0.68, cw - 2.2, 0.46, money(ALL_PODS_SPEND - sv), size=22, font=LIGHT, color=BLACK,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 3.3, y + 1.34, 2.7, 0.2, "a year, agents included", size=9, color=MUTE)
-        fx, fy, fw, fh = cv.frame(x + 0.2, y + 1.72, cw - 0.4, 0.68, YELLOW_T)
-        cv.text(fx + 0.15, fy, 2.2, fh, [[("SAVES EVERY YEAR", {"bold": True, "track": 200})],
-                                         [("%s lower than today" % pct_range(m["save_lo"], m["save_hi"],
-                                                                            pd["cost"]), {"size": 8})]],
-                size=7, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(fx + 2.3, fy, fw - 2.45, fh, money_range(m["save_lo"], m["save_hi"]), size=28, bold=True,
-                align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.2, y + 2.47, cw - 0.4, 0.18,
-                [[("Year 1: ", {"bold": True}), ("%s while the pod is onboarded    " % money_range(
-                    m["y1_lo"], m["y1_hi"]), {}),
-                  ("Over %d years: " % YEARS, {"bold": True}), (money_range(m["multi_lo"], m["multi_hi"]), {})]],
-                size=8, color=MUTE)
-
-    # ---- both pods
-    by, bh = 5.55, 1.08
+        fx, fy, fw, fh = cv.frame(x + 0.2, y + 1.3, cw - 0.4, 0.66, YELLOW_T)
+        cv.text(fx + 0.15, fy, 1.6, fh, [[("SAVES", {"bold": True, "track": 200})],
+                                        [("%d%% of the year's spend" % round(100 * sv / ALL_PODS_SPEND),
+                                          {"size": 7.5})]], size=7, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(fx + 1.6, fy, fw - 1.75, fh, money(sv), size=26, bold=True, align=PP_ALIGN.RIGHT,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.2, y + 2.06, cw - 0.4, 0.42, YEAR_NOTES[i], size=8, color=MUTE)
+    # ---- three years, all pods
+    by, bh = 5.4, 1.08
     cv.rect(X0, by, W, bh, BLACK)
-    cv.text(X0 + 0.25, by + 0.1, 3.0, 0.2, "BOTH PODS TOGETHER", size=7.5, bold=True, color=YELLOW, track=200)
-    cells = [("Today", money(tot), "a year"),
-             ("With MAD", money_range(m_lo, m_hi), "a year, agents included"),
-             ("Saved every year", money_range(sv_lo, sv_hi), "%s lower" % pct_range(sv_lo, sv_hi, tot)),
-             ("Saved over %d years" % YEARS,
-              money_range(sum(m["multi_lo"] for m in models), sum(m["multi_hi"] for m in models)),
-              "year 1 at %d-%d%% while pods onboard" % (YEAR1_LO * 100, YEAR1_HI * 100))]
+    cv.text(X0 + 0.25, by + 0.1, 4.0, 0.2, "THREE YEARS, ALL PODS", size=7.5, bold=True, color=YELLOW, track=200)
+    fee = plan_slides.build_price()[1]
+    cells = [("Spend today", money(spend3), "%s a year x 3" % money(ALL_PODS_SPEND)),
+             ("With the harness", money(spend3 - total_save), "agents included"),
+             ("Saved over 3 years", money(total_save), "%d%% of three years' spend" % round(100 * total_save / spend3)),
+             ("Return on the build fee", "%.0fx" % (total_save / fee), "%s fixed fee, paid back in year 2" % money(fee))]
     cwid = W / 4
     for i, (lab, big, small) in enumerate(cells):
         cx = X0 + 0.25 + i * cwid
@@ -442,12 +439,11 @@ def pod_economics_slide(prs, layout):
         cv.text(cx, by + 0.5, cwid - 0.3, 0.38, big, size=22 if hero else 18, font=TXT if hero else LIGHT,
                 bold=hero, color=(CYAN if i == 2 else YELLOW) if hero else WHITE, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(cx, by + 0.86, cwid - 0.3, 0.18, small, size=7.5, color=SOFT)
-    cv.text(X0, 6.68, W, 0.24,
-            "Spend as provided by Ascension, per year. With MAD keeps today's cost for the people who stay (a "
-            "developer and QA per squad, plus a tech lead in VBC) and adds agent run cost of $%dK-%dK per squad a "
-            "year; the shared MAD platform is priced once for all pods on the commercials slide. Target once a pod "
-            "runs fully on MAD; the 20-25%% on the business outcomes slide is the floor. Each pod's Phase 0 "
-            "baseline confirms it." % (AGENT_LO // 1000, AGENT_HI // 1000), size=6.5, color=MUTE)
+    cv.text(X0, 6.56, W, 0.32,
+            "Ascension's spend across all pods, about %s a year, as provided. Savings ramp as pods go live (two pods "
+            "by month 9, all pods by month 17) and include agent run costs. Planning estimates, confirmed against each "
+            "pod's Phase 0 baseline; the business outcomes slide's 20-25%% is the floor." % money(ALL_PODS_SPEND),
+            size=6.5, color=MUTE)
     set_notes(s, POD_NOTES)
     return s
 
@@ -502,29 +498,29 @@ IF ASKED
 - Does OpenAI train on our data? Ascension's enterprise terms govern that; in addition, MAD sends only a bounded, redacted context slice.
 - What if someone is repeatedly abusive or tries injection? Every block is logged with the user and request; repeated attempts alert security."""
 
-POD_NOTES = """SLIDE: What it means for two pods   (about 3 minutes)
+POD_NOTES = """SLIDE: What it means for Ascension, all pods   (about 3 minutes)
 
 KEY MESSAGE
-Two pods cost $2.59M a year today. With agent-first squads they cost $0.79-0.99M: $1.59-1.80M back every year, and $4.1-4.8M over three years. That is from two pods alone; every further pod on MAD adds to it.
+Ascension spends about $16M a year across all pods, $48M over three years. With agent-first squads on the harness, that comes down by about $14.5M over three years: roughly 30% of the spend, and about three times the build fee.
 
 WALK IT
-- Top strip: the agent-first squad. Today a squad is 4-5 developers and a QA. With MAD it is 1 developer directing the MAD agent team (requirements, build, test, review, release prep), plus 1 QA, for the same scope. The agent drafts overnight; the developer designs, directs and approves; QA verifies. Every human gate stays.
-- VBC (Salesforce Core / Flex): $2.47M today, $0.72-0.92M with MAD. Saves $1.55-1.75M a year (63-71%).
-- Network Services: $117K today, $68-76K with MAD. Saves $40-50K a year (35-42%).
-- Both pods: saves $1.59-1.80M a year (62-69%). Year 1 realises 60-70% while each pod is onboarded; full savings from year 2.
+- Top strip: the mechanism. In every pod, a squad of 4-5 developers and a QA becomes 1 developer directing the harness agent team, plus 1 QA. The agent drafts overnight; people design, review and approve. Every human gate stays.
+- Year 1, about $3.0M saved (19%): pods go live through the year (two pilots by month 9, the rest in two waves), so only part of the year runs on the new model.
+- Year 2, about $5.5M saved (34%): every pod on agent-first squads for the full year.
+- Year 3, about $6.0M saved (38%): full run rate, with the harness tuned on two years of evals.
+- Three years: $48M becomes about $33.5M. $14.5M saved, about 3x the $4.79M fixed build fee, which is paid back during year 2.
 
 HOW THE NUMBERS ARE BUILT (for you, not the slide)
-- Cost per person = Ascension's pod spend / headcount: about $176K a year in VBC, $29K in Network Services. The people who stay keep today's cost.
-- VBC, 14 people today, assumed mix 1 pod lead, 1 BA, 1 tech lead, 8 developers, 2 QA, 1 release. With MAD 4-5 people: a tech lead who also leads the pod, 2 squads (1 developer + agent each) and 1-2 QA. BA and release preparation are drafted by the Requirements and Release agents; Ascension's product owner signs the requirements.
-- Network Services, 4 people (3 developers, 1 QA) become 1 squad: 1 developer + agent + 1 QA.
-- Agent run cost: $9-18K per squad a year for model usage and cloud runtime. Codex Enterprise is already licensed by Ascension.
-- The shared MAD platform and run team (commercials slide) serve every pod and are not loaded onto these two pods.
-- Confirm the role mix with each pod lead before quoting per-pod figures.
+- $16M a year is Ascension's figure for all pods.
+- Savings come from smaller squads for the same scope (the developer + agent + QA model) net of agent run cost; workshops, decisions, UAT and CAB stay human and take the same time.
+- The ramp follows the timeline: pods are live from month 9 (pilots) to month 17 (all).
+- The business outcomes slide's 20-25% lower net run cost is the floor we commit to; years 2 and 3 here are the target once pods run fully on the harness.
+- Confirm each pod's baseline in Phase 0 before quoting pod-level numbers.
 
 IF ASKED
-- How does this square with 20-25% on the business outcomes slide? That is the conservative floor we commit to across all pods. This is the target once a pod runs fully on agent-first squads.
-- Can one developer really do the work of four? Not alone: the agent drafts the code, tests and deployment package, and the developer reviews and approves. Measured so far: Health Cloud changes in 2-4 days instead of 1-2 weeks, campaigns in 15-20 days instead of about 90.
-- What happens to the people? Ascension chooses: move them to other pods and backlog, absorb through attrition, or keep them and clear more work. Changes are reviewed quarterly."""
+- Is $14.5M guaranteed? It is the target. The commitment is the floor (20-25%) and the phase exits; every pod is measured against its own baseline.
+- What happens to the people? Ascension chooses: redeploy to backlog and other work, absorb through attrition, or keep the team and deliver more. Reviewed quarterly.
+- Why is year 1 lower? Most pods are still onboarding; savings start with the two pilot pods."""
 
 
 # ================================================================== harness engineering

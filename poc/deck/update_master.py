@@ -22,6 +22,7 @@ from reword import reword_slide
 MASTER = os.path.join(HERE, "source", "Ascension MAD Approach - master.pptx")
 OUT = os.path.join(HERE, "..", "Ascension Agentic Harness.pptx")
 REFRESH = {
+    "ASCENSION MAD APPROACH · WHAT IT MEANS FOR TWO PODS": story_slides.pod_economics_slide,
     "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.timeline_slide,
     "ASCENSION MAD APPROACH · DELIVERY TEAM": plan_slides.team_slide,
     "ASCENSION MAD APPROACH · COMMERCIALS": plan_slides.commercials_slide,

@@ -517,13 +517,11 @@ def commercials_slide(prs, layout):
     cv.rect(RX, vy, RW, vh, BLACK)
     cv.text(RX + 0.14, vy + 0.08, RW - 0.28, 0.2, "VALUE CHECK", size=7, bold=True, color=YELLOW, track=150)
     import story_slides
-    pm = [story_slides.pod_model(pd) for pd in story_slides.PODS]
-    s_lo, s_hi = sum(x["save_lo"] for x in pm), sum(x["save_hi"] for x in pm)
+    save3 = sum(story_slides.YEAR_SAVINGS)
     cv.text(RX + 0.14, vy + 0.3, RW - 0.28, vh - 0.36, [
-        [("Two pods alone, VBC and Network Services, save %s-%s a year " % (m(s_lo), m(s_hi)),
-          {"color": WHITE}), ("with agent-first squads.", {"color": "BFBFBF"})],
-        [("The build fee pays back in about %.1f to %.1f years from those two pods; " % (fixed / s_hi, fixed / s_lo),
-          {"color": WHITE}), ("every further pod on MAD shortens it.", {"color": WHITE})],
+        [("Across all pods, about %s saved over three years " % story_slides.money(save3), {"color": WHITE}),
+         ("(%s a year today)." % story_slides.money(story_slides.ALL_PODS_SPEND), {"color": "BFBFBF"})],
+        [("That is about %.0fx the build fee, paid back during year 2." % (save3 / fixed), {"color": WHITE})],
         [("Floor across all pods: 20-25% lower net run cost (business outcomes slide).", {"color": "BFBFBF"})],
     ], size=9, after=6)
     cv.text(X0, CONTENT_FLOOR - 0.36, tw, 0.34,
