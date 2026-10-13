@@ -29,7 +29,7 @@ REFRESH = {
 
 # New slides, inserted right after the slide with this eyebrow
 INSERT_AFTER = {
-    "ASCENSION MAD APPROACH · PLATFORM": story_slides.harness_slide,
+    "ASCENSION MAD APPROACH · PLATFORM": [story_slides.harness_slide, story_slides.autonomy_slide],
     "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.exits_slide,
 }
 
@@ -83,10 +83,14 @@ def main(src=MASTER, out=OUT):
             swaps.append((list(lst)[i], list(lst)[-1], eyebrow(slide)))
     inserts = []
     for i, slide in enumerate(originals):
-        build = INSERT_AFTER.get(eyebrow(slide))
-        if build:
+        builds = INSERT_AFTER.get(eyebrow(slide))
+        if not builds:
+            continue
+        prev = list(lst)[i]
+        for build in builds if isinstance(builds, list) else [builds]:
             build(prs, slide.slide_layout)
-            inserts.append((list(lst)[i], list(lst)[-1], eyebrow(slide)))
+            inserts.append((prev, list(lst)[-1], eyebrow(slide)))
+            prev = list(lst)[-1]                # several new slides follow one another
     for after, new, name in inserts:
         lst.remove(new)
         after.addnext(new)
