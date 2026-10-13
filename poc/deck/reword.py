@@ -4,6 +4,7 @@ so formatting is kept. Anything still saying MAD afterwards is reported."""
 import re
 
 RULES = [
+    (r"\bSDLC\b", "ADLC"),
     (r"Failures go round the fix loop a bounded number of times, then to a person\.",
      "Failures go round the fix loop up to five times, then the step stops and goes to a named owner."),
     (r"ASCENSION MAD APPROACH · MULTI-AGENT DELIVERY", "ASCENSION AGENTIC HARNESS"),

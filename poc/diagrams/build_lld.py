@@ -20,7 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "Codex-to-Production Agentic Harness LLD.drawio")
 
 W, H = 3400, 2020
-DX = 320          # lane 1 (user + SDLC plugin) is this much wider; everything right of it shifts
+DX = 320          # lane 1 (user + ADLC plugin) is this much wider; everything right of it shifts
 X_SPLIT = 670
 FROZEN = set()    # cells laid out in final coordinates, not shifted
 
@@ -442,9 +442,9 @@ def widen():
 
 widen()
 
-# =========================================================== lane 1: user + SDLC plugin (final coordinates)
+# =========================================================== lane 1: user + ADLC plugin (final coordinates)
 L1W = 620 + DX
-lane(40, LY, L1W, LH, "1 · USER + SDLC PLUGIN  (what the user sees in Codex)", BLACK)
+lane(40, LY, L1W, LH, "1 · USER + ADLC PLUGIN  (what the user sees in Codex)", BLACK)
 user = nid("u")
 cells.append((user, "v", "",
               "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;"
@@ -456,7 +456,7 @@ MONO = "fontFamily=Courier New;"
 PX, PW = 60, L1W - 40                 # plugin card
 PY = 330
 head = box(PX, PY, PW, 118, "", fill=BLACK, stroke=BLACK, sw=2)
-text(PX + 22, PY + 8, 420, 42, "<b>Agentic Harness SDLC plugin</b>", size=24, color=WHITE)
+text(PX + 22, PY + 8, 420, 42, "<b>Agentic Harness ADLC plugin</b>", size=24, color=WHITE)
 text(PX + 440, PY + 14, PW - 460, 32, "installed once in Codex (CLI, IDE or app)", size=14, color="#BFBFBF")
 
 
@@ -541,22 +541,23 @@ def row(skill, what, runs, steps=(), gate=None, kind="tool", lock=False, sub=Fal
 
 
 colhead()
-section("Drive the run", "one run per story; <font face='Courier New'>$harness-deliver</font> runs seven SDLC skills")
-row("$harness-deliver", "runs the SDLC skills below in order, waits at gates", "harness.start_run", ["01-09"],
+section("Drive the run", "one run per story; <font face='Courier New'>$harness-deliver</font> runs the agentic "
+        "development lifecycle (ADLC) skills")
+row("$harness-deliver", "runs the ADLC skills below in order, waits at gates", "harness.start_run", ["01-09"],
     lock=True)
 for sk, what, agent, st, g in [
-        ("sdlc-understand", "acceptance criteria, cited", "Requirements Agent", "01", "H1"),
-        ("sdlc-design", "design, blast radius, Guardian check", "Architect Agent", "02", "H2"),
-        ("sdlc-build", "branch, DEV deploy, pull request", "Developer Agent", "03", None),
-        ("sdlc-verify", "review and tests, findings report", "Review + Test Agents", "04", "H3"),
-        ("sdlc-promote", "Copado SIT, then UAT", "Release Agent", "05", "H4"),
-        ("sdlc-release", "bundle, rollback plan, CAB pack", "Release Agent", "07", "CAB")]:
+        ("adlc-understand", "acceptance criteria, cited", "Requirements Agent", "01", "H1"),
+        ("adlc-design", "design, blast radius, Guardian check", "Architect Agent", "02", "H2"),
+        ("adlc-build", "branch, DEV deploy, pull request", "Developer Agent", "03", None),
+        ("adlc-verify", "review and tests, findings report", "Review + Test Agents", "04", "H3"),
+        ("adlc-promote", "Copado SIT, then UAT", "Release Agent", "05", "H4"),
+        ("adlc-release", "bundle, rollback plan, CAB pack", "Release Agent", "07", "CAB")]:
     row(sk, what, agent, [st], g, kind="agent", sub=True)
 row("no skill", "production deploy, no agent", "team pipeline", ["08"], kind="none", sub=True, italic=True)
-row("sdlc-close", "resync graph, close passport", "Workflows", ["09"], kind="service", sub=True)
+row("adlc-close", "resync graph, close passport", "Workflows", ["09"], kind="service", sub=True)
 y = y_next(44)
 box(C1 + 14, y - 2, 2, 44, "", fill=GREY_D, stroke=GREY_D, rounded=False, sw=0)
-text(C1 + 34, y, PW - 80, 42, small("SDLC skills ship in <font face='Courier New'>skills/</font> and are not invoked "
+text(C1 + 34, y, PW - 80, 42, small("ADLC skills ship in <font face='Courier New'>skills/</font> and are not invoked "
                                    "directly. The Dispatcher loads each one into its agent; "
                                    "<font face='Courier New'>$harness-redo</font> sends one back.", MUTE, 13), size=13)
 row("$harness-redo", "send a step back with a comment", "Approval service", ["any"], kind="service", lock=True)
