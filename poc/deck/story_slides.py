@@ -648,27 +648,29 @@ IF ASKED
 
 
 # ================================================================== today -> AGI
-# How the harness itself evolves: built by people today, self-harnessing at the AGI horizon.
+# How the harness itself evolves: this proposal is human-harnessed and human-approved;
+# the AGI horizon is self-harnessed.
 AUTONOMY_STAGES = [
-    ("TODAY · THIS PROPOSAL", "Human-harnessed", "People build the harness; agents work inside it."),
-    ("NEAR TERM", "Human-approved", "Agents propose changes to their own harness; people approve."),
-    ("HORIZON", "Self-harnessed", "The harness improves itself; people set goals and limits."),
+    ("TODAY · THIS PROPOSAL", "Human-harnessed + human-approved",
+     "People build the harness and approve every change; agents work inside it and propose improvements."),
+    ("HORIZON", "Self-harnessed",
+     "Artificial General Intelligence: the harness improves itself; people set goals and limits."),
 ]
 AUTONOMY_ROWS = [
-    ("Context", ["People connect sources and write the AGENTS.md maps",
-                 "Agents spot missing context and propose new sources and map updates",
+    ("Context", [("connect the sources and write the AGENTS.md maps",
+                  "spot missing context and propose new sources and map updates"),
                  "The harness finds and curates its own context"]),
-    ("Action", ["People grant each tool, step by step",
-                "Agents request a new tool with the reason; people approve",
+    ("Action", [("grant each tool, step by step",
+                 "request a new tool with the reason"),
                 "Agents build new tools in a sandbox, inside set limits"]),
-    ("Orchestration", ["A fixed nine-step run, designed by people",
-                       "Agents suggest adding or skipping steps by risk",
+    ("Orchestration", [("design the nine-step run",
+                        "suggest adding or skipping steps by risk"),
                        "The harness plans its own workflow for each change"]),
-    ("Control", ["People write the Guardian rules and approve at H1-H4",
-                 "Agents draft new rules from incidents; people sign them",
+    ("Control", [("write the Guardian rules and approve at H1-H4",
+                  "draft new rules from incidents for people to sign"),
                  "The harness writes and tests its own rules"]),
-    ("Feedback", ["People review results and tune prompts and skills",
-                  "Agents run the evaluation set and propose their own fixes",
+    ("Feedback", [("review results and approve every fix",
+                   "run the evaluation set and propose their own fixes"),
                   "Continuous self-evaluation and self-repair"]),
 ]
 
@@ -679,45 +681,48 @@ def autonomy_slide(prs, layout):
     cv = Canvas(s)
     dark_header(cv, "ASCENSION MAD APPROACH · WHERE THIS GOES",
                 "From a harness people build to a harness that builds itself",
-                "Today people engineer the harness and agents run inside it. As models move toward AGI, the harness "
-                "starts to improve itself, and people move from writing rules to setting goals and limits.")
+                "Today people build the harness and approve what agents propose. Toward AGI, the harness improves "
+                "itself, and people move from writing rules to setting goals and limits.")
     X0, W = 0.45, 12.43
-    lw, gap = 1.6, 0.14
-    cw = (W - lw - 2 * gap) / 3
-    cx = [X0 + lw + i * (cw + gap) for i in range(3)]
+    lw, gap = 1.6, 0.3
+    w1 = 6.25
+    w2 = W - lw - gap - w1
+    cx, cw = [X0 + lw, X0 + lw + w1 + gap], [w1, w2]
     top, hh = 1.3, 0.98
     ry, rh = top + hh + 0.08, 0.66
     bottom = ry + rh * len(AUTONOMY_ROWS) + 0.04
     # the AGI column: gradient frame around the whole column
-    fx, fy, fw, fh = cv.frame(cx[2] - 0.04, top - 0.04, cw + 0.08, bottom - top + 0.08, BLACK, 0.045)
+    cv.frame(cx[1] - 0.04, top - 0.04, cw[1] + 0.08, bottom - top + 0.08, BLACK, 0.045)
     # stage headers
     for i, (tag, name, who) in enumerate(AUTONOMY_STAGES):
-        x = cx[i]
-        if i < 2:
-            cv.rect(x, top, cw, hh, None, "F5A623", 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.08)
-            cv.arrow(x + cw + 0.01, top + hh / 2, x + cw + gap - 0.01, top + hh / 2, YELLOW, 1.5)
-        cv.text(x + 0.18, top + 0.08, cw - 0.3, 0.2, tag, size=7, bold=True, track=200,
-                color=SOFT if i < 2 else YELLOW, anchor=MSO_ANCHOR.MIDDLE)
-        if i < 2:
-            cv.text(x + 0.18, top + 0.3, cw - 0.3, 0.34, name, size=15, bold=True, color=WHITE,
+        x, w = cx[i], cw[i]
+        if i == 0:
+            cv.rect(x, top, w, hh, None, "F5A623", 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.08)
+            cv.arrow(x + w + 0.02, top + hh / 2, x + w + gap - 0.02, top + hh / 2, YELLOW, 1.75)
+            cv.text(x + 0.18, top + 0.3, w - 0.3, 0.34, name, size=15, bold=True, color=WHITE,
                     anchor=MSO_ANCHOR.MIDDLE)
         else:
-            cv.text(x + 0.18, top + 0.26, cw - 0.3, 0.42,
+            cv.text(x + 0.18, top + 0.26, w - 0.3, 0.42,
                     [[("AGI", {"bold": True, "size": 24, "color": YELLOW}),
                       ("   " + name, {"bold": True, "size": 15, "color": WHITE})]], anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.18, top + 0.66, cw - 0.3, 0.26, who, size=8, color=SOFT)
+        cv.text(x + 0.18, top + 0.08, w - 0.3, 0.2, tag, size=7, bold=True, track=200,
+                color=SOFT if i == 0 else YELLOW, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.18, top + 0.66, w - 0.3, 0.26, who, size=8, color=SOFT)
     # pillar rows
     cv.label(X0, top + hh - 0.18, lw, "Pillar", color=YELLOW)
-    for r, (pillar, cells) in enumerate(AUTONOMY_ROWS):
+    for r, (pillar, (now, agi)) in enumerate(AUTONOMY_ROWS):
         y = ry + r * rh
         cv.rect(X0, y, W, 0.006, LINE_D)
         cv.text(X0, y + 0.06, 0.35, rh - 0.1, "%02d" % (r + 1), size=12, font=LIGHT, color=CYAN,
                 anchor=MSO_ANCHOR.MIDDLE)
         cv.text(X0 + 0.38, y + 0.06, lw - 0.4, rh - 0.1, pillar, size=11, bold=True, color=WHITE,
                 anchor=MSO_ANCHOR.MIDDLE)
-        for i, t in enumerate(cells):
-            cv.text(cx[i] + 0.18, y + 0.06, cw - 0.3, rh - 0.1, t, size=8.5,
-                    color=WHITE, bold=(i == 2), anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(cx[0] + 0.18, y + 0.04, cw[0] - 0.3, rh - 0.08,
+                [[("People  ", {"bold": True, "color": "F5A623"}), (now[0], {})],
+                 [("Agents  ", {"bold": True, "color": CYAN}), (now[1], {})]],
+                size=8.5, color=WHITE, anchor=MSO_ANCHOR.MIDDLE, after=2)
+        cv.text(cx[1] + 0.18, y + 0.06, cw[1] - 0.3, rh - 0.1, agi, size=8.5, color=WHITE, bold=True,
+                anchor=MSO_ANCHOR.MIDDLE)
     # what never changes
     by, bh = bottom + 0.16, 0.5
     cv.rect(X0, by, W, bh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.2)
@@ -728,7 +733,7 @@ def autonomy_slide(prs, layout):
                                                                                                 "color": WHITE}),
               ("and can see and stop any run.", {"color": SOFT})]], size=10, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(X0, by + bh + 0.06, W, 0.3,
-            "The AGI column is a direction, not a commitment in this proposal. Each step up in autonomy is earned with "
+            "The AGI (Artificial General Intelligence) column is a direction, not a commitment in this proposal. Each step up in autonomy is earned with "
             "evidence from the evaluation set and the change passport, and approved by Ascension. Today's harness "
             "already records what the next stage learns from.", size=6.5, color=SOFT)
     dark_footer(s)
@@ -739,17 +744,16 @@ def autonomy_slide(prs, layout):
 AUTONOMY_NOTES = """SLIDE: From a human-built harness to a self-harnessing one   (about 2 minutes)
 
 KEY MESSAGE
-What we propose today is a harness people build: people decide the context, the tools, the steps, the rules and how it learns, and agents work inside it. As models move toward AGI, the harness itself starts to improve: first by proposing changes that people approve, later by tuning itself inside limits people set. What never changes is who sets the goals and holds the final say.
+What we propose is a harness people build and approve: people decide the context, the tools, the steps, the rules and how it learns; agents work inside it and propose improvements, and people approve each one. As models move toward AGI, the harness starts to improve itself inside limits people set. What never changes is who sets the goals and holds the final say.
 
 WALK IT (left to right, then down the five pillars from the previous slide)
-- Today, human-harnessed: this proposal. People connect the sources and write the maps, grant each tool, design the nine-step run, write the Guardian rules and tune the agents.
-- Near term, human-approved: the same harness, but agents propose changes to it: a missing source, a new tool, a new rule drafted from an incident, a fix tested on the evaluation set. People approve each one. Much of this is a natural next step once the change passport and evaluation set have history.
-- Horizon, AGI, self-harnessed: the harness curates its own context, builds its own tools in a sandbox, plans its own workflow and writes and tests its own rules, continuously.
+- This proposal, human-harnessed and human-approved: people connect the sources and write the maps, grant each tool, design the nine-step run, write the Guardian rules and approve every fix. Agents propose: missing context, a new tool with its reason, a step to add or skip by risk, a rule drafted from an incident, a fix tested on the evaluation set. Nothing changes without a person's approval.
+- Horizon, AGI (Artificial General Intelligence), self-harnessed: the harness curates its own context, builds its own tools in a sandbox, plans its own workflow and writes and tests its own rules, continuously.
 
 WHY IT MATTERS FOR ASCENSION
 Investing in the harness now is not throw-away work: every run, approval, rejection and incident recorded today is exactly the evidence the next stage needs to earn more autonomy safely.
 
 IF ASKED
-- Is AGI part of this price or plan? No. The AGI column is a direction. The 18-month plan delivers the human-harnessed stage, with the records the next stage needs.
+- Is AGI part of this price or plan? No. The AGI column is a direction. The 18-month plan delivers the human-harnessed, human-approved harness, with the records the next stage needs.
 - When does autonomy increase? Only when the evaluation set and change passport show it is safe, and only with Ascension's approval, one pillar at a time.
 - Could it ever reach production on its own? Not in this design. Production stays with Ascension's owning teams and CAB at every stage."""
