@@ -1292,3 +1292,45 @@ Every step, attempt and wait is logged (change passport in BigQuery and Cloud Lo
 
 WHY FIVE
 Enough for an agent to correct itself on most failures, low enough to keep cost and time predictable. It is a setting; Ascension can change it per step."""
+
+
+def evals_scorecard_light_slide(prs, layout):
+    """The agent scorecard on white, in the style of the deck's light table slides."""
+    s = prs.slides.add_slide(layout)
+    cv = Canvas(s)
+    cv.header("ASCENSION MAD APPROACH · AGENT SCORECARD",
+              "Every agent has its own eval, not just the end result",
+              "A good end result can hide a weak agent. Each agent is scored on its own job against Ascension's "
+              "labelled examples, so a miss points straight at the agent to fix.")
+    X0, W = 0.45, 12.43
+    cols = [("Agent", 1.9), ("What we check", 3.15), ("Metric", 4.35), ("Labelled or judged by", 3.03)]
+    y = 1.3
+    x = X0
+    for name, w in cols:
+        cv.text(x + 0.12, y, w - 0.2, 0.3, name, size=9, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        x += w
+    cv.rect(X0, y + 0.34, W, 0.015, BLACK)
+    y += 0.4
+    rh = 0.52
+    for i, row in enumerate(EVAL_SCORECARD):
+        if i % 2 == 0:
+            cv.rect(X0, y, W, rh, GREY)
+        cv.rect(X0 + 0.04, y + rh / 2 - 0.05, 0.1, 0.1, CYAN)
+        x = X0
+        for j, ((_, w), v) in enumerate(zip(cols, row)):
+            pad = 0.24 if j == 0 else 0.12
+            cv.text(x + pad, y, w - pad - 0.08, rh, v, size=10 if j == 0 else 9, bold=(j in (0, 2)),
+                    color=NAVY if j == 2 else (BLACK if j < 2 else MUTE), anchor=MSO_ANCHOR.MIDDLE)
+            x += w
+        y += rh
+    cv.rect(X0, y, W, 0.015, BLACK)
+    by, bh = y + 0.18, 0.56
+    cv.rect(X0, by, W, bh, YELLOW_T, YELLOW, 1.0)
+    cv.text(X0 + 0.25, by, 2.4, bh, "HOW TARGETS ARE SET", size=7.5, bold=True, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(X0 + 2.55, by, W - 2.8, bh,
+            [[("Each target comes from the Phase 0 baseline and is agreed with Ascension. ", {"bold": True}),
+              ("Scores are reviewed monthly; a falling score sends that agent back through diagnose and tune.",
+               {"color": MUTE})]], size=9.5, anchor=MSO_ANCHOR.MIDDLE)
+    set_notes(s, EVALS_SCORECARD_NOTES)
+    return s
