@@ -689,7 +689,7 @@ def autonomy_slide(prs, layout):
     w2 = W - lw - gap - w1
     cx, cw = [X0 + lw, X0 + lw + w1 + gap], [w1, w2]
     top, hh = 1.3, 0.98
-    ry, rh = top + hh + 0.08, 0.66
+    ry, rh = top + hh + 0.08, 0.52
     bottom = ry + rh * len(AUTONOMY_ROWS) + 0.04
     # the AGI column: gradient frame around the whole column
     cv.frame(cx[1] - 0.04, top - 0.04, cw[1] + 0.08, bottom - top + 0.08, BLACK, 0.045)
@@ -723,19 +723,35 @@ def autonomy_slide(prs, layout):
                 size=8.5, color=WHITE, anchor=MSO_ANCHOR.MIDDLE, after=2)
         cv.text(cx[1] + 0.18, y + 0.06, cw[1] - 0.3, rh - 0.1, agi, size=8.5, color=WHITE, bold=True,
                 anchor=MSO_ANCHOR.MIDDLE)
-    # what never changes
-    by, bh = bottom + 0.16, 0.5
-    cv.rect(X0, by, W, bh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.2)
-    cv.text(X0 + 0.25, by, 2.4, bh, "WHAT NEVER CHANGES", size=7.5, bold=True, color=MAGENTA, track=200,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(X0 + 2.6, by, W - 2.85, bh,
-            [[("Ascension sets the goals and the limits, keeps the final say on production, ", {"bold": True,
-                                                                                                "color": WHITE}),
-              ("and can see and stop any run.", {"color": SOFT})]], size=10, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(X0, by + bh + 0.06, W, 0.3,
-            "The AGI (Artificial General Intelligence) column is a direction, not a commitment in this proposal. Each step up in autonomy is earned with "
-            "evidence from the evaluation set and the change passport, and approved by Ascension. Today's harness "
-            "already records what the next stage learns from.", size=6.5, color=SOFT)
+    # how we trust AGI: the highlight
+    ty, th = bottom + 0.16, 1.3
+    fx, fy, fw, fh = cv.frame(X0, ty, W, th, BLACK, 0.045)
+    cv.text(fx + 0.25, fy + 0.16, 2.5, 0.34, [[("HOW WE TRUST ", {"color": WHITE}), ("AGI", {"color": YELLOW})]],
+            size=14, bold=True, track=100, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(fx + 0.25, fy + 0.52, 2.45, 0.66,
+            "Trust is earned with evidence, not assumed. AGI is held to the same tests and records as people, "
+            "applied every time.", size=8.5, color=SOFT)
+    pts = [("Earned step by step",
+            "Autonomy grows one pillar at a time, only after the evaluation set proves it safe."),
+           ("Every action on record",
+            "The change passport shows what it did, why, and on which evidence: anyone can audit it."),
+           ("Hard limits it cannot change",
+            "No production credential; patient-data rules and Ascension's goals stay fixed."),
+           ("People can always stop it",
+            "Any run can be paused and any change rolled back; CAB keeps the final say.")]
+    px0 = fx + 2.95
+    pw = (fx + fw - 0.2 - px0) / 4
+    for i, (t, d) in enumerate(pts):
+        x = px0 + i * pw
+        cv.rect(x - 0.12, fy + 0.2, 0.008, fh - 0.4, LINE_D)
+        cv.text(x + 0.02, fy + 0.16, pw - 0.2, 0.3, [[("%d  " % (i + 1), {"color": CYAN, "font": LIGHT}),
+                                                     (t, {})]], size=10, bold=True, color=WHITE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.02, fy + 0.52, pw - 0.2, 0.66, d, size=8.5, color=SOFT)
+    cv.text(X0, ty + th + 0.06, W, 0.3,
+            "The AGI (Artificial General Intelligence) column is a direction, not a commitment in this proposal. Each "
+            "step up in autonomy is approved by Ascension. Today's harness already records the evidence the next "
+            "stage is judged on.", size=6.5, color=SOFT)
     dark_footer(s)
     set_notes(s, AUTONOMY_NOTES)
     return s
@@ -756,4 +772,11 @@ Investing in the harness now is not throw-away work: every run, approval, reject
 IF ASKED
 - Is AGI part of this price or plan? No. The AGI column is a direction. The 18-month plan delivers the human-harnessed, human-approved harness, with the records the next stage needs.
 - When does autonomy increase? Only when the evaluation set and change passport show it is safe, and only with Ascension's approval, one pillar at a time.
-- Could it ever reach production on its own? Not in this design. Production stays with Ascension's owning teams and CAB at every stage."""
+- Could it ever reach production on its own? Not in this design. Production stays with Ascension's owning teams and CAB at every stage.
+
+HOW WE TRUST AGI (the highlighted panel)
+Why trust it at all: it is held to the same evidence as a person, and checked every time, which people cannot always do. How:
+1 Earned step by step: autonomy grows one pillar at a time, only when the evaluation set shows it performs at least as well as the human-approved process.
+2 Every action on record: the change passport records what it did, why, and on which evidence, so any decision can be audited.
+3 Hard limits it cannot change: no production credential, patient-data rules and Ascension's goals sit outside its reach.
+4 People can always stop it: any run can be paused, any change rolled back, and CAB keeps the final say."""
