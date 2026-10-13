@@ -540,33 +540,33 @@ IF ASKED
 
 
 # ================================================================== harness engineering
-# Six disciplines of harness engineering (as described by OpenAI's Codex team and
-# Martin Fowler, 2026), each mapped to where it lives in our harness.
+# Five pillars of harness engineering, each mapped to where it lives in our harness.
 HARNESS_PILLARS = [
-    ("Context engineering", "What the agent knows before it acts",
+    ("Context", "What the agent knows",
      ["Engineering Context Knowledge Graph from six sources",
       "Every fact cited to its source and snapshot",
+      "AGENTS.md in each Git repo: the map Codex reads first",
       "Each step gets a bounded, redacted context slice"]),
-    ("Agent legibility", "Make the estate readable to an agent",
-     ["AGENTS.md in each Git repo: the map Codex reads first",
-      "Points to Ascension standards, pod skills and graph tools",
-      "Versioned with the code; access follows repo permissions"]),
-    ("Architectural constraints", "Rules a machine enforces, not a reviewer",
-     ["Change Guardian rules (OPA) at design, commit, promotion",
-      "Code Analyzer, pre-commit and CI checks on every change",
-      "Gateway allow list; every output validated against its schema"]),
-    ("Feedback loops and evaluation", "Every miss makes the harness better",
+    ("Action", "What the agent is allowed to do",
+     ["Tools only through the MCP tool gateway",
+      "Each step has its own tool allow list",
+      "Three identities: read, develop, release",
+      "No agent holds a production credential"]),
+    ("Orchestration", "How the work flows",
+     ["Nine-step run loop on Cloud Workflows",
+      "One agent task per step, dispatched on Cloud Run",
+      "Checkpoints, retries and budgets in Firestore",
+      "A failed run resumes where it stopped"]),
+    ("Control", "Rules it cannot break",
+     ["Input and output guardrails on every request",
+      "Change Guardian rules (OPA) at design, commit and promotion",
+      "Code Analyzer and CI checks; schema-valid outputs",
+      "People approve at H1-H4 and CAB"]),
+    ("Feedback", "How it gets better",
      ["Evaluation set gates every prompt, skill or model change",
-      "Rejected outputs become new evaluation cases",
-      "Incidents become new Guardian rules"]),
-    ("Entropy management", "Spot decay early and tell the owners",
-     ["Weekly org health report per pod: unused fields, duplicate Flows",
-      "Stale Confluence pages flagged to their owners",
-      "Read-only: owners decide what to fix, through normal stories"]),
-    ("Observability and steering", "Humans steer; agents execute",
-     ["Change passport and gateway log record every action",
-      "Humans approve at H1-H4 and CAB; no agent reaches production",
-      "Risk-routed approvals spend people's attention where risk is"]),
+      "Rejected outputs become test cases; incidents become rules",
+      "Change passport and gateway log record every action",
+      "Weekly read-only org health report to each pod"]),
 ]
 
 
@@ -577,62 +577,71 @@ def harness_slide(prs, layout):
     cv = Canvas(s)
     dark_header(cv, "ASCENSION MAD APPROACH · HARNESS ENGINEERING",
                 "Harness engineering: we build the system around the model",
-                "Codex Enterprise is the engine. Harness engineering is the discipline of building everything around "
-                "it, so agents stay reliable at scale. Six disciplines, and where each lives in our harness.")
+                "Codex Enterprise is the engine. Harness engineering builds everything around it, so agents stay "
+                "reliable at scale. Five pillars, and where each lives in our harness.")
     ORANGE_LINE = "F5A623"
-    X0, W, gap = 0.45, 12.43, 0.2
-    cw = (W - 2 * gap) / 3
-    ch = 2.12
+    X0, W, gap = 0.45, 12.43, 0.15
+    # roof
+    cv.rect(X0, 1.3, W, 0.44, None, CYAN, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.5)
+    cv.text(X0, 1.3, W, 0.44, [[("THE AGENTIC HARNESS", {"bold": True, "track": 200, "color": CYAN}),
+                                ("     around Codex Enterprise, the engine Ascension already licenses",
+                                 {"color": SOFT})]], size=9, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # pillars
+    cw = (W - 4 * gap) / 5
+    py, ph = 1.86, 3.72
     for i, (name, means, items) in enumerate(HARNESS_PILLARS):
-        x = X0 + (i % 3) * (cw + gap)
-        y = 1.32 + (i // 3) * (ch + 0.16)
-        cv.rect(x, y, cw, ch, None, ORANGE_LINE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.06)
-        cv.text(x + 0.22, y + 0.14, 0.42, 0.3, "%02d" % (i + 1), size=16, font=LIGHT, color=CYAN,
+        x = X0 + i * (cw + gap)
+        cv.arrow(x + cw / 2, 1.74, x + cw / 2, py, CYAN, 1.0, dash="sysDot", head=False)
+        cv.rect(x, py, cw, ph, None, ORANGE_LINE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.05)
+        cv.text(x + 0.18, py + 0.14, 0.5, 0.36, "%02d" % (i + 1), size=18, font=LIGHT, color=CYAN,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.66, y + 0.12, cw - 0.8, 0.34, name, size=12, bold=True, color=WHITE,
+        cv.text(x + 0.18, py + 0.52, cw - 0.3, 0.36, name, size=15, bold=True, color=WHITE,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 0.22, y + 0.5, cw - 0.4, 0.22, means, size=8.5, color=SOFT)
-        cv.rect(x + 0.22, y + 0.78, cw - 0.4, 0.008, LINE_D)
-        cv.label(x + 0.22, y + 0.86, cw - 0.4, "In our harness", color=YELLOW)
-        cv.text(x + 0.22, y + 1.06, cw - 0.4, ch - 1.12,
-                [[("\u25aa  ", {"color": CYAN}), (t, {})] for t in items], size=8, color=WHITE, after=3)
-    by = 1.32 + 2 * ch + 0.16 + 0.14
-    bh = 0.62
+        cv.text(x + 0.18, py + 0.9, cw - 0.3, 0.22, means, size=8.5, color=SOFT)
+        cv.rect(x + 0.18, py + 1.2, cw - 0.36, 0.008, LINE_D)
+        cv.label(x + 0.18, py + 1.3, cw - 0.36, "In our harness", color=YELLOW)
+        slot = (ph - 1.62) / len(items)
+        for j, t in enumerate(items):           # own box per point, so wrapped lines hang under the text
+            iy = py + 1.56 + j * slot
+            cv.rect(x + 0.2, iy + 0.07, 0.06, 0.06, CYAN)
+            cv.text(x + 0.36, iy, cw - 0.5, slot - 0.08, t, size=9, color=WHITE)
+            if j:
+                cv.rect(x + 0.2, iy - 0.08, cw - 0.38, 0.006, "262626")
+    # operating rule
+    by, bh = py + ph + 0.14, 0.56
     cv.rect(X0, by, W, bh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.2)
     cv.text(X0 + 0.25, by, 2.4, bh, "THE OPERATING RULE", size=7.5, bold=True, color=MAGENTA, track=200,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.text(X0 + 2.6, by, W - 2.85, bh,
             [[("When an agent struggles, we fix the harness, not the prompt: ", {"bold": True, "color": WHITE}),
-              ("add the missing tool, rule, document or test once, and every pod benefits from the next run.",
+              ("add the missing tool, rule, document or test once, and every pod benefits.",
                {"color": SOFT})]], size=10, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(X0, by + bh + 0.06, W, 0.2,
             "Harness engineering as described by OpenAI's Codex team (\"Harness engineering\", February 2026) and "
-            "Martin Fowler; mapped here to the Ascension design. Health reports are read-only Review Agent runs: they "
-            "change nothing in the org.", size=6.5, color=SOFT)
+            "Martin Fowler; mapped here to the Ascension design. The org health report is a read-only Review Agent "
+            "run: it changes nothing in the org.", size=6.5, color=SOFT)
     dark_footer(s)
     set_notes(s, HARNESS_NOTES)
     return s
 
 
-HARNESS_NOTES = """SLIDE: Harness engineering   (about 2 minutes)
+HARNESS_NOTES = """SLIDE: Harness engineering, five pillars   (about 2 minutes)
 
 KEY MESSAGE
-The model is not the product; the harness is. Harness engineering is the discipline (named by OpenAI's Codex team in early 2026) of engineering everything around the model: what it knows, the rules it cannot break, how it learns from misses, and how quality is kept from decaying. Our design covers all six.
+The model is not the product; the harness is. Codex Enterprise is the engine Ascension already licenses. Harness engineering (named by OpenAI's Codex team in early 2026) is everything we build around it. Five pillars, and every one maps to something concrete in our design.
 
 WALK IT
-- 01 Context engineering: the knowledge graph. This is Phase 1.
-- 02 Agent legibility: every Salesforce repo carries a short AGENTS.md, the file Codex reads first. It is a map, not a manual: it points to Ascension standards, the pod's skills and the graph tools. OpenAI's team found one giant instruction file fails; a short map into versioned docs works.
-- 03 Architectural constraints: the Change Guardian rulebook, Code Analyzer, CI checks and the gateway allow list. Machines enforce the rules, so reviewers look at intent, not formatting.
-- 04 Feedback loops: the evaluation set gates every change to prompts, skills or models; every rejection and incident feeds back.
-- 05 Entropy management: a weekly, read-only org health report to each pod: unused fields, duplicate Flows, hardcoded IDs, and Confluence pages that no longer match the org. Nothing is cleaned automatically; the owners decide what to fix and raise normal stories for it.
-- 06 Observability and steering: change passport, gateway log, approvals. Humans steer; agents execute.
+- 01 Context, what the agent knows: the knowledge graph (Phase 1), cited facts, and a short AGENTS.md in each repo: a map Codex reads first that points to Ascension standards, the pod's skills and the graph tools. Each step only gets the slice it needs, with patient data redacted.
+- 02 Action, what it may do: every tool call goes through the MCP gateway, each step has its own allow list, three identities (read, develop, release), and no agent holds a production credential.
+- 03 Orchestration, how the work flows: the nine-step run on Cloud Workflows, one agent task per step, checkpoints, retries and budgets in Firestore; a failed run resumes where it stopped.
+- 04 Control, rules it cannot break: input and output guardrails, the Change Guardian rulebook, Code Analyzer and CI checks, and people approving at H1-H4 and CAB.
+- 05 Feedback, how it gets better: the evaluation set gates every change to prompts, skills or models; rejections become test cases and incidents become rules; the change passport records everything; each pod gets a weekly read-only org health report (unused fields, duplicate Flows, stale Confluence pages) and decides what to fix.
 
 THE RULE AT THE BOTTOM
 When an agent struggles, we do not tweak a prompt for one story. We find what was missing (a tool, a rule, a document, a test), add it to the harness once, and every pod gets it.
 
 IF ASKED
-- Where does AGENTS.md live? In each Git repo, next to the code, and versioned with it: not in Google Cloud. Harness agents read it from their own checkout of the repo, using the harness's development identity, so every run sees it.
-- What if someone does not have access to the repo? Then they cannot see AGENTS.md, and they cannot start a run on that repo either: intake checks that the user belongs to the pod. Access follows Ascension's existing repo permissions; the harness does not widen them.
-- Does the health report change anything? No. It is a read-only scheduled run of the Review Agent. Fixes go through the same stories and gates as any other change.
-- Does this change the team or the price? No. AGENTS.md files are part of the pod skill packs; the report reuses the Review Agent.
+- Where does AGENTS.md live? In each Git repo, next to the code, versioned with it: not in Google Cloud. Harness agents read it from their own checkout, using the harness's development identity, so every run sees it.
+- What if someone does not have access to the repo? Then they cannot see AGENTS.md, and they cannot start a run on that repo either: intake checks that the user belongs to the pod. Access follows Ascension's existing repo permissions.
+- Does the health report change anything? No. It is a read-only scheduled run of the Review Agent; fixes go through normal stories and gates.
 - Where does the term come from? OpenAI's "Harness engineering: leveraging Codex in an agent-first world" (February 2026) and Martin Fowler's notes on it."""
