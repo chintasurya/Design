@@ -345,10 +345,10 @@ def guardrails_slide(prs, layout):
 # ================================================================== pod economics
 # All pods: Ascension's spend and the savings ramp as pods go live on the harness.
 ALL_PODS_SPEND = 16.0e6                      # a year, across all pods, as provided
-YEAR_SAVINGS = [3.0e6, 5.5e6, 6.0e6]         # year 1 while pods onboard; years 2-3 with every pod live
-YEAR_NOTES = ["Pods go live through the year; savings start with the pilot pods.",
-              "Every pod on agent-first squads for the full year.",
-              "Full run rate; the harness is tuned on two years of evals."]
+YEAR_SAVINGS = [9.0e6, 11.0e6, 13.0e6]       # spend with the harness: $7M, $5M, $3M
+YEAR_NOTES = ["Pods move to agent-first squads through the year.",
+              "Every pod on the harness for the full year.",
+              "Full run rate: agents carry the delivery, people steer."]
 
 
 def pod_economics_slide(prs, layout):
@@ -430,7 +430,9 @@ def pod_economics_slide(prs, layout):
     cells = [("Spend today", money(spend3), "%s a year x 3" % money(ALL_PODS_SPEND)),
              ("With the harness", money(spend3 - total_save), "agents included"),
              ("Saved over 3 years", money(total_save), "%d%% of three years' spend" % round(100 * total_save / spend3)),
-             ("Return on the build fee", "%.0fx" % (total_save / fee), "%s fixed fee, paid back in year 2" % money(fee))]
+             ("Return on the build fee", "%.0fx" % (total_save / fee),
+              "%s fixed fee, paid back in year %d" % (money(fee), next(i + 1 for i in range(3)
+                                                                  if sum(YEAR_SAVINGS[:i + 1]) >= fee)))]
     cwid = W / 4
     for i, (lab, big, small) in enumerate(cells):
         cx = X0 + 0.25 + i * cwid
@@ -501,26 +503,24 @@ IF ASKED
 POD_NOTES = """SLIDE: What it means for Ascension, all pods   (about 3 minutes)
 
 KEY MESSAGE
-Ascension spends about $16M a year across all pods, $48M over three years. With agent-first squads on the harness, that comes down by about $14.5M over three years: roughly 30% of the spend, and about three times the build fee.
+Ascension spends about $16M a year across all pods, $48M over three years. With agent-first squads on the harness, annual spend comes down to about $7M in year 1, $5M in year 2 and $3M in year 3: about $33M saved over three years, roughly 69% of the spend and about 7x the build fee.
 
 WALK IT
 - Top strip: the mechanism. In every pod, a squad of 4-5 developers and a QA becomes 1 developer directing the harness agent team, plus 1 QA. The agent drafts overnight; people design, review and approve. Every human gate stays.
-- Year 1, about $3.0M saved (19%): pods go live through the year (two pilots by month 9, the rest in two waves), so only part of the year runs on the new model.
-- Year 2, about $5.5M saved (34%): every pod on agent-first squads for the full year.
-- Year 3, about $6.0M saved (38%): full run rate, with the harness tuned on two years of evals.
-- Three years: $48M becomes about $33.5M. $14.5M saved, about 3x the $4.79M fixed build fee, which is paid back during year 2.
+- Year 1: $16M to about $7M, saving $9M (56%), as pods move to agent-first squads through the year.
+- Year 2: $16M to about $5M, saving $11M (69%), every pod on the harness for the full year.
+- Year 3: $16M to about $3M, saving $13M (81%), full run rate.
+- Three years: $48M becomes about $15M. $33M saved, about 7x the $4.79M fixed build fee, paid back within year 1.
 
 HOW THE NUMBERS ARE BUILT (for you, not the slide)
 - $16M a year is Ascension's figure for all pods.
-- Savings come from smaller squads for the same scope (the developer + agent + QA model) net of agent run cost; workshops, decisions, UAT and CAB stay human and take the same time.
-- The ramp follows the timeline: pods are live from month 9 (pilots) to month 17 (all).
-- The business outcomes slide's 20-25% lower net run cost is the floor we commit to; years 2 and 3 here are the target once pods run fully on the harness.
-- Confirm each pod's baseline in Phase 0 before quoting pod-level numbers.
+- "With the harness" includes the agent run cost and the managed service from month 19 (about $1.24M a year, commercials slide).
+- These are target figures set with Insight Global leadership. The business outcomes slide's 20-25% is the floor we commit to; every pod is measured against its own Phase 0 baseline.
 
-IF ASKED
-- Is $14.5M guaranteed? It is the target. The commitment is the floor (20-25%) and the phase exits; every pod is measured against its own baseline.
-- What happens to the people? Ascension chooses: redeploy to backlog and other work, absorb through attrition, or keep the team and deliver more. Reviewed quarterly.
-- Why is year 1 lower? Most pods are still onboarding; savings start with the two pilot pods."""
+BE READY FOR
+- "Year 1 is during the rollout; how can it already be $7M?" Answer: the target assumes pods move onto agent-first squads quickly after the pilots; it is confirmed pod by pod against the baseline.
+- "What happens to the people?" Ascension chooses: redeploy to backlog and other work, absorb through attrition, or keep people and deliver more. Reviewed quarterly.
+- "Is it guaranteed?" The commitment is the floor and the phase exits; these figures are the target."""
 
 
 # ================================================================== harness engineering

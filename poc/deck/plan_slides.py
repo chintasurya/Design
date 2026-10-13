@@ -521,7 +521,9 @@ def commercials_slide(prs, layout):
     cv.text(RX + 0.14, vy + 0.3, RW - 0.28, vh - 0.36, [
         [("Across all pods, about %s saved over three years " % story_slides.money(save3), {"color": WHITE}),
          ("(%s a year today)." % story_slides.money(story_slides.ALL_PODS_SPEND), {"color": "BFBFBF"})],
-        [("That is about %.0fx the build fee, paid back during year 2." % (save3 / fixed), {"color": WHITE})],
+        [("That is about %.0fx the build fee, paid back during year %d." % (
+            save3 / fixed, next(i + 1 for i in range(3) if sum(story_slides.YEAR_SAVINGS[:i + 1]) >= fixed)),
+          {"color": WHITE})],
         [("Floor across all pods: 20-25% lower net run cost (business outcomes slide).", {"color": "BFBFBF"})],
     ], size=9, after=6)
     cv.text(X0, CONTENT_FLOOR - 0.36, tw, 0.34,
