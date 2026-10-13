@@ -799,7 +799,7 @@ MAX_ATTEMPTS = 5
 GREEN = "56E13B"
 REPORT_FIELDS = [
     ("Time", "per step and end to end, story to release"),
-    ("Attempts", "how many times each step ran (1-5), and why"),
+    ("Attempts", "pass@1 to pass@5: how many attempts each step needed, and why"),
     ("Re-run time", "time and cost spent on attempts 2 to 5"),
     ("Waiting time", "how long each human gate held the run"),
     ("Cost", "tokens and cloud cost per run, per pod"),
@@ -930,3 +930,201 @@ IF ASKED
 - Why five? Enough for an agent to correct itself on most failures, low enough to keep cost and time predictable. It is a setting; Ascension can change it per step.
 - What does a stopped run cost us? Only the attempts made, and they are in the report. Nothing reaches any environment beyond DEV without passing the checks.
 - Can we see this live? Yes: the same log feeds a dashboard per story, pod and agent."""
+
+
+
+# ================================================================== closed-loop evals
+EVAL_LOOP = [
+    ("Golden set", "Past Ascension changes labelled by your experts against a written rubric: every pod, cloud, "
+                   "change type and risk level."),
+    ("Offline gate", "Every prompt, skill or model change must pass before use: per-agent scores, pass@1 to "
+                     "pass@5."),
+    ("Guarded run", "Live runs checked at every step; stop after 5 attempts; when unsure, stop rather than ship."),
+    ("Sample + label", "Each week a sample of approved changes is re-reviewed blind by Ascension experts, same "
+                       "rubric."),
+    ("Diagnose", "A diagnoser run pins each miss to the agent, step or missing context that caused it."),
+    ("Tune + re-test", "Fix the harness: context, skill, rule or prompt. Re-run the golden set, then release."),
+]
+EVAL_METRICS = [
+    ("pass@k", "share of steps that pass on attempt 1, and by attempt 5"),
+    ("Agent scores", "each agent on its own job: next slide"),
+    ("Judge agreement", "Review Agent verdicts vs human reviewers"),
+    ("Online agreement", "weekly blind sample vs the agents' result"),
+    ("Escaped defects", "found in UAT or production, vs baseline"),
+    ("Cost per story", "tokens, cloud and re-run time"),
+]
+
+
+def evals_loop_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg(s, BLACK)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · CLOSED-LOOP EVALS",
+                "Closed-loop evals: every agent is measured, every miss makes it better",
+                "Evals prove the harness works before Ascension relies on it, and keep it improving after. Offline "
+                "tests and live results feed one loop.")
+    # loop as two rows: 1 2 3 left to right, then 4 5 6 right to left, back up to 1
+    bw, bh, gx = 2.18, 1.24, 0.26
+    xs = [0.5 + i * (bw + gx) for i in range(3)]
+    y1, y2 = 1.42, 4.62
+    pos = [(xs[0], y1), (xs[1], y1), (xs[2], y1), (xs[2], y2), (xs[1], y2), (xs[0], y2)]
+    for i, (name, desc) in enumerate(EVAL_LOOP):
+        bx, by = pos[i]
+        cv.rect(bx, by, bw, bh, BLACK, "F5A623", 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.12)
+        cv.text(bx + 0.12, by + 0.08, 0.32, 0.28, str(i + 1), size=13, font=LIGHT, color=CYAN,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(bx + 0.44, by + 0.08, bw - 0.52, 0.28, name, size=10.5, bold=True, color=WHITE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(bx + 0.14, by + 0.42, bw - 0.26, bh - 0.46, desc, size=7.5, color=SOFT)
+    for i in (0, 1):                                        # top row, rightwards
+        cv.arrow(xs[i] + bw + 0.02, y1 + bh / 2, xs[i + 1] - 0.02, y1 + bh / 2, CYAN, 1.5)
+    for i in (2, 1):                                        # bottom row, leftwards
+        cv.arrow(xs[i] - 0.02, y2 + bh / 2, xs[i - 1] + bw + 0.02, y2 + bh / 2, CYAN, 1.5)
+    cv.arrow(xs[2] + bw / 2, y1 + bh + 0.04, xs[2] + bw / 2, y2 - 0.04, CYAN, 1.5)   # 3 down to 4
+    cv.arrow(xs[0] + bw / 2, y2 - 0.04, xs[0] + bw / 2, y1 + bh + 0.04, CYAN, 1.5)   # 6 up to 1
+    mid = (y1 + bh + y2) / 2
+    cv.text(xs[1], mid - 0.5, bw, 0.3, "CLOSED-LOOP", size=11, bold=True, color=CYAN, track=150,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(xs[1], mid - 0.2, bw, 0.4, "EVALS", size=22, bold=True, color=WHITE, track=150,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(xs[1] - 0.3, mid + 0.22, bw + 0.6, 0.3, "offline tests and live results, one loop that never stops",
+            size=7.5, color=SOFT, align=PP_ALIGN.CENTER)
+    # what we measure
+    mx, my, mw, mh = 7.75, 1.32, 5.13, 3.1
+    cv.rect(mx, my, mw, mh, None, CYAN, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.05)
+    cv.label(mx + 0.22, my + 0.16, mw - 0.4, "What we measure", color=YELLOW)
+    rh_ = (mh - 0.55) / len(EVAL_METRICS)
+    for i, (k, d) in enumerate(EVAL_METRICS):
+        y = my + 0.45 + i * rh_
+        if i:
+            cv.rect(mx + 0.22, y - 0.02, mw - 0.44, 0.006, LINE_D)
+        cv.text(mx + 0.22, y, 1.6, rh_ - 0.04, k, size=9.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(mx + 1.85, y, mw - 2.05, rh_ - 0.04, d, size=8, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+    # proven pattern
+    py_ = my + mh + 0.14
+    fx, fy, fw, fh = cv.frame(mx, py_, mw, 1.52, BLACK, 0.04)
+    cv.text(fx + 0.18, fy + 0.1, fw - 0.36, 0.24, "PROVEN AT SCALE", size=7.5, bold=True, color=YELLOW, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(fx + 0.18, fy + 0.38, fw - 0.36, fh - 0.44,
+            [[("Uber Eats runs its food-photo agent on the same closed loop: ", {"bold": True, "color": WHITE}),
+              ("human-labelled golden sets, pass@k, a QA gate before publishing, human labels on production samples "
+               "and a diagnoser that triggers tuning.", {"color": SOFT})],
+             [("Uber, AI Engineer World's Fair 2026", {"color": SOFT, "size": 6.5})]], size=8, after=4)
+    # anti-gaming
+    gy, gh = 6.1, 0.5
+    cv.rect(0.45, gy, 12.43, gh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.25)
+    cv.text(0.7, gy, 2.4, gh, "NO GAMING THE EVALS", size=7.5, bold=True, color=MAGENTA, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(3.0, gy, 9.7, gh,
+            [[("Agents cannot edit tests or the evaluation set; ", {"bold": True, "color": WHITE}),
+              ("a held-out set no agent ever sees; any change that deletes or weakens a test is blocked by the "
+               "Guardian.", {"color": SOFT})]], size=9, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, EVALS_LOOP_NOTES)
+    return s
+
+
+EVAL_SCORECARD = [
+    ("Orchestrator", "Routes the story and sets its risk level",
+     "Precision and recall of risk level; high-risk recall kept highest", "Architects label a sample"),
+    ("Requirements", "Brief and acceptance criteria match the intent",
+     "First-pass acceptance at H1; edits per brief", "Product owners at H1"),
+    ("Architect", "Impact, reuse and owners are right",
+     "Agreement with architects on replayed past changes", "Architects"),
+    ("Developer", "Code passes every check",
+     "pass@1 and pass@5; attempts per story", "Automatic: tests, Code Analyzer, Guardian"),
+    ("Review", "Its verdict matches a human reviewer",
+     "Judge agreement with tech leads", "Tech leads at H3"),
+    ("Test", "Defects are caught before UAT",
+     "Escaped defects in UAT and production vs baseline", "QA and UAT results"),
+    ("Release", "Package deploys cleanly",
+     "Deployment success; rollbacks per release", "Copado results"),
+    ("Change Guardian", "Blocks what it should, passes what it should",
+     "Missed conflicts and false blocks", "Pod owners review every block"),
+]
+
+
+def evals_scorecard_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg(s, BLACK)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · AGENT SCORECARD",
+                "Every agent has its own eval, not just the end result",
+                "A good end result can hide a weak agent. Each agent is scored on its own job against Ascension's "
+                "labelled examples, so a miss points straight at the agent to fix.")
+    X0, W = 0.45, 12.43
+    cols = [("Agent", 1.9), ("What we check", 3.15), ("Metric", 4.35), ("Labelled or judged by", 3.03)]
+    y = 1.32
+    x = X0
+    for name, w in cols:
+        cv.text(x + 0.12, y, w - 0.2, 0.3, name.upper(), size=7.5, bold=True, color=YELLOW, track=150,
+                anchor=MSO_ANCHOR.MIDDLE)
+        x += w
+    cv.rect(X0, y + 0.34, W, 0.012, "F5A623")
+    y += 0.42
+    rh = 0.5
+    for i, row in enumerate(EVAL_SCORECARD):
+        if i % 2 == 0:
+            cv.rect(X0, y, W, rh, "141414")
+        x = X0
+        for j, ((_, w), v) in enumerate(zip(cols, row)):
+            cv.text(x + 0.12, y, w - 0.2, rh, v, size=10 if j == 0 else 8.5, bold=(j == 0),
+                    color=CYAN if j == 2 else (WHITE if j < 2 else SOFT), anchor=MSO_ANCHOR.MIDDLE)
+            x += w
+        y += rh
+    cv.rect(X0, y, W, 0.012, "F5A623")
+    by, bh = y + 0.16, 0.5
+    cv.rect(X0, by, W, bh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.25)
+    cv.text(X0 + 0.25, by, 2.4, bh, "HOW TARGETS ARE SET", size=7.5, bold=True, color=MAGENTA, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(X0 + 2.55, by, W - 2.8, bh,
+            [[("Each target comes from the Phase 0 baseline and is agreed with Ascension. ", {"bold": True,
+                                                                                            "color": WHITE}),
+              ("Scores are reviewed monthly; a falling score sends that agent back through diagnose and tune.",
+               {"color": SOFT})]], size=9, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, EVALS_SCORECARD_NOTES)
+    return s
+
+
+EVALS_LOOP_NOTES = """SLIDE: Closed-loop evals   (about 2 minutes)
+
+KEY MESSAGE
+Evals are how we prove the harness works before Ascension relies on it, and how it keeps getting better after. Offline tests and live results feed one loop that never stops.
+
+WALK THE LOOP (clockwise from the top)
+1 Golden set: real past Ascension changes, labelled by your own experts against a written rubric, covering every pod, cloud, change type and risk level.
+2 Offline gate: no prompt, skill or model change goes live unless it passes, scored per agent and as pass@1 to pass@5.
+3 Guarded run: every live step is checked; a step stops after five attempts; when the system is unsure it stops rather than ships.
+4 Sample and label: each week a sample of approved changes is re-reviewed blind by Ascension experts with the same rubric, so we see drift that offline tests miss.
+5 Diagnose: a diagnoser run pins each miss on the agent, step or missing context that caused it.
+6 Tune and re-test: we fix the harness, re-run the golden set, and only then release the fix. Back to 1: the new case joins the golden set.
+
+NO GAMING THE EVALS
+An agent judged by tests can learn to weaken the tests. So agents cannot edit tests or the evaluation set, a held-out set is never shown to any agent, and the Guardian blocks any change that deletes or weakens a test.
+
+PROVEN AT SCALE
+Uber presented the same closed-loop pattern for the Uber Eats food-photo agent at AI Engineer World's Fair 2026: human-labelled golden sets, pass@k, a QA gate before publishing, human labels on production samples, and a diagnoser that triggers tuning. Different domain, same discipline.
+
+IF ASKED
+- Who labels the golden set? Ascension's architects, tech leads and product owners, about a few hours a week in Phase 1 and the pilots, against a rubric we write together.
+- Isn't the AI marking its own homework? No: tests, the Guardian and humans judge; the Review Agent's verdicts are themselves measured against human reviewers."""
+
+EVALS_SCORECARD_NOTES = """SLIDE: Agent scorecard   (about 2 minutes)
+
+KEY MESSAGE
+We do not only measure whether a story ended well. Each agent is scored on its own job, so when something slips we know exactly which agent to fix.
+
+WALK IT
+- Orchestrator: is the risk level right? Precision and recall against architects' labels, with recall on high-risk changes kept highest: missing a risky change costs more than over-flagging a safe one.
+- Requirements: does the brief match what the product owner meant? First-pass acceptance at H1.
+- Architect: are impact, reuse and owners right? Agreement with architects on replayed past changes; the Phase 1 exit asks for at least 90%.
+- Developer: pass@1 and pass@5: how often code passes first time, and by the fifth attempt.
+- Review: the Review Agent is a judge, so we check the judge: its verdicts against tech leads' at H3.
+- Test: defects escaping to UAT and production, against the baseline.
+- Release: deployments that succeed, and rollbacks.
+- Change Guardian: conflicts it missed, and blocks that were not needed.
+
+IF ASKED
+- What are the targets? Set from the Phase 0 baseline and agreed with Ascension, reviewed monthly.
+- What happens when a score falls? That agent goes back through diagnose and tune on the closed loop; the fix must pass the golden set before release."""
