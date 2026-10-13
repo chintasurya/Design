@@ -537,3 +537,111 @@ IF ASKED
 - How does this square with 20-25% on the business outcomes slide? That is the conservative floor we commit to across all pods. This is the target once a pod runs fully on agent-first squads.
 - Can one developer really do the work of four? Not alone: the agent drafts the code, tests and deployment package, and the developer reviews and approves. Measured so far: Health Cloud changes in 2-4 days instead of 1-2 weeks, campaigns in 15-20 days instead of about 90.
 - What happens to the people? Ascension chooses: move them to other pods and backlog, absorb through attrition, or keep them and clear more work. Changes are reviewed quarterly."""
+
+
+# ================================================================== harness engineering
+# Six disciplines of harness engineering (as described by OpenAI's Codex team and
+# Martin Fowler, 2026), each mapped to where it lives in our harness. "added" marks
+# the practices this slide adds to the design.
+HARNESS_PILLARS = [
+    ("Context engineering", "What the agent knows before it acts", False,
+     ["Engineering Context Knowledge Graph from six sources",
+      "Every fact cited to its source and snapshot",
+      "Each step gets a bounded, redacted context slice"]),
+    ("Agent legibility", "Make the estate readable to an agent", True,
+     ["AGENTS.md in each repo: the map Codex reads first",
+      "Points to Ascension standards, pod skill packs and graph tools",
+      "Docs and skills kept in the repo, versioned with the code"]),
+    ("Architectural constraints", "Rules a machine enforces, not a reviewer", False,
+     ["Change Guardian rulebook (OPA) on design, commit and promotion",
+      "Code Analyzer, pre-commit and CI checks on every change",
+      "Gateway allow list; every output validated against its schema"]),
+    ("Feedback loops and evaluation", "Every miss makes the harness better", False,
+     ["Evaluation set gates every prompt, skill or model change",
+      "Rejected outputs become new evaluation cases",
+      "Incidents become new Guardian rules"]),
+    ("Entropy management", "Scheduled clean-up so quality does not decay", True,
+     ["Nightly org clean-up: unused fields, duplicate Flows",
+      "Doc gardening: stale Confluence pages get fix-up drafts",
+      "Graph freshness and coverage checked every night"]),
+    ("Observability and steering", "Humans steer; agents execute", False,
+     ["Change passport and gateway log record every action",
+      "Humans approve at H1-H4 and CAB; no agent reaches production",
+      "Risk-routed approvals spend people's attention where risk is"]),
+]
+
+
+def harness_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    cv = Canvas(s)
+    cv.header("ASCENSION MAD APPROACH · HARNESS ENGINEERING",
+              "Harness engineering: we build the system around the model",
+              "Codex Enterprise is the engine. Harness engineering is the discipline of building everything around it, "
+              "so agents stay reliable at scale. Six disciplines, and where each lives in our harness.")
+    X0, W, gap = 0.45, 12.43, 0.2
+    cw = (W - 2 * gap) / 3
+    ch = 2.12
+    # key on the eyebrow line
+    kx = X0 + W - 3.9
+    cv.frame(kx, 0.225, 0.34, 0.15, WHITE, 0.035)
+    cv.text(kx + 0.42, 0.21, 3.5, 0.18, [[("ADDED", {"bold": True, "track": 150}),
+                                          ("   new in our design from harness engineering", {"color": MUTE})]],
+            size=6.5, anchor=MSO_ANCHOR.MIDDLE)
+    for i, (name, means, added, items) in enumerate(HARNESS_PILLARS):
+        x = X0 + (i % 3) * (cw + gap)
+        y = 1.32 + (i // 3) * (ch + 0.16)
+        if added:
+            x_, y_, w_, h_ = cv.frame(x, y, cw, ch, WHITE)
+        else:
+            cv.rect(x, y, cw, ch, WHITE, RULE)
+            x_, y_, w_, h_ = x, y, cw, ch
+        cv.text(x_ + 0.18, y_ + 0.14, 0.4, 0.3, "%02d" % (i + 1), size=16, font=LIGHT, color=MUTE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x_ + 0.62, y_ + 0.12, w_ - 1.6, 0.34, name, size=12, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        tag = "ADDED" if added else "IN PLACE"
+        tw_ = 0.16 + 0.066 * len(tag)
+        cv.rect(x_ + w_ - tw_ - 0.14, y_ + 0.2, tw_, 0.17, BLACK if not added else MAGENTA, None,
+                shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
+        cv.text(x_ + w_ - tw_ - 0.14, y_ + 0.2, tw_, 0.17, tag, size=5.5, bold=True, color=WHITE,
+                align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=100)
+        cv.text(x_ + 0.18, y_ + 0.5, w_ - 0.36, 0.22, means, size=8.5, color=MUTE)
+        cv.rect(x_ + 0.18, y_ + 0.78, w_ - 0.36, 0.01, RULE)
+        cv.label(x_ + 0.18, y_ + 0.86, w_ - 0.36, "In our harness")
+        cv.text(x_ + 0.18, y_ + 1.06, w_ - 0.36, h_ - 1.12,
+                [[("▪  ", {"color": CYAN}), (t, {})] for t in items], size=8, after=3)
+    by = 1.32 + 2 * ch + 0.16 + 0.14
+    bh = 0.62
+    cv.rect(X0, by, W, bh, BLACK)
+    cv.text(X0 + 0.25, by, 2.4, bh, "THE OPERATING RULE", size=7.5, bold=True, color=YELLOW, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(X0 + 2.6, by, W - 2.85, bh,
+            [[("When an agent struggles, we fix the harness, not the prompt: ", {"bold": True, "color": WHITE}),
+              ("add the missing tool, rule, document or test once, and every pod benefits from the next run.",
+               {"color": SOFT})]], size=10, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(X0, by + bh + 0.06, W, 0.2,
+            "Harness engineering as described by OpenAI's Codex team (\"Harness engineering\", February 2026) and "
+            "Martin Fowler; mapped here to the Ascension design. Clean-up and doc gardening run as scheduled Review "
+            "Agent runs: no new agent, and every fix still goes through the same gates.", size=6.5, color=MUTE)
+    set_notes(s, HARNESS_NOTES)
+    return s
+
+
+HARNESS_NOTES = """SLIDE: Harness engineering   (about 2 minutes)
+
+KEY MESSAGE
+The model is not the product; the harness is. Harness engineering is the emerging discipline (named by OpenAI's Codex team in early 2026) of engineering everything around the model: what it knows, the rules it cannot break, how it learns from misses, and how quality is kept from decaying. Our design covers all six; two practices are added from that work.
+
+WALK IT
+- 01 Context engineering: the knowledge graph. This is Phase 1.
+- 02 Agent legibility (added): every Salesforce repo gets a short AGENTS.md, the file Codex reads first. It is a map, not a manual: it points to Ascension standards, the pod's skill pack and the graph tools. OpenAI's team found one giant instruction file fails; a short map into versioned docs works.
+- 03 Architectural constraints: the Change Guardian rulebook, Code Analyzer, CI checks and the gateway allow list. Machines enforce the rules, so reviewers look at intent, not formatting.
+- 04 Feedback loops: the evaluation set gates every change to prompts, skills or models; every rejection and incident feeds back.
+- 05 Entropy management (added): scheduled clean-up runs, what OpenAI calls garbage collection. Nightly scans for org drift (unused fields, duplicate Flows, hardcoded IDs) and doc gardening: Confluence pages that no longer match the org get a fix-up draft for the owner. These are scheduled runs of the Review Agent, not a new agent, and every fix goes through the same gates.
+- 06 Observability and steering: change passport, gateway log, approvals. Humans steer; agents execute.
+
+THE RULE AT THE BOTTOM
+When an agent struggles, we do not tweak a prompt for one story. We find what was missing (a tool, a rule, a document, a test), add it to the harness once, and every pod gets it.
+
+IF ASKED
+- Does this change the team or the price? No. AGENTS.md files are written by the harness engineers with the Salesforce developers as part of the pod skill packs; clean-up runs reuse the Review Agent.
+- Where does the term come from? OpenAI's "Harness engineering: leveraging Codex in an agent-first world" (February 2026) and Martin Fowler's notes on it."""

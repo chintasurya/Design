@@ -14,6 +14,7 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
 import plan_slides
+import story_slides
 from build_mad_ig_deck import HERE, TXT, rgb
 from reword import reword_slide
 
@@ -28,6 +29,7 @@ REFRESH = {
 
 # New slides, inserted right after the slide with this eyebrow
 INSERT_AFTER = {
+    "ASCENSION MAD APPROACH · PLATFORM": story_slides.harness_slide,
     "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.exits_slide,
 }
 
