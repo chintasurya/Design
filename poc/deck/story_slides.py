@@ -1055,26 +1055,33 @@ def evals_scorecard_slide(prs, layout):
                 "labelled examples, so a miss points straight at the agent to fix.")
     X0, W = 0.45, 12.43
     cols = [("Agent", 1.9), ("What we check", 3.15), ("Metric", 4.35), ("Labelled or judged by", 3.03)]
-    y = 1.32
+    y = 1.3
     x = X0
     for name, w in cols:
         cv.text(x + 0.12, y, w - 0.2, 0.3, name.upper(), size=7.5, bold=True, color=YELLOW, track=150,
                 anchor=MSO_ANCHOR.MIDDLE)
         x += w
     cv.rect(X0, y + 0.34, W, 0.012, "F5A623")
-    y += 0.42
+    y += 0.4
     rh = 0.5
     for i, row in enumerate(EVAL_SCORECARD):
         if i % 2 == 0:
-            cv.rect(X0, y, W, rh, "141414")
+            cv.rect(X0, y, W, rh, "1C1C1C")
+        cv.rect(X0 + 0.04, y + rh / 2 - 0.05, 0.1, 0.1, CYAN)
         x = X0
         for j, ((_, w), v) in enumerate(zip(cols, row)):
-            cv.text(x + 0.12, y, w - 0.2, rh, v, size=10 if j == 0 else 8.5, bold=(j == 0),
+            pad = 0.24 if j == 0 else 0.12
+            cv.text(x + pad, y, w - pad - 0.08, rh, v, size=10 if j == 0 else 9, bold=(j in (0, 2)),
                     color=CYAN if j == 2 else (WHITE if j < 2 else SOFT), anchor=MSO_ANCHOR.MIDDLE)
             x += w
         y += rh
     cv.rect(X0, y, W, 0.012, "F5A623")
-    by, bh = y + 0.16, 0.5
+    cv.text(X0, y + 0.06, W, 0.22,
+            [[("pass@k ", {"bold": True, "color": CYAN}),
+              ("= the share of steps that pass all checks within k attempts. pass@1: right first time. pass@5: "
+               "right by the fifth and last attempt; the gap between them shows how much rework the agent needs.",
+               {"color": SOFT})]], size=8, anchor=MSO_ANCHOR.MIDDLE)
+    by, bh = y + 0.36, 0.5
     cv.rect(X0, by, W, bh, None, WHITE, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.25)
     cv.text(X0 + 0.25, by, 2.4, bh, "HOW TARGETS ARE SET", size=7.5, bold=True, color=MAGENTA, track=200,
             anchor=MSO_ANCHOR.MIDDLE)
@@ -1125,6 +1132,9 @@ WALK IT
 - Test: defects escaping to UAT and production, against the baseline.
 - Release: deployments that succeed, and rollbacks.
 - Change Guardian: conflicts it missed, and blocks that were not needed.
+
+WHAT IS PASS@K
+pass@k is the share of steps that pass every check within k attempts. pass@1 is "right first time". pass@5 is "right by the fifth attempt", which is the last one before the step stops and an owner takes over. Example: if 100 build steps run and 70 pass on the first attempt and 95 pass by the fifth, pass@1 is 70% and pass@5 is 95%; the other 5 stopped and went to a person. A high pass@5 with a low pass@1 means the agent gets there, but with a lot of rework.
 
 IF ASKED
 - What are the targets? Set from the Phase 0 baseline and agreed with Ascension, reviewed monthly.
