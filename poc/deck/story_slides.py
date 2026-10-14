@@ -1937,19 +1937,31 @@ def evals_hub_slide(prs, layout):
     cv = Canvas(s)
     dark_header(cv, "ASCENSION MAD APPROACH · EVALS AND RELIABILITY",
                 "Evals are how we earn reliability",
-                "Reliability = observability + evals, inside guardrails. Every output is tested before it moves on, "
-                "and every miss becomes a new test.")
+                "AI is non-deterministic, so reliability is earned run by run: every output is tested before it "
+                "moves on, and every miss becomes a new test.")
+    # the formula on top
+    X0, W = 0.45, 12.43
+    ey, eh = 1.3, 0.52
+    glass(cv, X0, ey, W, eh, WHITE, alpha=40, radius=0.5)
+    cv.text(X0, ey, W, eh,
+            [[("RELIABILITY", {"bold": True, "color": WHITE}), ("   =   ", {"color": SOFT}),
+              ("OBSERVABILITY", {"bold": True, "color": CYAN}), ("   +   ", {"color": SOFT}),
+              ("EVALS", {"bold": True, "color": YELLOW}),
+              ("        protected by ", {"color": SOFT, "size": 10}),
+              ("GUARDRAILS", {"bold": True, "color": MAGENTA})]],
+            size=16, track=150, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    DY = 0.68                                         # everything below sits under the formula
     # guardrails frame
-    gy0, gy1 = 1.3, 5.86
+    gy0, gy1 = 1.3 + DY, 5.92 + DY
     cv.rect(0.45, gy0, 12.43, gy1 - gy0, None, MAGENTA, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.05, dash="dash")
     cv.text(0.62, gy0 + 0.04, 4.6, 0.2, [[("GUARDRAILS IN AND OUT  ", {"bold": True, "color": MAGENTA, "track": 150}),
                                           ("no agent holds a production credential", {"color": SOFT, "size": 6.5})]],
             size=7, anchor=MSO_ANCHOR.MIDDLE)
-    hx, hy, hr = 6.67, 3.56, 0.95
+    hx, hy, hr = 6.67, 3.56 + DY, 0.95
     # side cards
     cw, chh = 2.95, 0.84
     lx, rx = 0.72, 12.88 - 0.27 - cw
-    ys = [1.84, 3.14, 4.44]
+    ys = [1.84 + DY, 3.14 + DY, 4.44 + DY]
     for i, (t, col, d) in enumerate(EV_IN):
         glass(cv, lx, ys[i], cw, chh, col, alpha=65, radius=0.12)
         cv.text(lx + 0.16, ys[i] + 0.08, cw - 0.3, 0.24, t, size=9, bold=True, color=col, track=100,
@@ -1988,10 +2000,10 @@ def evals_hub_slide(prs, layout):
         cv.text(px + 0.06, py + 0.25, pw - 0.12, 0.22, d, size=6.5, color=SOFT, align=PP_ALIGN.CENTER,
                 anchor=MSO_ANCHOR.MIDDLE)
     # the two loops: retry over the top, learning underneath
-    _arc(cv, rx + cw / 2, lx + cw / 2, ys[0], 1.5, MAGENTA, 2.0)
-    cv.rect(hx - 2.25, 1.39, 4.5, 0.22, fill=BLACK, line=MAGENTA, lw=1.0,
+    _arc(cv, rx + cw / 2, lx + cw / 2, ys[0], 1.5 + DY, MAGENTA, 2.0)
+    cv.rect(hx - 2.25, 1.39 + DY, 4.5, 0.22, fill=BLACK, line=MAGENTA, lw=1.0,
             shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
-    cv.text(hx - 2.4, 1.39, 4.8, 0.22, [[("BOUNDED LOOP  ", {"bold": True, "color": MAGENTA, "track": 120}),
+    cv.text(hx - 2.4, 1.39 + DY, 4.8, 0.22, [[("BOUNDED LOOP  ", {"bold": True, "color": MAGENTA, "track": 120}),
                                        ("back to the agent, max 5 attempts, then a named owner",
                                         {"color": WHITE})]], size=7.5, align=PP_ALIGN.CENTER,
             anchor=MSO_ANCHOR.MIDDLE)
@@ -2002,20 +2014,6 @@ def evals_hub_slide(prs, layout):
     cv.text(hx - 2.6, yb + 0.27, 5.2, 0.22, [[("CLOSED LOOP  ", {"bold": True, "color": YELLOW, "track": 120}),
                                             ("every miss becomes a new test case", {"color": WHITE})]],
             size=7.5, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    # scale strip
-    sy, sh = 5.98, 0.62
-    fx, fy, fw, fh = cv.frame(0.45, sy, 12.43, sh, BLACK, 0.035)
-    cv.text(fx + 0.2, fy, 3.0, fh, [[("SAME EVALS, EVERY POD", {"bold": True, "color": WHITE, "track": 150})],
-                                    [("reliability proven once, applied everywhere", {"color": SOFT, "size": 7})]],
-            size=9, anchor=MSO_ANCHOR.MIDDLE)
-    x = fx + 3.3
-    for when, lit in (("Month 9", 2), ("Month 14", 5), ("Month 17", 10)):
-        cv.text(x, fy, 0.75, fh, when, size=7.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
-        for k in range(10):
-            on = k < lit
-            cv.rect(x + 0.75 + k * 0.2, fy + fh / 2 - 0.07, 0.15, 0.14, CYAN if on else None,
-                    CYAN if on else "3A5A70", 0.75, MSO_SHAPE.ROUNDED_RECTANGLE, 0.3)
-        x += 3.0
     dark_footer(s)
     set_notes(s, EVALS_HUB_NOTES)
     return s
@@ -2046,4 +2044,4 @@ Outcomes (right):
 
 Around it all, guardrails in and out: harmful prompts and injection blocked, patient data redacted, no agent with a production credential, and agents can never edit tests or the evaluation set.
 
-Bottom strip: the same evals gate every pod, from the two pilot pods at month 9 to every pod at month 17. Reliability is proven once and applied everywhere."""
+Top bar, the formula: reliability = observability (the traces) + evals (the engine in the centre), protected by guardrails (the frame around it)."""
