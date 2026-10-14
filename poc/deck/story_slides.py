@@ -1612,3 +1612,141 @@ def reliability_flow_slide(prs, layout):
     dark_footer(s)
     set_notes(s, RELIABILITY_NOTES)
     return s
+
+
+# ================================================================== reliability, "ask us anything" (rings + what-ifs)
+WHATIF_LEFT = [
+    ("guard", "What if someone types something harmful?", "Blocked before any model call, and logged."),
+    ("guard", "What if patient data gets into a prompt?", "Redacted on the way in, scanned again on the way out."),
+    ("guard", "What if it tries to touch production?", "It can't: no agent holds a production credential."),
+    ("guard", "Is our data used to train the AI?", "No: no model is ever trained on Ascension data."),
+    ("obs", "How do we know what it actually did?", "Every prompt, tool call and decision is traced and kept."),
+    ("obs", "What if it gets stuck, or costs too much?", "5 attempts, then it stops; time and cost reported per step."),
+    ("people", "Who has the final say?", "Your people, at H1-H4 and CAB. Always."),
+]
+WHATIF_RIGHT = [
+    ("evals", "What if it makes something up?", "Groundedness: every claim cites the graph, or it is rejected."),
+    ("evals", "What if it answers the wrong question?", "Answer relevancy is scored against the story, every run."),
+    ("evals", "What if it uses the wrong tools?", "Tool-sequence accuracy: right tools, in the right order."),
+    ("evals", "Who checks the checker?", "The AI judge is scored against your tech leads."),
+    ("evals", "What if quality drifts, or a new model arrives?",
+     "Weekly blind samples; nothing ships without passing the golden set."),
+    ("evals", "Could it game its own tests?", "No: tests and the eval set are off-limits; a held-out set stays hidden."),
+    ("evals", "How do we know it is getting better?", "Scores tracked per agent; a falling score triggers diagnose and tune."),
+]
+
+
+def reliability_rings_slide(prs, layout):
+    import math as _m
+    s = prs.slides.add_slide(layout)
+    set_bg_image(s, BG_BLUE)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · RELIABILITY",
+                "Ask us anything: every “what if” already has an answer",
+                "In healthcare, AI has to be reliable before it is useful. These are the questions your teams will ask, "
+                "and the layer of the harness that answers each one.")
+    cx, cy = 6.665, 3.88
+    RINGS = {"people": (2.45, WHITE, None, "PEOPLE", "final say"),
+             "guard": (2.05, MAGENTA, "3A0D25", "GUARDRAILS", "in and out"),
+             "obs": (1.58, CYAN, "06303F", "OBSERVABILITY", "agent traces"),
+             "evals": (1.1, YELLOW, "3A3205", "EVALS", "QA for AI")}
+    inner = {"people": 2.05, "guard": 1.58, "obs": 1.1, "evals": 0.6}
+
+    def disc(r, fill, line, lw, dash=None, alpha=None):
+        sp = cv.rect(cx - r, cy - r, 2 * r, 2 * r, fill, line, lw, MSO_SHAPE.OVAL, dash=dash)
+        if fill and alpha:
+            clr = sp._element.spPr.find(a("solidFill")).find(a("srgbClr"))
+            etree.SubElement(clr, a("alpha"), val=str(alpha * 1000))
+        return sp
+
+    for key in ("people", "guard", "obs", "evals"):
+        r, col, fill, label, sub = RINGS[key]
+        if key == "people":
+            disc(r, None, WHITE, 1.25, dash="dash")
+        else:
+            disc(r, fill, col, 2.5, alpha=85)
+        mid = (r + inner[key]) / 2
+        cv.text(cx - 1.2, cy - mid - 0.12, 2.4, 0.24, label, size=8 if key != "people" else 7, bold=True,
+                color=col, track=200, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(cx - 1.2, cy + mid - 0.11, 2.4, 0.22, sub, size=6.5, color=SOFT if key != "people" else WHITE,
+                align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    disc(0.6, BLACK, WHITE, 1.5)
+    cv.text(cx - 0.6, cy - 0.32, 1.2, 0.36, "AGENT", size=13, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE, track=100)
+    cv.text(cx - 0.6, cy + 0.02, 1.2, 0.3, "Codex Enterprise", size=6.5, color=SOFT, align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE)
+
+    # what-if callouts with leader lines to their ring
+    y0, step, ch = 1.4, 0.72, 0.64
+    for side, items in (("L", WHATIF_LEFT), ("R", WHATIF_RIGHT)):
+        for i, (key, q, ans) in enumerate(items):
+            r, col, _, _, _ = RINGS[key]
+            y = y0 + i * step
+            ym = y + ch / 2
+            if side == "L":
+                bx, bw = 0.45, 3.55
+                cv.rect(bx + bw - 0.05, y + 0.06, 0.05, ch - 0.12, col)
+                cv.text(bx, y + 0.03, bw - 0.14, 0.28, q, size=9, bold=True, color=WHITE, align=PP_ALIGN.RIGHT,
+                        anchor=MSO_ANCHOR.MIDDLE)
+                cv.text(bx, y + 0.31, bw - 0.14, 0.3, ans, size=7.5, color=SOFT, align=PP_ALIGN.RIGHT)
+                ax = bx + bw + 0.06
+            else:
+                bx, bw = 9.33, 3.55
+                cv.rect(bx, y + 0.06, 0.05, ch - 0.12, col)
+                cv.text(bx + 0.14, y + 0.03, bw - 0.14, 0.28, q, size=9, bold=True, color=WHITE,
+                        anchor=MSO_ANCHOR.MIDDLE)
+                cv.text(bx + 0.14, y + 0.31, bw - 0.14, 0.3, ans, size=7.5, color=SOFT)
+                ax = bx - 0.06
+            rm = (r + inner[key]) / 2
+            ang = _m.atan2(ym - cy, ax - cx)
+            px, py = cx + rm * _m.cos(ang), cy + rm * _m.sin(ang)
+            cv.arrow(ax, ym, px, py, col, 0.75, head=False)
+            cv.rect(px - 0.045, py - 0.045, 0.09, 0.09, col, None, shape=MSO_SHAPE.OVAL)
+    # the formula + closed loop
+    by, bh = 6.42, 0.48
+    fx, fy, fw, fh = cv.frame(0.45, by, 12.43, bh, BLACK, 0.035)
+    cv.text(fx + 0.2, fy, fw - 0.4, fh,
+            [[("RELIABILITY", {"bold": True, "color": WHITE}), ("  =  ", {"color": SOFT}),
+              ("OBSERVABILITY", {"bold": True, "color": CYAN}), ("  +  ", {"color": SOFT}),
+              ("EVALS", {"bold": True, "color": YELLOW}), ("   inside ", {"color": SOFT}),
+              ("GUARDRAILS", {"bold": True, "color": MAGENTA}), ("   under ", {"color": SOFT}),
+              ("PEOPLE", {"bold": True, "color": WHITE}),
+              ("          closed loop ↻  golden set → gate → guarded run → weekly sample "
+               "→ diagnose → tune", {"color": SOFT, "size": 7.5})]],
+            size=9.5, track=50, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, RELIABILITY_RINGS_NOTES)
+    return s
+
+
+RELIABILITY_RINGS_NOTES = """SLIDE: Ask us anything   (about 4 minutes; let the client pick the questions)
+
+HOW TO USE THIS SLIDE
+Do not read it top to bottom. Say: "In healthcare, these are the questions everyone asks about AI. Pick any one." Then answer it and point to its ring. Every question already has an answer in the design.
+
+THE PICTURE
+The agent (Codex Enterprise) sits at the centre. Around it, three layers make it reliable, and people sit outside all of them:
+- Evals (yellow, innermost): QA for AI agents. Scored on every run.
+- Observability (cyan): agent traces. Every prompt, skill version, tool call, decision, approval, time and cost, kept in the change passport.
+- Guardrails (magenta): checks on the way in and on the way out, and on every action in between.
+- People (white, outside): the final say at H1-H4 and CAB.
+The formula at the bottom: reliability = observability + evals, inside guardrails, under people. Observability powers evals: without traces you cannot evaluate.
+
+THE ANSWERS, IN MORE DEPTH
+- Harmful input: moderation and prompt-injection checks run before any model call; the attempt is blocked and logged with the user; repeated attempts alert security.
+- Patient data: Cloud DLP redacts patient data and secrets before anything reaches a model; the output scan checks every diff and document again.
+- Training on our data: no model is trained on Ascension data; Ascension's Codex Enterprise terms govern data use, and the harness sends only a bounded, redacted context slice.
+- Production: each step uses only its own tools through the gateway, with one of three identities (read, develop, release); none of them can reach production. Owning teams deploy after CAB.
+- What it did: agent traces in the change passport (BigQuery) and Cloud Logging, kept per run and per step.
+- Stuck or costly: every step stops after five attempts and hands everything to a named owner in Jira; time, re-run time and cost are reported per step; budgets and timeouts can stop a run sooner.
+- Final say: named people approve at H1 (requirements), H2 (design), H3 (code and security), H4 (UAT) and CAB.
+- Makes something up: groundedness. Every claim must cite a graph fact or a tool response; uncited claims are rejected.
+- Wrong question: answer relevancy. The output is scored against the story and acceptance criteria.
+- Wrong tools: tool-sequence accuracy, measured with precision and recall (for example, the agent must read the graph before building).
+- Who checks the checker: where the Review Agent acts as judge, its verdicts are measured against tech leads.
+- Drift or a new model: each week a sample of approved changes is re-reviewed blind by Ascension's experts; no prompt, skill or model change goes live without passing the golden set.
+- Getting better: every agent's scores are tracked and reviewed monthly; a falling score sends that agent through diagnose and tune, and the fix must pass the golden set.
+- Gaming the tests: agents cannot edit tests or the evaluation set, a held-out set is never shown to them, and the Guardian blocks any change that weakens a test.
+
+THE CLOSED LOOP (bottom band)
+Golden set, offline gate, guarded run, weekly sample, diagnose, tune and re-test, and round again: the harness keeps improving, and no step ever loops forever."""
