@@ -1911,3 +1911,139 @@ The same engine lights up pod by pod: two pilot pods by month 9, five by month 1
 
 IF ASKED
 Use the "Ask us anything" slide in the back-up section: it answers the fourteen most common reliability questions one by one."""
+
+
+# ================================================================== evals are how we earn reliability (hub)
+EV_IN = [
+    ("AGENT OUTPUT", WHITE, "brief, design, code, tests: every step's work"),
+    ("AGENT TRACES", CYAN, "every prompt, tool call, decision and cost (observability)"),
+    ("GOLDEN SET + WEEKLY SAMPLE", WHITE, "real Ascension changes, labelled by your experts"),
+]
+EV_OUT = [
+    ("RETRY", MAGENTA, "fails: try again with the failure as feedback; max 5, then a named owner"),
+    ("PASS", GREEN, "output guardrails, then people approve at H1-H4 and CAB, then release"),
+    ("LEARN", YELLOW, "every miss: diagnose the agent or context, tune, re-test on the golden set"),
+]
+EV_METRICS = [("Answer relevancy", "answers the story that was asked"),
+              ("Groundedness", "every claim cites the graph or a tool"),
+              ("Tool sequence", "right tools, right order, no repeats"),
+              ("pass@k", "right first time, and by attempt 5")]
+
+
+def evals_hub_slide(prs, layout):
+    import math as _m
+    s = prs.slides.add_slide(layout)
+    set_bg_image(s, BG_BLUE)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · EVALS AND RELIABILITY",
+                "Evals are how we earn reliability",
+                "Reliability = observability + evals, inside guardrails. Every output is tested before it moves on, "
+                "and every miss becomes a new test.")
+    # guardrails frame
+    gy0, gy1 = 1.3, 5.86
+    cv.rect(0.45, gy0, 12.43, gy1 - gy0, None, MAGENTA, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.05, dash="dash")
+    cv.text(0.62, gy0 + 0.04, 4.6, 0.2, [[("GUARDRAILS IN AND OUT  ", {"bold": True, "color": MAGENTA, "track": 150}),
+                                          ("no agent holds a production credential", {"color": SOFT, "size": 6.5})]],
+            size=7, anchor=MSO_ANCHOR.MIDDLE)
+    hx, hy, hr = 6.67, 3.56, 0.95
+    # side cards
+    cw, chh = 2.95, 0.84
+    lx, rx = 0.72, 12.88 - 0.27 - cw
+    ys = [1.84, 3.14, 4.44]
+    for i, (t, col, d) in enumerate(EV_IN):
+        glass(cv, lx, ys[i], cw, chh, col, alpha=65, radius=0.12)
+        cv.text(lx + 0.16, ys[i] + 0.08, cw - 0.3, 0.24, t, size=9, bold=True, color=col, track=100,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(lx + 0.16, ys[i] + 0.34, cw - 0.3, 0.46, d, size=7.5, color=SOFT)
+        ang = _m.atan2(ys[i] + chh / 2 - hy, lx + cw - hx)
+        cv.arrow(lx + cw + 0.04, ys[i] + chh / 2, hx + (hr + 0.32) * _m.cos(ang), hy + (hr + 0.32) * _m.sin(ang),
+                 col, 1.75)
+    for i, (t, col, d) in enumerate(EV_OUT):
+        fill_line = col
+        glass(cv, rx, ys[i], cw, chh, fill_line, alpha=65, radius=0.12, lw=2.0 if t == "PASS" else 1.25)
+        cv.text(rx + 0.16, ys[i] + 0.08, cw - 0.3, 0.24, t, size=10, bold=True, color=col, track=150,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(rx + 0.16, ys[i] + 0.34, cw - 0.3, 0.46, d, size=7.5, color=WHITE if t == "PASS" else SOFT)
+        ang = _m.atan2(ys[i] + chh / 2 - hy, rx - hx)
+        cv.arrow(hx + (hr + 0.32) * _m.cos(ang), hy + (hr + 0.32) * _m.sin(ang), rx - 0.04, ys[i] + chh / 2, col,
+                 2.5 if t == "PASS" else 1.75)
+    # the hub
+    halo = cv.rect(hx - hr - 0.3, hy - hr - 0.3, 2 * (hr + 0.3), 2 * (hr + 0.3), None, YELLOW, 1.0, MSO_SHAPE.OVAL,
+                   dash="sysDot")
+    hub = cv.rect(hx - hr, hy - hr, 2 * hr, 2 * hr, BLACK, YELLOW, 3.0, MSO_SHAPE.OVAL)
+    clr = hub._element.spPr.find(a("solidFill")).find(a("srgbClr"))
+    etree.SubElement(clr, a("alpha"), val="72000")
+    cv.text(hx - hr, hy - 0.42, 2 * hr, 0.5, "EVALS", size=28, bold=True, color=YELLOW, align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE, track=100)
+    cv.text(hx - hr, hy + 0.08, 2 * hr, 0.3, ["QA for AI agents", "on every run"], size=8, color=WHITE,
+            align=PP_ALIGN.CENTER)
+    # metric pills above and below the hub
+    pw, ph = 1.72, 0.5
+    pos = [(hx - pw - 0.06, hy - hr - 0.3 - ph - 0.1), (hx + 0.06, hy - hr - 0.3 - ph - 0.1),
+           (hx - pw - 0.06, hy + hr + 0.3 + 0.1), (hx + 0.06, hy + hr + 0.3 + 0.1)]
+    for (px, py), (k, d) in zip(pos, EV_METRICS):
+        glass(cv, px, py, pw, ph, YELLOW, alpha=70, radius=0.3, lw=1.0)
+        cv.text(px + 0.1, py + 0.03, pw - 0.2, 0.22, k, size=8.5, bold=True, color=YELLOW,
+                align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(px + 0.06, py + 0.25, pw - 0.12, 0.22, d, size=6.5, color=SOFT, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+    # the two loops: retry over the top, learning underneath
+    _arc(cv, rx + cw / 2, lx + cw / 2, ys[0], 1.5, MAGENTA, 2.0)
+    cv.rect(hx - 2.25, 1.39, 4.5, 0.22, fill=BLACK, line=MAGENTA, lw=1.0,
+            shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
+    cv.text(hx - 2.4, 1.39, 4.8, 0.22, [[("BOUNDED LOOP  ", {"bold": True, "color": MAGENTA, "track": 120}),
+                                       ("back to the agent, max 5 attempts, then a named owner",
+                                        {"color": WHITE})]], size=7.5, align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE)
+    yb = ys[2] + chh
+    _arc(cv, rx + cw / 2, lx + cw / 2, yb, yb + 0.38, YELLOW, 2.5)
+    cv.rect(hx - 1.85, yb + 0.27, 3.7, 0.22, fill=BLACK, line=YELLOW, lw=1.0,
+            shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
+    cv.text(hx - 2.6, yb + 0.27, 5.2, 0.22, [[("CLOSED LOOP  ", {"bold": True, "color": YELLOW, "track": 120}),
+                                            ("every miss becomes a new test case", {"color": WHITE})]],
+            size=7.5, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # scale strip
+    sy, sh = 5.98, 0.62
+    fx, fy, fw, fh = cv.frame(0.45, sy, 12.43, sh, BLACK, 0.035)
+    cv.text(fx + 0.2, fy, 3.0, fh, [[("SAME EVALS, EVERY POD", {"bold": True, "color": WHITE, "track": 150})],
+                                    [("reliability proven once, applied everywhere", {"color": SOFT, "size": 7})]],
+            size=9, anchor=MSO_ANCHOR.MIDDLE)
+    x = fx + 3.3
+    for when, lit in (("Month 9", 2), ("Month 14", 5), ("Month 17", 10)):
+        cv.text(x, fy, 0.75, fh, when, size=7.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        for k in range(10):
+            on = k < lit
+            cv.rect(x + 0.75 + k * 0.2, fy + fh / 2 - 0.07, 0.15, 0.14, CYAN if on else None,
+                    CYAN if on else "3A5A70", 0.75, MSO_SHAPE.ROUNDED_RECTANGLE, 0.3)
+        x += 3.0
+    dark_footer(s)
+    set_notes(s, EVALS_HUB_NOTES)
+    return s
+
+
+EVALS_HUB_NOTES = """SLIDE: Evals are how we earn reliability   (about 4 minutes)
+
+KEY MESSAGE
+AI is non-deterministic, so reliability is not assumed; it is earned, run by run. Evals are the engine that earns it: every output is tested before it moves on, and every miss becomes a new test. Reliability = observability + evals, inside guardrails.
+
+WALK IT
+Inputs (left):
+- Agent output: what each step produced (brief, design, code, tests).
+- Agent traces: observability. Every prompt, skill version, tool call, decision and cost. Without traces you cannot evaluate.
+- Golden set and weekly sample: real Ascension changes labelled by your experts, plus a weekly blind sample of approved changes. This is the ground truth.
+
+The engine (centre), scored on every run:
+- Answer relevancy: does the output answer the story that was asked?
+- Groundedness: is every claim backed by a graph fact or a tool response? This is how we catch hallucination.
+- Tool sequence: did the agent call the right tools in the right order, without repeating them? Measured with precision and recall.
+- pass@k: right first time (pass@1), and right by the fifth and last attempt (pass@5).
+Where the Review Agent acts as the judge, its verdicts are themselves measured against your tech leads.
+
+Outcomes (right):
+- Pass: output guardrails, then people approve at H1-H4 and CAB, then release. This is the reliable path.
+- Retry (the magenta arc over the top): back to the agent with the failure as feedback, at most five times; then the step stops, nothing is released, and a named owner takes over. No infinite loops.
+- Learn (the yellow arc underneath): every miss is diagnosed (which agent, step or context failed), the harness is tuned, and the fix is re-tested on the golden set; the miss becomes a new test case. That is the closed loop.
+
+Around it all, guardrails in and out: harmful prompts and injection blocked, patient data redacted, no agent with a production credential, and agents can never edit tests or the evaluation set.
+
+Bottom strip: the same evals gate every pod, from the two pilot pods at month 9 to every pod at month 17. Reliability is proven once and applied everywhere."""
