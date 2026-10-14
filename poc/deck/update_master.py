@@ -26,15 +26,17 @@ REFRESH = {
     "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.timeline_slide,
     "ASCENSION MAD APPROACH · DELIVERY TEAM": plan_slides.team_slide,
     "ASCENSION MAD APPROACH · COMMERCIALS": plan_slides.commercials_slide,
+    # security + evals now live on one slide: evals are how we earn reliability
+    "ASCENSION MAD APPROACH · SECURITY, RELIABILITY AND INPUT GUARDRAILS": story_slides.evals_hub_slide,
 }
 
 
 # New slides, inserted right after the slide with this eyebrow
 INSERT_AFTER = {
     "ASCENSION MAD APPROACH · PLATFORM": [story_slides.harness_slide, story_slides.autonomy_slide],
-    "ASCENSION MAD APPROACH · SECURITY, RELIABILITY AND INPUT GUARDRAILS": [story_slides.evals_combined_slide,
-                                                                          story_slides.evals_scorecard_slide],
+    "ASCENSION MAD APPROACH · SECURITY, RELIABILITY AND INPUT GUARDRAILS": [story_slides.evals_scorecard_slide],
     "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.exits_slide,
+    "layout:Closer_1": story_slides.reliability_rings_slide,       # back-up Q&A, after Thank you
 }
 
 # The detailed design, opened straight in the draw.io web app from the public repo.
@@ -79,6 +81,7 @@ def main(src=MASTER, out=OUT):
     prs = Presentation(src)
     lst = prs.slides._sldIdLst
     originals = list(prs.slides)              # only the master's own slides drive refreshes and inserts
+    default = next(lay for lay in prs.slide_layouts if lay.name == "DEFAULT")
     swaps = []
     for i, slide in enumerate(originals):
         build = REFRESH.get(eyebrow(slide))
@@ -87,12 +90,13 @@ def main(src=MASTER, out=OUT):
             swaps.append((list(lst)[i], list(lst)[-1], eyebrow(slide)))
     inserts = []
     for i, slide in enumerate(originals):
-        builds = INSERT_AFTER.get(eyebrow(slide))
+        builds = INSERT_AFTER.get(eyebrow(slide)) or INSERT_AFTER.get("layout:" + slide.slide_layout.name)
         if not builds:
             continue
         prev = list(lst)[i]
+        layout = slide.slide_layout if slide.slide_layout.name == "DEFAULT" else default
         for build in builds if isinstance(builds, list) else [builds]:
-            build(prs, slide.slide_layout)
+            build(prs, layout)
             inserts.append((prev, list(lst)[-1], eyebrow(slide)))
             prev = list(lst)[-1]                # several new slides follow one another
     for after, new, name in inserts:
