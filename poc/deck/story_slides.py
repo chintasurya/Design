@@ -1331,3 +1331,135 @@ def evals_scorecard_light_slide(prs, layout):
                {"color": MUTE})]], size=9.5, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, EVALS_SCORECARD_NOTES)
     return s
+
+
+# ================================================================== reliability = observability + evals (+ guardrails)
+REL_COLUMNS = [
+    ("GUARDRAILS", "protect every request", MAGENTA, [
+        ("Codex Enterprise", "Ascension SSO, admin policies, enterprise data terms"),
+        ("Intake", "signed-in pod member, valid Jira story, rate limits"),
+        ("Input guardrails", "abusive prompts blocked; injection refused; patient data redacted"),
+        ("Understand first", "wrong or vague request: clarifying questions, never a guess"),
+        ("Action guardrails", "gateway allow list; no agent holds a production credential"),
+        ("Output guardrails", "schema, cited facts, secret and PHI scan; people approve"),
+    ]),
+    ("OBSERVABILITY", "agent traces for every run", CYAN, [
+        ("Prompt and skills", "which prompt, skill and model version ran"),
+        ("Tool calls", "every call, its input and response, and repeats"),
+        ("Decisions", "what the agent decided, citing graph node and SHA"),
+        ("Gates", "who approved what, when, on which evidence"),
+        ("Time and cost", "per step, re-runs, waits at gates, tokens"),
+        ("Stored in", "change passport (BigQuery) and Cloud Logging"),
+    ]),
+    ("EVALS", "QA for AI agents", YELLOW, [
+        ("Answer relevancy", "the output answers the story that was asked"),
+        ("Groundedness", "every claim cites the graph or a tool response"),
+        ("Tool sequence", "right tools in the right order; precision and recall"),
+        ("pass@k", "right first time, and by the 5th and last attempt"),
+        ("Golden set", "labelled by Ascension's subject-matter experts"),
+        ("Judge checked", "Review Agent verdicts measured against tech leads"),
+    ]),
+]
+REL_LOOP = ["Golden set", "Offline gate", "Guarded run", "Sample + label", "Diagnose", "Tune + re-test"]
+
+
+def reliability_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg_image(s, BG_BLUE)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · RELIABILITY",
+                "Reliable by design: guardrails, observability and evals",
+                "In healthcare a wrong answer is not an option. Every request passes guardrails, every action is traced, "
+                "every agent is evaluated, and no step loops forever.")
+    X0, W = 0.45, 12.43
+    # equation bar
+    ey, eh = 1.3, 0.52
+    glass(cv, X0, ey, W, eh, WHITE, alpha=40, radius=0.5)
+    cv.text(X0, ey, W, eh,
+            [[("RELIABILITY", {"bold": True, "color": WHITE}), ("   =   ", {"color": SOFT}),
+              ("OBSERVABILITY", {"bold": True, "color": CYAN}), ("   +   ", {"color": SOFT}),
+              ("EVALS", {"bold": True, "color": YELLOW}),
+              ("        protected by ", {"color": SOFT, "size": 10}),
+              ("GUARDRAILS", {"bold": True, "color": MAGENTA})]],
+            size=16, track=150, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # three columns
+    cy, chh = ey + eh + 0.14, 3.12
+    gap = 0.18
+    cw = (W - 2 * gap) / 3
+    order = [REL_COLUMNS[0], REL_COLUMNS[1], REL_COLUMNS[2]]
+    for i, (name, sub, col, items) in enumerate(order):
+        x = X0 + i * (cw + gap)
+        glass(cv, x, cy, cw, chh, col, alpha=60)
+        cv.text(x + 0.2, cy + 0.12, cw - 0.4, 0.3, [[(name, {"bold": True, "color": col, "track": 150}),
+                                                    ("   " + sub, {"color": SOFT, "size": 8.5})]], size=12,
+                anchor=MSO_ANCHOR.MIDDLE)
+        rh = (chh - 0.56) / len(items)
+        for j, (k, d) in enumerate(items):
+            y = cy + 0.5 + j * rh
+            if j:
+                cv.rect(x + 0.2, y - 0.02, cw - 0.4, 0.006, "3A5A70")
+            cv.text(x + 0.2, y, 1.35, rh - 0.04, k, size=8.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+            cv.text(x + 1.58, y, cw - 1.78, rh - 0.04, d, size=8, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+    # closed loop strip
+    ly, lh = cy + chh + 0.14, 0.86
+    fx, fy, fw, fh = cv.frame(X0, ly, W, lh, BLACK, 0.04)
+    cv.text(fx + 0.18, fy, 1.7, fh, [[("CLOSED LOOP", {"bold": True, "color": YELLOW, "track": 150})],
+                                     [("not an infinite loop", {"color": SOFT, "size": 7.5})]], size=9,
+            anchor=MSO_ANCHOR.MIDDLE)
+    sx0 = fx + 2.0
+    sw = (fx + fw - 0.2 - sx0) / len(REL_LOOP)
+    for i, t in enumerate(REL_LOOP):
+        bx = sx0 + i * sw
+        hot = t == "Guarded run"
+        cv.rect(bx, fy + 0.13, sw - 0.32, fh - 0.26, MAGENTA if hot else None, MAGENTA if hot else CYAN, 1.25,
+                MSO_SHAPE.ROUNDED_RECTANGLE, 0.3)
+        cv.text(bx, fy + 0.13, sw - 0.32, fh - 0.26,
+                [[(t, {"bold": True})], [("max 5 attempts, then owner", {"size": 6.5})]] if hot else t,
+                size=8.5, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        if i < len(REL_LOOP) - 1:
+            cv.arrow(bx + sw - 0.3, fy + fh / 2, bx + sw - 0.04, fy + fh / 2, CYAN, 1.25)
+    cv.text(fx + fw - 0.24, fy, 0.22, fh, "↺", size=16, color=CYAN, align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE)
+    # no gaming
+    gy, gh = ly + lh + 0.1, 0.42
+    glass(cv, X0, gy, W, gh, WHITE, alpha=45, radius=0.4)
+    cv.text(X0 + 0.25, gy, 2.4, gh, "NO GAMING THE EVALS", size=7.5, bold=True, color=MAGENTA, track=200,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(X0 + 2.6, gy, W - 2.85, gh,
+            [[("Agents cannot edit tests or the evaluation set; ", {"bold": True, "color": WHITE}),
+              ("a held-out set no agent sees; any change that weakens a test is blocked by the Guardian.",
+               {"color": SOFT})]], size=8.5, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, RELIABILITY_NOTES)
+    return s
+
+
+RELIABILITY_NOTES = """SLIDE: Reliable by design   (about 4 minutes)
+
+KEY MESSAGE
+AI is non-deterministic, so in healthcare reliability has to be engineered. Our formula: reliability = observability + evals, protected by guardrails. Every request passes the guardrails, every agent action is traced, every agent is evaluated, and no step ever loops forever.
+
+GUARDRAILS (left, magenta): protect every request
+Six layers. Codex Enterprise (SSO, admin policies, data terms); intake (only a signed-in pod member with a valid Jira story can start a run); input guardrails before any model call (abusive or offensive prompts blocked and logged, prompt injection and out-of-scope asks such as "deploy to production" refused, patient data and secrets redacted by DLP); understand first (a wrong object name or vague ask gets clarifying questions, never a guess, and nothing is built before H1); action guardrails (each step may use only its own tools through the gateway; no agent holds a production credential); output guardrails (schema check, cited facts, secret and PHI scan; people approve at H1-H4 and CAB).
+
+OBSERVABILITY (middle, cyan): agent traces
+What used to be logs is now agent traces. For every run we keep which prompt, skill and model version ran; every tool call with its input and response and how often it repeats; what the agent decided and the graph facts and commit SHA it relied on; who approved what and when; and time and cost per step. All of it in the change passport and Cloud Logging. Observability is what powers evals: without traces you cannot evaluate.
+
+EVALS (right, yellow): QA for AI agents
+- Answer relevancy: does the brief, design or code answer the story that was actually asked?
+- Groundedness: is every claim backed by a graph fact or a tool response, or is it made up? Uncited claims are rejected.
+- Tool sequence accuracy: did the agent call the right tools in the right order (for example, read the graph before building) without repeating calls? Measured with precision and recall.
+- pass@k: right first time, and by the fifth and last attempt.
+- Golden set: built with Ascension's subject-matter experts, because there is usually no ready-made ground truth.
+- Judge checked: where the Review Agent acts as the judge, its verdicts are measured against tech leads.
+The people who build the harness own the evals, with Ascension's experts labelling.
+
+CLOSED LOOP, NOT AN INFINITE LOOP (bottom strip)
+Golden set, offline gate, guarded run, weekly sample re-labelled by Ascension experts, diagnose, tune and re-test, and round again. Inside a run, every step stops after five attempts and goes to a named owner with every attempt in Jira.
+
+NO GAMING THE EVALS
+Agents cannot edit tests or the evaluation set, a held-out set is never shown to an agent, and the Guardian blocks any change that weakens a test.
+
+IF ASKED
+- Who does the evals, people or machines? Both: automated scoring on every run, Ascension's experts on the golden set and the weekly sample, and the judge itself is checked against humans.
+- What if a patient-data leak is attempted? DLP redacts before any model call, the output scan checks again, and the attempt is logged."""
