@@ -4,6 +4,7 @@ The final deck is the user's own ordering: 16 slides up to Thank you, rough
 slides after it. Only the slides named here are changed; everything else is
 left exactly as the user saved it.
 """
+import copy
 import os
 import sys
 
@@ -33,6 +34,19 @@ def set_text(sh, text):
         runs[0].text = text
     else:
         paras[0].add_run().text = text
+
+
+def set_lines(sh, lines):
+    """One paragraph per line, each a copy of the first paragraph's formatting."""
+    set_text(sh, lines[0])
+    first = sh.text_frame.paragraphs[0]._p
+    prev = first
+    for line in lines[1:]:
+        p = copy.deepcopy(first)
+        rs = p.findall("{http://schemas.openxmlformats.org/drawingml/2006/main}r")
+        rs[0].find("{http://schemas.openxmlformats.org/drawingml/2006/main}t").text = line
+        prev.addnext(p)
+        prev = p
 
 
 def drop(sh):
@@ -144,7 +158,17 @@ def health_cloud_slide(slide):
     set_notes(slide, HC_NOTES)
 
 
-EDITS = {"ASCENSION AGENTIC HARNESS · NETWORK SERVICES POD · HEALTH CLOUD": health_cloud_slide}
+# ------------------------------------------------------------------ slide 3: high-level architecture
+def platform_slide(slide):
+    s = by_id(slide)
+    set_lines(s[18], ["CLI · IDE · app", "start a run with a Jira number"])
+    set_lines(s[22], ["the harness reads the story;", "status tracked here"])
+    set_text(s[68], "Guardrails in + out · Model Armor")
+    set_lines(s[83], ["OpenAI Codex Enterprise;", "model set in config;", "tools portable via MCP"])
+
+
+EDITS = {"ASCENSION AGENTIC HARNESS \u00b7 PLATFORM": platform_slide,
+         "ASCENSION AGENTIC HARNESS · NETWORK SERVICES POD · HEALTH CLOUD": health_cloud_slide}
 
 
 def eyebrow(slide):
