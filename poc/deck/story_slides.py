@@ -1463,3 +1463,152 @@ Agents cannot edit tests or the evaluation set, a held-out set is never shown to
 IF ASKED
 - Who does the evals, people or machines? Both: automated scoring on every run, Ascension's experts on the golden set and the weekly sample, and the judge itself is checked against humans.
 - What if a patient-data leak is attempted? DLP redacts before any model call, the output scan checks again, and the attempt is logged."""
+
+
+# ================================================================== reliability, visual version: flow + trace log + scoreboard
+TRACE = [
+    ("8C8C8C", "09:14:02", "run", "NS-1234 · step 03 build · attempt 1 of 5"),
+    ("B39DDB", "09:14:02", "prompt", "skill adlc-build v12 · prompt v7 · model pinned"),
+    (CYAN, "09:14:03", "tool", "graph.find_reuse(Account.Status) → 1 flow"),
+    (CYAN, "09:14:05", "tool", "graph.blast_radius → 2 pods, 3 automations"),
+    (WHITE, "09:14:40", "decide", "reuse FLW-221 · cites graph node 88 · sha 4f2c"),
+    (GREEN, "09:16:12", "check", "Apex tests 41/41 · Code Analyzer 0 blocking"),
+    (YELLOW, "09:16:13", "eval", "relevant ✓ · grounded ✓ · tool order ✓ · pass@1"),
+    (MAGENTA, "09:16:14", "guard", "output scan: no secrets, no PHI"),
+    ("8C8C8C", "09:16:15", "gate", "H3 waiting: tech lead · 2m13s · $0.42"),
+]
+SCORE = [
+    ("Answer relevancy", "answers the story that was asked", 0.9),
+    ("Groundedness", "every claim cites the graph or a tool response", 0.85),
+    ("Tool sequence", "right tools, right order, no repeats", 0.8),
+]
+
+
+def reliability_flow_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg_image(s, BG_BLUE)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · RELIABILITY",
+                "Reliability = observability + evals, inside guardrails",
+                "In healthcare a wrong answer is not an option. Follow one request: guarded on the way in, traced at "
+                "every step, evaluated before it moves on, and never looping forever.")
+    # ---- the flow
+    ey0, ey1 = 1.32, 3.36
+    cv.rect(0.45, ey0, 12.43, ey1 - ey0, None, MAGENTA, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.06, dash="dash")
+    cv.text(0.62, ey0 + 0.04, 6.0, 0.22, [[("GUARDRAILS AROUND EVERY STEP", {"bold": True, "color": MAGENTA,
+                                                                           "track": 150}),
+                                          ("   gateway allow list · no agent holds a production credential",
+                                           {"color": SOFT, "size": 7})]], size=7.5, anchor=MSO_ANCHOR.MIDDLE)
+    cy = 2.12
+
+    def node(x, w, h, shape, fill, line, lines, tcol=WHITE, lw=1.5):
+        sp = cv.rect(x, cy - h / 2, w, h, fill, line, lw, shape)
+        if fill == BLACK:
+            clr = sp._element.spPr.find(a("solidFill")).find(a("srgbClr"))
+            etree.SubElement(clr, a("alpha"), val="60000")
+        cv.text(x + 0.08, cy - h / 2, w - 0.16, h, lines, size=7.5, color=tcol, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+        return x, w
+
+    req = node(0.62, 1.2, 0.72, MSO_SHAPE.OVAL, BLACK, WHITE,
+               [[("Request", {"bold": True, "size": 9})], [("Jira story · Codex", {"color": SOFT})]])
+    ing = node(2.12, 1.78, 0.98, MSO_SHAPE.HEXAGON, BLACK, MAGENTA,
+               [[("INPUT GUARDRAILS", {"bold": True, "color": MAGENTA})],
+                [("moderation · injection · DLP", {"color": SOFT})]])
+    agt = node(4.2, 1.62, 0.86, MSO_SHAPE.ROUNDED_RECTANGLE, BLACK, CYAN,
+               [[("AGENT STEP", {"bold": True, "color": CYAN})], [("own tools only · traced", {"color": SOFT})]])
+    evl = node(6.1, 1.86, 1.2, MSO_SHAPE.DIAMOND, BLACK, YELLOW,
+               [[("EVALS", {"bold": True, "color": YELLOW})], [("outcome met?", {"color": SOFT})]])
+    out = node(8.22, 1.7, 0.98, MSO_SHAPE.HEXAGON, BLACK, MAGENTA,
+               [[("OUTPUT GUARDRAILS", {"bold": True, "color": MAGENTA})],
+                [("schema · cited · PHI scan", {"color": SOFT})]])
+    gat = node(10.2, 1.22, 0.8, MSO_SHAPE.ROUNDED_RECTANGLE, YELLOW, YELLOW,
+               [[("HUMAN GATE", {"bold": True})], [("H1-H4 · CAB", {})]], tcol=BLACK)
+    rel = node(11.66, 1.08, 0.72, MSO_SHAPE.FLOWCHART_TERMINATOR, BLACK, WHITE,
+               [[("Release", {"bold": True, "size": 9})], [("owner pipeline", {"color": SOFT})]])
+    chain = [(req, 0.36), (ing, 0.49), (agt, 0.43), (evl, 0.6), (out, 0.49), (gat, 0.4), (rel, 0.36)]
+    for (n1, _), (n2, _) in zip(chain, chain[1:]):
+        cv.arrow(n1[0] + n1[1] + 0.02, cy, n2[0] - 0.02, cy, WHITE, 1.5)
+    cv.text(evl[0] + evl[1] - 0.05, cy - 0.3, 0.4, 0.2, "YES", size=7, bold=True, color=GREEN)
+    # retry loop under the flow
+    ly = 3.02
+    ex = evl[0] + evl[1] / 2
+    ax = agt[0] + agt[1] / 2
+    cv.arrow(ex, cy + 0.6, ex, ly, MAGENTA, 1.5, head=False)
+    cv.arrow(ex, ly, ax, ly, MAGENTA, 1.5, head=False)
+    cv.arrow(ax, ly, ax, cy + 0.43, MAGENTA, 1.5)
+    cv.text(ex + 0.08, cy + 0.62, 0.4, 0.2, "NO", size=7, bold=True, color=MAGENTA)
+    cv.text(ax + 0.1, ly - 0.24, 2.0, 0.2, "retry with the failure as feedback", size=7, color=SOFT)
+    for k in range(MAX_ATTEMPTS):
+        last = k == MAX_ATTEMPTS - 1
+        dx = 8.3 + k * 0.32
+        cv.rect(dx, ly - 0.12, 0.24, 0.24, MAGENTA if last else BLACK, MAGENTA if last else CYAN, 1.0,
+                MSO_SHAPE.OVAL)
+        cv.text(dx, ly - 0.12, 0.24, 0.24, str(k + 1), size=7, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(8.3, ly - 0.36, 1.6, 0.2, "attempt counter", size=6.5, color=SOFT)
+    cv.text(8.3 + MAX_ATTEMPTS * 0.32 + 0.05, ly - 0.15, 2.7, 0.3,
+            [[("STOP after %d: " % MAX_ATTEMPTS, {"bold": True, "color": YELLOW}),
+              ("nothing released; a named owner gets every attempt", {"color": WHITE})]], size=7.5,
+            anchor=MSO_ANCHOR.MIDDLE)
+    # ---- observability: the trace log
+    ty, th = 3.52, 2.5
+    tx, tw = 0.45, 6.5
+    sp = cv.rect(tx, ty, tw, th, "0D1117", CYAN, 1.25, MSO_SHAPE.ROUNDED_RECTANGLE, 0.04)
+    cv.text(tx + 0.18, ty + 0.06, tw - 0.3, 0.26,
+            [[("● ● ●   ", {"color": "5A5A5A"}), ("OBSERVABILITY", {"bold": True, "color": CYAN, "track": 150}),
+              ("   agent trace for every step · illustrative run", {"color": SOFT, "size": 7})]], size=8,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.rect(tx + 0.12, ty + 0.36, tw - 0.24, 0.006, "2A2A2A")
+    lh = (th - 0.5) / len(TRACE)
+    for i, (col, ts, kind, msg) in enumerate(TRACE):
+        cv.text(tx + 0.2, ty + 0.42 + i * lh, tw - 0.3, lh,
+                [[(ts + "  ", {"color": "6E7681"}), (("[%s]" % kind).ljust(9), {"color": col, "bold": True}),
+                  (msg, {"color": WHITE if col != WHITE else "E6E6E6"})]], size=8, font="Courier New",
+                anchor=MSO_ANCHOR.MIDDLE)
+    # traces power evals
+    cv.arrow(tx + tw + 0.06, ty + th / 2, tx + tw + 0.68, ty + th / 2, CYAN, 2.0)
+    cv.text(tx + tw + 0.02, ty + th / 2 + 0.06, 0.7, 0.36, ["traces", "power evals"], size=6.5, color=SOFT,
+            align=PP_ALIGN.CENTER)
+    # ---- evals: the scoreboard
+    sx, sw = tx + tw + 0.74, 12.88 - (tx + tw + 0.74)
+    glass(cv, sx, ty, sw, th, YELLOW, alpha=60, radius=0.04)
+    cv.text(sx + 0.2, ty + 0.06, sw - 0.4, 0.26, [[("EVALS", {"bold": True, "color": YELLOW, "track": 150}),
+                                                  ("   QA for AI agents, scored on every run", {"color": SOFT,
+                                                                                              "size": 7})]],
+            size=8, anchor=MSO_ANCHOR.MIDDLE)
+    bx, bw = sx + 2.15, sw - 2.4
+    for i, (name, desc, v) in enumerate(SCORE):
+        y = ty + 0.42 + i * 0.44
+        cv.text(sx + 0.2, y, 2.0, 0.22, name, size=9, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(sx + 0.2, y + 0.2, 2.0, 0.2, desc, size=6.5, color=SOFT)
+        cv.rect(bx, y + 0.06, bw, 0.16, "1F2A33", None, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
+        cv.rect(bx, y + 0.06, bw * v, 0.16, YELLOW, None, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
+    y = ty + 0.42 + 3 * 0.44
+    cv.text(sx + 0.2, y, 2.0, 0.22, "pass@k", size=9, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(sx + 0.2, y + 0.2, 2.0, 0.2, "right first time, and by attempt 5", size=6.5, color=SOFT)
+    for j, (lab, v, col) in enumerate((("pass@1", 0.7, CYAN), ("pass@5", 0.95, GREEN))):
+        yy = y + 0.02 + j * 0.2
+        cv.text(bx, yy, 0.55, 0.16, lab, size=6.5, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+        cv.rect(bx + 0.58, yy + 0.03, bw - 0.58, 0.11, "1F2A33", None, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+                radius=0.5)
+        cv.rect(bx + 0.58, yy + 0.03, (bw - 0.58) * v, 0.11, col, None, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+                radius=0.5)
+    cv.text(sx + 0.2, ty + th - 0.3, sw - 0.4, 0.26,
+            "Golden set labelled by Ascension's experts · Review Agent checked against tech leads · bars "
+            "illustrative; targets set from the Phase 0 baseline", size=6.5, color=SOFT)
+    # ---- closed loop band
+    by, bh = ty + th + 0.12, 0.5
+    fx, fy, fw, fh = cv.frame(0.45, by, 12.43, bh, BLACK, 0.035)
+    steps = ["Golden set", "Offline gate", "Guarded run", "Weekly sample", "Diagnose", "Tune + re-test"]
+    cv.text(fx + 0.18, fy, 2.4, fh, [[("CLOSED LOOP", {"bold": True, "color": YELLOW, "track": 150}),
+                                     ("  not infinite", {"color": SOFT, "size": 7})]], size=8.5,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(fx + 2.5, fy, fw - 2.7, fh,
+            [sum([[(t, {"bold": True, "color": WHITE}), ("   →   " if i < len(steps) - 1 else "   ↺   ",
+                                                        {"color": CYAN})] for i, t in enumerate(steps)], []) +
+             [("agents can never edit tests or the eval set", {"color": SOFT, "size": 7.5})]],
+            size=8.5, anchor=MSO_ANCHOR.MIDDLE)
+    dark_footer(s)
+    set_notes(s, RELIABILITY_NOTES)
+    return s
