@@ -1,6 +1,6 @@
 # Ascension Agentic Harness: proposal decision summary
 
-What we decided for the Ascension proposal deck, end to end. The deck is **"Ascension Agentic Harness"** (29 slides, Insight Global template). A draw.io low-level design is shared alongside it.
+What we decided for the Ascension proposal deck, end to end. The deck is **"Ascension Agentic Harness"** (29 slides, Insight Global template).
 
 ---
 
@@ -11,7 +11,7 @@ What we decided for the Ascension proposal deck, end to end. The deck is **"Asce
 | Name | The proposal was first called **MAD (Multi-Agent Delivery)**. It is now **Agentic Harness** on every slide, in the speaker notes and in the design. |
 | One-line pitch | An AI agent team, grounded in a knowledge graph of the Ascension org, takes a Jira story to a tested, deployable Salesforce change. People approve every step. |
 | Core message | *"Codex is the engine. The Agentic Harness is everything around it."* Ascension already licenses Codex Enterprise. We build the harness that makes it grounded, governed and repeatable. |
-| Lifecycle term | **ADLC (agentic development lifecycle)** replaces SDLC, in the design and in the notes. |
+| Lifecycle term | **ADLC (agentic development lifecycle)** replaces SDLC throughout. |
 | Look | Insight Global PowerPoint template. Light slides for detail, black slides for the story (platform, harness engineering, future state, scorecard), and one slide on the template's blue glow background (evals). The IG footer comes from the slide layouts, so it is fixed on every slide and cannot be dragged. |
 | Original content | The client's original slide content was kept word for word, apart from the MAD → Agentic Harness rename. Only the theme changed. |
 
@@ -24,7 +24,7 @@ What we decided for the Ascension proposal deck, end to end. The deck is **"Asce
 | 1 | Title | Ascension Agentic Harness |
 | 2 | Opener | "What if every change already knew everything Ascension has built?" Agenda, plus measured results: 2-4 days per Health Cloud change (was 1-2 weeks), 15-20 days per campaign (was ~90), 75-85% faster test preparation, and 20-25% lower run cost (planned). |
 | 3 | One agent team | 7 agents reused by every pod |
-| 4 | High-level architecture | Helios-style layers (Surface, Runtime, Registry, Context, Govern) on Ascension's own infrastructure. Links to the draw.io design. |
+| 4 | High-level architecture | Helios-style layers (Surface, Runtime, Registry, Context, Govern) on Ascension's own infrastructure. |
 | 5 | Harness engineering | Five pillars: **Context, Action, Orchestration, Control, Feedback**. Operating rule: *when an agent struggles, fix the harness, not the prompt.* |
 | 6 | Future state | From **Agentic Harness** (today, this proposal) to **dynamic self-harness**, which AGI (Artificial General Intelligence) would make possible. Includes "How we trust AGI" and "What never changes". |
 | 7 | Security, reliability and input guardrails | Six layers, from Codex Enterprise through input, action and output guardrails, plus what happens when input is wrong or abusive. |
@@ -167,27 +167,7 @@ The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exi
 
 ---
 
-## 8. Low-level design (draw.io, shared separately)
-
-The design is called **"Codex to Production · Agentic Harness end-to-end low-level design"** and is drawn in four lanes over a Google Cloud services band.
-
-1. **User + ADLC plugin, what the user sees in Codex.**
-   - The Agentic Harness ADLC plugin: `plugin.json`, `skills/`, `mcp.json`, and an MCP server exposing `harness.start_run`, `harness.status` and `graph.*`.
-   - **Drive the run:** `$harness-deliver` runs `adlc-understand`, `adlc-design`, `adlc-build`, `adlc-verify`, `adlc-promote`, `adlc-release` and `adlc-close`, each tied to its agent, step and gate. `$harness-redo` sends a step back.
-   - **Watch and decide:** `$harness-status`, `$harness-approve`, `$harness-stop`, `$harness-ask-graph`.
-   - **QA skills:** test scope, test cases, regression, test report, UAT pack.
-   - **Explicit only:** Codex never starts, redoes or stops work on its own.
-2. **Phase 1, harness context.** The knowledge graph: connectors, data loss prevention (DLP), Spanner Graph, Graph API + MCP.
-3. **Phase 2, Agentic Harness runtime.** Run loop, dispatcher, agents, tool gateway, Change Guardian, approvals, eval and learning loop. **Fix loop ≤ 5 attempts, then owner.**
-4. **Output.** What lands in Jira, Confluence, Git, the Salesforce DEV sandbox, Copado, Zephyr, the CAB pack, production (owning team only) and the audit trail.
-
-**Is an ADLC plugin available in Codex today?** Not as a ready-made product. Codex natively supports plugins, skills and MCP servers, and we build Ascension's ADLC plugin on those. To confirm early:
-- Ascension's Codex Enterprise admins allow custom plugins and MCP servers (add to the Phase 0 checklist).
-- How explicit-only skills are invoked inside a plugin (test in Phase 0).
-
----
-
-## 9. Client Q&A preparation (highlights)
+## 8. Client Q&A preparation (highlights)
 
 | Likely question | Answer |
 |---|---|
@@ -203,11 +183,11 @@ The design is called **"Codex to Production · Agentic Harness end-to-end low-le
 
 ---
 
-## 10. Open items and risks before the client meeting
+## 9. Open items and risks before the client meeting
 
 1. **Rates.** Replace the assumed bill rates with the IG rate card (commercials, slide 19).
 2. **Savings ambition.** Year 1 at $7M means a 56% cut during the rollout year, while pods only go live through month 17. Present slide 15 as the target and slide 14 as the floor. Year 3 at $3M includes ~$1.24M for the managed service.
 3. **Client effort.** Ascension's experts label the golden set and the weekly samples (a few hours a week). This should be added to the team slide's "Ascension provides" list.
-4. **ADLC plugin.** Confirm with Ascension's Codex Enterprise admins that custom plugins and MCP servers are allowed.
+4. **Codex set-up.** Confirm with Ascension's Codex Enterprise admins that custom plugins and MCP servers are allowed.
 5. **Architecture slide.** Optional "Stops after 5 attempts" differentiator tag on the target architecture slide (pending).
 6. **Pod baselines.** All per-pod figures are confirmed against each pod's Phase 0 baseline.
