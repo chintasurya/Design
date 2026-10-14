@@ -9,7 +9,7 @@ import os
 from lxml import etree
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-from pptx.util import Inches
+from pptx.util import Inches, Pt
 
 from build_mad_ig_deck import rgb
 from build_mad_ig_deck import (A, BLACK, CONTENT_FLOOR, CYAN, CYAN_T, EMU, FOOTER_TOP, GREY, GREEN_T, HERE,
@@ -1750,3 +1750,164 @@ THE ANSWERS, IN MORE DEPTH
 
 THE CLOSED LOOP (bottom band)
 Golden set, offline gate, guarded run, weekly sample, diagnose, tune and re-test, and round again: the harness keeps improving, and no step ever loops forever."""
+
+
+# ================================================================== reliability at scale: one engine, two loops, every pod
+ENGINE = [
+    ("GUARD IN", MAGENTA, "Intake + input guardrails",
+     ["pod member, valid story", "harmful prompts blocked", "patient data redacted"]),
+    ("AGENT WORKS", CYAN, "Inside the harness",
+     ["own tools only, no prod access", "context from the graph, cited", "every step traced"]),
+    ("EVALS", YELLOW, "QA for AI, every run",
+     ["answer relevancy", "groundedness", "tool sequence, tests, Guardian"]),
+    ("GUARD OUT", WHITE, "Output guardrails + people",
+     ["schema, citations, PHI scan", "people approve H1-H4, CAB", "owner pipeline releases"]),
+]
+SCALE_ROWS = [("Month 9", "2 pilot pods", 2), ("Month 14", "5 pods", 5), ("Month 17", "every pod", 10)]
+SCALE_FACTS = [
+    ("Agents scale out", "one Cloud Run job per step; many stories run in parallel"),
+    ("A new pod in about 2 weeks", "its sources join the graph; its skill pack loads"),
+    ("Proven once, used everywhere", "the same evals and guardrails gate every pod"),
+    ("People scale by steering", "they approve at the gates; agents do the work"),
+]
+
+
+def _arc(cv, x1, x2, y0, peak, color, width, dash=None, n=40):
+    """Half-ellipse from (x1, y0) over `peak` to (x2, y0), arrowhead at x2."""
+    import math as _m
+    xc, rx, ry = (x1 + x2) / 2, (x1 - x2) / 2, y0 - peak
+    pts = [(xc + rx * _m.cos(_m.pi * k / n), y0 - ry * _m.sin(_m.pi * k / n)) for k in range(n + 1)]
+    E = lambda v: int(v * 914400)
+    fb = cv.s.shapes.build_freeform(E(pts[0][0]), E(pts[0][1]), scale=1.0)
+    fb.add_line_segments([(E(x), E(y)) for x, y in pts[1:]], close=False)
+    sp = fb.convert_to_shape()
+    sp.fill.background()
+    sp.line.color.rgb = rgb(color)
+    sp.line.width = Pt(width)
+    ln = sp.line._get_or_add_ln()
+    if dash:
+        etree.SubElement(ln, a("prstDash"), val=dash)
+    etree.SubElement(ln, a("tailEnd"), type="triangle", w="med", len="med")
+    sp.shadow.inherit = False
+    return sp
+
+
+def reliability_engine_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    set_bg_image(s, BG_BLUE)
+    cv = Canvas(s)
+    dark_header(cv, "ASCENSION MAD APPROACH · RELIABILITY AT SCALE",
+                "Reliable at every step, and at scale",
+                "Reliability = observability + evals, inside guardrails. Every story runs through the same engine; "
+                "every pod runs on the same harness.")
+    # ---- stations
+    cw, chh, gap = 2.35, 1.38, 0.35
+    xs = [0.6 + i * (cw + gap) for i in range(4)]
+    cy0 = 2.3
+    centers = [x + cw / 2 for x in xs]
+    for i, (name, col, sub, lines) in enumerate(ENGINE):
+        x = xs[i]
+        glass(cv, x, cy0, cw, chh, col, alpha=62, radius=0.1, lw=1.75)
+        cv.text(x + 0.16, cy0 + 0.08, cw - 0.3, 0.28, [[("%d  " % (i + 1), {"color": col, "font": LIGHT}),
+                                                       (name, {"bold": True, "color": col})]], size=11,
+                track=120, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.16, cy0 + 0.36, cw - 0.3, 0.2, sub, size=7.5, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.16, cy0 + 0.6, cw - 0.3, chh - 0.66,
+                [[("▪ ", {"color": col}), (t, {})] for t in lines], size=8, color=WHITE, after=1.5)
+        if i < 3:
+            cv.arrow(x + cw + 0.03, cy0 + chh / 2, xs[i + 1] - 0.03, cy0 + chh / 2, WHITE, 2.0)
+    rx_ = xs[3] + cw + 0.35
+    cv.arrow(xs[3] + cw + 0.03, cy0 + chh / 2, rx_ - 0.03, cy0 + chh / 2, WHITE, 2.0)
+    sp = cv.rect(rx_, cy0 + chh / 2 - 0.36, 12.88 - rx_, 0.72, None, GREEN, 1.75, MSO_SHAPE.FLOWCHART_TERMINATOR)
+    cv.text(rx_, cy0 + chh / 2 - 0.36, 12.88 - rx_, 0.72, [[("RELEASE", {"bold": True, "color": GREEN})],
+                                                         [("tested, approved, traced", {"color": SOFT,
+                                                                                         "size": 6.5,
+                                                                                         "track": 0})]],
+            size=10, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=100)
+    # ---- two loops over the run
+    _arc(cv, centers[2] + 0.35, centers[0], cy0, 1.6, YELLOW, 2.5)                  # closed loop
+    cv.text(centers[0] + 0.4, 1.2, centers[2] - centers[0] - 0.4, 0.4,
+            [[("CLOSED LOOP  ", {"bold": True, "color": YELLOW, "track": 150}),
+              ("every miss makes the harness better", {"color": WHITE})],
+             [("golden set \u2192 weekly blind sample \u2192 diagnose \u2192 tune \u2192 re-test, for every pod",
+               {"color": SOFT, "size": 7})]], size=8.5, align=PP_ALIGN.CENTER)
+    yb = cy0 + chh
+    _arc(cv, centers[2] - 0.25, centers[1] + 0.25, yb, yb + 0.36, MAGENTA, 2.0)    # bounded loop, below
+    lx0, lw0 = centers[1] + 0.12, centers[2] - centers[1] - 0.24
+    cv.text(lx0, yb + 0.4, lw0, 0.18, [[("BOUNDED LOOP  ", {"bold": True, "color": MAGENTA, "track": 120}),
+                                        ("retry with feedback", {"color": WHITE})]], size=7,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    dot0 = lx0 + lw0 / 2 - 1.0
+    for k in range(MAX_ATTEMPTS):
+        last = k == MAX_ATTEMPTS - 1
+        cv.rect(dot0 + k * 0.2, yb + 0.62, 0.14, 0.14, MAGENTA if last else None, MAGENTA if last else CYAN, 1.0,
+                MSO_SHAPE.OVAL)
+    cv.text(dot0 + MAX_ATTEMPTS * 0.2 + 0.05, yb + 0.58, 1.3, 0.22, "max 5, then an owner", size=7,
+            color=YELLOW, anchor=MSO_ANCHOR.MIDDLE)
+    # ---- observability ribbon under the run
+    ry = cy0 + chh + 0.94
+    cv.arrow(xs[0], ry, xs[3] + cw, ry, CYAN, 1.5, dash="dash", head=False)
+    for c in centers:
+        cv.arrow(c, cy0 + chh + 0.02, c, ry - 0.02, CYAN, 1.0, head=False)
+        cv.rect(c - 0.05, ry - 0.05, 0.1, 0.1, CYAN, None, shape=MSO_SHAPE.OVAL)
+    cv.arrow(xs[3] + cw, ry, rx_ + 0.2, ry, CYAN, 1.5)
+    cv.text(rx_ + 0.22, ry - 0.16, 12.88 - rx_ - 0.2, 0.32, ["change passport", "run report"], size=7,
+            color=CYAN, bold=True)
+    cv.text(xs[0], ry + 0.06, 9.5, 0.22,
+            [[("OBSERVABILITY  ", {"bold": True, "color": CYAN, "track": 150}),
+              ("every prompt, tool call, decision, approval, time and cost is traced, and the traces power the "
+               "evals", {"color": SOFT})]], size=7.5, anchor=MSO_ANCHOR.MIDDLE)
+    # ---- scale panel
+    py0, ph = ry + 0.34, 6.64 - (ry + 0.34)
+    fx, fy, fw, fh = cv.frame(0.45, py0, 12.43, ph, BLACK, 0.04)
+    cv.text(fx + 0.22, fy + 0.12, 5.6, 0.3, [[("SAME ENGINE, EVERY POD", {"bold": True, "color": WHITE,
+                                                                           "track": 150}),
+                                            ("   scalable by design", {"color": SOFT, "size": 8})]], size=11,
+            anchor=MSO_ANCHOR.MIDDLE)
+    rh = (fh - 0.56) / len(SCALE_ROWS)
+    for i, (when, what, lit) in enumerate(SCALE_ROWS):
+        y = fy + 0.5 + i * rh
+        cv.text(fx + 0.22, y, 0.85, rh, when, size=8.5, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(fx + 1.05, y, 1.25, rh, what, size=8, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+        for k in range(10):
+            on = k < lit
+            cv.rect(fx + 2.35 + k * 0.33, y + rh / 2 - 0.11, 0.26, 0.22, CYAN if on else None,
+                    CYAN if on else "3A5A70", 1.0, MSO_SHAPE.ROUNDED_RECTANGLE, 0.25)
+    gx = fx + 6.05
+    cv.rect(gx - 0.2, fy + 0.18, 0.008, fh - 0.36, "3A5A70")
+    fw2 = (fx + fw - 0.2 - gx) / 2
+    fh2 = (fh - 0.24) / 2
+    for i, (k, d) in enumerate(SCALE_FACTS):
+        x = gx + (i % 2) * fw2
+        y = fy + 0.12 + (i // 2) * fh2
+        cv.text(x, y + 0.04, fw2 - 0.2, 0.28, k, size=10, bold=True, color=YELLOW if i == 1 else WHITE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x, y + 0.34, fw2 - 0.2, 0.42, d, size=8, color=SOFT)
+    dark_footer(s)
+    set_notes(s, RELIABILITY_ENGINE_NOTES)
+    return s
+
+
+RELIABILITY_ENGINE_NOTES = """SLIDE: Reliable at every step, and at scale   (about 4 minutes)
+
+KEY MESSAGE
+One engine runs every story, and the same harness runs every pod. Reliability = observability + evals, inside guardrails, with people steering. It is bounded inside each run and keeps improving across runs.
+
+WALK IT, LEFT TO RIGHT
+1 Guard in: only a signed-in pod member with a valid story can start a run. Harmful or abusive prompts and prompt injection are blocked before any model call and logged; patient data and secrets are redacted (DLP).
+2 Agent works: inside the harness. Each step uses only its own tools through the gateway; no agent holds a production credential. Context comes from the knowledge graph, with citations. Every step is traced.
+3 Evals: QA for AI, on every run. Answer relevancy (does it answer the story?), groundedness (is every claim backed by the graph or a tool response?), tool-sequence accuracy (right tools, right order), plus tests, Code Analyzer and the Change Guardian.
+4 Guard out: schema, citations and a secret and patient-data scan; then people approve at H1-H4 and CAB, and the owning team's pipeline releases.
+
+THE TWO LOOPS (the arcs)
+- Bounded loop (magenta, small): if the evals fail, the agent retries with the failure as feedback, at most five times. Then the step stops, nothing is released, and a named owner gets every attempt. No infinite loops, no runaway cost.
+- Closed loop (yellow, large): every miss makes the harness better for every pod. Golden set built with Ascension's experts, weekly blind samples of approved changes, diagnose which agent or context failed, tune, and re-test on the golden set before anything changes.
+
+OBSERVABILITY (the cyan ribbon)
+Every prompt, skill version, tool call, decision, approval, time and cost is traced into the change passport and the run report. The traces are what the evals run on.
+
+SCALE (bottom panel)
+The same engine lights up pod by pod: two pilot pods by month 9, five by month 14, every pod by month 17. Agents scale out (one Cloud Run job per step, many stories in parallel); a new pod joins in about two weeks (its sources into the graph, its skill pack loaded); evals and guardrails are proven once and gate every pod; people scale by steering, not by doing.
+
+IF ASKED
+Use the "Ask us anything" slide in the back-up section: it answers the fourteen most common reliability questions one by one."""
