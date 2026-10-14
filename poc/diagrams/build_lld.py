@@ -19,7 +19,7 @@ from xml.sax.saxutils import quoteattr
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "Codex-to-Production Agentic Harness LLD.drawio")
 
-W, H = 3400, 2020
+W, H = 3400, 2320
 DX = 320          # lane 1 (user + ADLC plugin) is this much wider; everything right of it shifts
 X_SPLIT = 670
 FROZEN = set()    # cells laid out in final coordinates, not shifted
@@ -111,7 +111,7 @@ def small(s, color=MUTE, size=12):
 text(40, 18, 2300, 44, "Codex to Production · Agentic Harness end-to-end low-level design", size=30, bold=True)
 text(40, 62, 2400, 30,
      "Ascension · what the user sees in Codex, what runs behind it on Google Cloud "
-     "(Phase 1 Engineering Context Knowledge Graph, Phase 2 Multi-Agent Delivery), and where each output lands",
+     "(Phase 1 Engineering Context Knowledge Graph, Phase 2 Agentic Harness runtime), and where each output lands",
      size=15, color=MUTE)
 
 lg = [("AI agent", CYAN_T, CYAN_D, False), ("Human gate", YELLOW, YELLOW, False),
@@ -212,7 +212,8 @@ edge(spn, api, [(1285, 1072), (1285, 1104)], "GQL", off=(26, 0))
 
 # =========================================================== lane 3: phase 2
 run = box(1550, 196, 410, 112,
-          T("Harness entry · Run API · Cloud Run", small("validates the story · idempotency key = story + revision · "
+          T("Harness entry · Run API · Cloud Run", small("reads the Jira story named in Codex (e.g. NS-1234) with sa-ai-read · "
+                                         "validates it · idempotency key = story + revision · "
                                          "creates the run · starts one Workflows execution")),
           fill=SVC_T, stroke=NAVY)
 fs = box(2000, 196, 680, 112,
@@ -286,7 +287,7 @@ agents = [
     ("Architect Agent", "Agents SDK · sa-ai-read",
      "exists → find_reuse → blast_radius → owners → classify_risk → coverage_gap → design.json"),
     ("Developer Agent", "worker Codex (Codex SDK / codex exec) · sa-ai-dev",
-     "branch mad/&lt;story&gt; · sf project deploy (DEV sandbox only) · sf apex run test · Code Analyzer · "
+     "reads the repo's AGENTS.md first · branch harness/&lt;story&gt; · sf project deploy (DEV sandbox only) · sf apex run test · Code Analyzer · "
      "loop until green → PR"),
     ("Review Agent", "Agents SDK + Code Analyzer (PMD), ESLint · sa-ai-read",
      "standards, security, access checks → findings.json + PR comments · cannot approve"),
@@ -302,10 +303,15 @@ for i, (n, rt, d) in enumerate(agents):
     agent_ids.append(box(axx, ayy, 316, 140, T(n, small(rt, CYAN_D) + "<br>" + small(d, "#2B2B2B")),
                          fill=CYAN_T, stroke=CYAN_D, size=14, align="left", valign="top"))
 
-mdl = box(2000, 1036, 330, 112,
-          T("Approved model endpoint", small("OpenAI API through Secure Web Proxy allowlist · bounded, "
-                                             "redacted context only · BAA / zero retention per Ascension terms")),
-          fill=SVC_T, stroke=NAVY)
+mdl = box(2000, 1036, 160, 112,
+          T("Guardrails · Model Armor", small("screens every prompt and response: injection, jailbreak, "
+                                              "patient data, secrets", "#2B2B2B", 11)),
+          fill=MAGENTA_T, stroke=MAGENTA, sw=2, size=13)
+cdx = box(2170, 1036, 160, 112,
+          T("Codex Enterprise", small("Ascension's workspace · enterprise data protection signed · "
+                                      "via Secure Web Proxy", size=11)),
+          fill=SVC_T, stroke=NAVY, size=13)
+edge(mdl, cdx, [(2160, 1092), (2170, 1092)], width=1.5)
 grd = box(2350, 1036, 330, 112,
           T("Change Guardian · Cloud Run + OPA", small("diff + ownership graph + Rego rulebook → PASS / NEEDS "
                                                        "OWNER APPROVAL / BLOCK · design, every commit, promotion, "
@@ -339,7 +345,7 @@ acc = box(2000, 1572, 680, 114,
 outs = [
     ("jira", "Jira", "brief posted (01) · status: Ready for Harness → In progress → QA → Done", 92, GREY_D, False),
     ("conf", "Confluence", "design page draft (02) · as-built record (09)", 80, GREY_D, False),
-    ("git", "Git", "branch mad/NS-1234 · pull request · commit SHA (03, 04)", 80, GREY_D, False),
+    ("git", "Git", "branch harness/NS-1234 · pull request · commit SHA (03, 04)", 80, GREY_D, False),
     ("sfdev", "Salesforce DEV sandbox", "change deployed, Apex tests run (03)", 80, GREY_D, False),
     ("cop", "Copado", "user story · promotion SIT → UAT · Robotic and regression runs (05)", 92, GREY_D, False),
     ("zep", "Zephyr Scale", "test cases and results (04, 05)", 80, GREY_D, False),
@@ -380,7 +386,7 @@ edge(ps, wf, [(2515, 340), (2515, 322), (1980, 322), (1980, 470), (1960, 470)], 
 edge(ag, api, [(2000, 990), (1984, 990), (1984, 1346), (1506, 1346), (1506, 1200), (1460, 1200)],
      "graph.*", color=VIOLET, width=2.5)
 badge(1515, 1300, 3)
-edge(ag, mdl, [(2165, 1004), (2165, 1036)], "LLM calls", off=(42, 0))
+edge(ag, mdl, [(2080, 1004), (2080, 1036)], "model calls", off=(48, 0))
 edge(ag, gw, [(2680, 900), (2694, 900), (2694, 1278), (2680, 1278)], "", color=MAGENTA, width=2.5)
 badge(2652, 1150, 4, fill=MAGENTA)
 text(2530, 1149, 118, 30, "every tool call", size=12, color=MAGENTA, bold=True, align="right")
@@ -646,6 +652,49 @@ edge(back, screen, [(xb, yb + hb / 2), (xb - 28, yb + hb / 2), (xb - 28, 1722), 
                     (L1W + 50, sy_ + sh_ / 2), (sx_ + sw_, sy_ + sh_ / 2)],
      "results and links shown in Codex", color=BLACK, width=2.5)
 badge(1490, 1708, 5)
+
+
+# =========================================================== design decisions (final coordinates)
+DY0 = 2020
+DW = 3320 + DX
+box(40, DY0, DW, 270, "", fill=WHITE, stroke=BLACK, sw=2)
+box(40, DY0, DW, 44, "DESIGN DECISIONS · what we decided, and what we confirm with Ascension in Phase 0",
+    fill=BLACK, stroke=BLACK, font=WHITE, size=16, bold=True)
+DECISIONS = [
+    ("Model and data protection", True,
+     "Agents run on Ascension's Codex Enterprise seats. Enterprise data protection is already signed: no training "
+     "on Ascension data, retention and BAA terms in place. Worker Codex in Cloud Run signs in to the same "
+     "workspace."),
+    ("Source access", True,
+     "Connectors read only the project's restricted Confluence space and the pod's Jira projects. Confluence "
+     "permissions stay as they are, so the graph holds nothing outside that space."),
+    ("Starting a run", True,
+     "People start a run in Codex with a Jira number. The harness then reads that Jira story in the backend "
+     "(sa-ai-read); Jira shows the status as the run moves."),
+    ("Guardrails on every model call", True,
+     "Model Armor screens every prompt and response for injection, jailbreak, patient data and secrets. Jira and "
+     "Confluence text is treated as data, never as instructions; tool allow lists cap what any instruction can do."),
+    ("API limits kept low", True,
+     "Delta syncs only; agents read the graph, not the org; bulk and composite APIs; heavy syncs off-peak. A daily "
+     "budget per Salesforce org, with alerts at 50% and 80%."),
+    ("Sandboxes for parallel runs", False,
+     "A pool of developer sandboxes, one run per sandbox at a time, refreshed on a set cadence. SIT and UAT data "
+     "masked (Salesforce Data Mask) before agents test there."),
+    ("Graph freshness and access", False,
+     "Salesforce metadata re-syncs on every Copado promotion, not only nightly; the Change Guardian re-checks the "
+     "live org at promotion. Who can start and approve is set per pod in SSO groups; whoever starts a run cannot "
+     "approve its H3."),
+]
+dcw = (DW - 32 - 6 * 16) / 7
+for i, (title, done, body) in enumerate(DECISIONS):
+    dx_ = 56 + i * (dcw + 16)
+    FROZEN.add(box(dx_, DY0 + 60, dcw, 194, "", fill=GREEN_T if done else YELLOW_T,
+                   stroke=GREEN if done else "#C9A800", sw=1.5))
+    text(dx_ + 14, DY0 + 68, dcw - 28, 30, "<b>%s</b>" % title, size=15)
+    box(dx_ + 14, DY0 + 102, 170 if done else 250, 24, "DECIDED" if done else "PROPOSED · CONFIRM IN PHASE 0",
+        fill=GREEN if done else YELLOW, stroke=GREEN if done else YELLOW, font=WHITE if done else BLACK,
+        size=11, bold=True, sw=1)
+    text(dx_ + 14, DY0 + 134, dcw - 28, 112, body, size=14, color="#2B2B2B", valign="top")
 
 
 # =========================================================== write
