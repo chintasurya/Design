@@ -1,6 +1,6 @@
 # Ascension Agentic Harness: proposal decision summary
 
-What we decided for the Ascension proposal deck, end to end. The deck is **"Ascension Agentic Harness"** (29 slides, Insight Global template).
+What we decided for the Ascension proposal deck, end to end. The deck is **"Ascension Agentic Harness"** (30 slides, Insight Global template).
 
 ---
 
@@ -12,7 +12,7 @@ What we decided for the Ascension proposal deck, end to end. The deck is **"Asce
 | One-line pitch | An AI agent team, grounded in a knowledge graph of the Ascension org, takes a Jira story to a tested, deployable Salesforce change. People approve every step. |
 | Core message | *"Codex is the engine. The Agentic Harness is everything around it."* Ascension already licenses Codex Enterprise. We build the harness that makes it grounded, governed and repeatable. |
 | Lifecycle term | **ADLC (agentic development lifecycle)** replaces SDLC throughout. |
-| Look | Insight Global PowerPoint template. Light slides for detail, black slides for the story (platform, harness engineering, future state, scorecard), and one slide on the template's blue glow background (evals). The IG footer comes from the slide layouts, so it is fixed on every slide and cannot be dragged. |
+| Look | Insight Global PowerPoint template. Light slides for detail, black slides for the story (platform, harness engineering, future state, scorecard), and the evals slide on the template's blue glow background. The IG footer comes from the slide layouts, so it is fixed on every slide and cannot be dragged. |
 | Original content | The client's original slide content was kept word for word, apart from the MAD → Agentic Harness rename. Only the theme changed. |
 
 ---
@@ -27,26 +27,27 @@ What we decided for the Ascension proposal deck, end to end. The deck is **"Asce
 | 4 | High-level architecture | Helios-style layers (Surface, Runtime, Registry, Context, Govern) on Ascension's own infrastructure. |
 | 5 | Harness engineering | Five pillars: **Context, Action, Orchestration, Control, Feedback**. Operating rule: *when an agent struggles, fix the harness, not the prompt.* |
 | 6 | Future state | From **Agentic Harness** (today, this proposal) to **dynamic self-harness**, which AGI (Artificial General Intelligence) would make possible. Includes "How we trust AGI" and "What never changes". |
-| 7 | Security, reliability and input guardrails | Six layers, from Codex Enterprise through input, action and output guardrails, plus what happens when input is wrong or abusive. |
-| 8 | Closed-loop evals with bounded loops | Six-step eval loop, a 5-attempt stop, a run report for every run, and "no gaming the evals". |
-| 9 | Agent scorecard | Each agent scored on its own job, with a definition of pass@k. |
-| 10-11 | Pod cases | Nudge campaign (90 → 15-20 days) and Network Services market onboarding (9 months → 10-12 weeks) |
-| 12 | Operational efficiency | People supervise, agents build, around the clock |
-| 13 | Change management | Change Guardian across every pod |
-| 14 | Business outcomes | Measured results so far, plus the **20-25% floor** we commit to |
-| 15 | What it means for Ascension | All pods: $16M a year today, savings over three years (section 7) |
-| 16 | Timeline | 18 months; phase exits signed before the next phase starts |
-| 17 | Phase exit criteria | For each phase: outcome, how success is measured, who signs, dependency |
-| 18 | Delivery team | 17 at peak, 10 roles, all offshore |
-| 19 | Commercials | Fixed fee vs time and materials, plus the managed service |
-| 20 | Thank you | |
-| 21-29 | Appendix | Knowledge graph layers, Google Cloud deployment, target architecture, execution flow, network services architecture |
+| 7 | Evals are how we earn reliability | **Reliability = Observability + Evals, protected by Guardrails** across the top. Evals sit at the centre: agent output, traces, and the golden set with weekly samples go in; Pass, Retry (bounded loop, max 5 attempts, then a named owner) and Learn (closed loop: every miss becomes a new test) come out, all inside guardrails in and out. |
+| 8 | Agent scorecard | Each agent scored on its own job, with a definition of pass@k. |
+| 9-10 | Pod cases | Nudge campaign (90 → 15-20 days) and Network Services market onboarding (9 months → 10-12 weeks) |
+| 11 | Operational efficiency | People supervise, agents build, around the clock |
+| 12 | Business outcomes | Measured results so far, plus the **20-25% floor** we commit to |
+| 13 | What it means for Ascension | All pods: $16M a year today; savings in the three years **after go-live** (section 7) |
+| 14 | Timeline | 18 months; phase exits signed before the next phase starts |
+| 15 | Phase exit criteria | For each phase: outcome, how success is measured, who signs, dependency |
+| 16 | Risks and mitigations | Nine risks, each with likelihood, impact, mitigation, early warning and owner |
+| 17 | Delivery team | 17 at peak, 10 roles, all offshore |
+| 18 | Commercials | Fixed fee vs time and materials, plus the managed service |
+| 19 | Thank you | |
+| 20 | Ask us anything (back-up) | Every "what if" question mapped to the layer that answers it: guardrails, observability, evals, people |
+| 21 | Change management (back-up) | Change Guardian across every pod |
+| 22-30 | Appendix | Knowledge graph layers, Google Cloud deployment, target architecture, execution flow, network services architecture |
 
 ---
 
 ## 3. How the solution works (what the slides commit to)
 
-- **Phase 1, knowledge graph.** One cited map of Jira, Confluence, Salesforce, Git, Copado and Google Drive. Agents check what already exists, its impact and its owners before building.
+- **Phase 1, knowledge graph.** One cited map of Jira, Confluence, Salesforce, Git, Copado and Google Drive, held in **Spanner Graph** (queried with GQL). The earlier proof of concept used an in-memory graph; we now propose Spanner Graph because Ascension runs on Google Cloud, so the graph store is native there with no separate database to buy or approve. Agents check what already exists, its impact and its owners before building.
 - **Phase 2, agentic harness runtime on Google Cloud.**
   - Every story runs as a nine-step durable workflow.
   - Seven agents do the steps: Orchestrator, Requirements, Architect, Developer, Review, Test, Release.
@@ -98,7 +99,7 @@ What we decided for the Ascension proposal deck, end to end. The deck is **"Asce
 
 ---
 
-## 5. Timeline and phase exits (slides 16-17)
+## 5. Timeline, phase exits and risks (slides 14-16)
 
 18 months, seven phases. Each phase starts only after the previous phase's exit is signed, and the fixed fee for a phase is invoiced only at that signature.
 
@@ -112,11 +113,25 @@ What we decided for the Ascension proposal deck, end to end. The deck is **"Asce
 | 5 Scale wave 2 | M15-M17 | All 9-10 pods live and measured |
 | 6 Handover | M18 | Run team operating; handover signed |
 
-The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exit.
+The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exit. During the build, each pod is measured against its own Phase 0 baseline at the phase exits; the savings figures on slide 13 start after go-live.
+
+**Risks and mitigations (slide 16).**
+
+| Risk | Likelihood · impact | Mitigation (in short) |
+|---|---|---|
+| Access and environments arrive late | Med · High | Access is the Phase 0 exit; Phase 1 starts only after it is signed |
+| Experts have no time to label evals | High · High | Hours agreed per pod at Phase 0; agents pre-label, experts confirm |
+| Codex policy blocks plugins or MCP | Med · High | Confirmed with Codex admins in Phase 0; fallback: harness runs headless on Cloud Run |
+| Patient data or secrets reach a model | Low · High | Graph holds metadata only; DLP in and out; OpenAI BAA and zero retention confirmed; pen test |
+| Graph facts are incomplete or stale | Med · High | Phase 1 exit at ≥90% agreement; freshness checks; nightly drift watch |
+| Agent quality drifts, or a new model behaves differently | Med · Med | Evals gate every change; model pinned and changed only by config after passing evals |
+| A change breaks another pod's process | Med · High | Change Guardian at design, commit and promotion; CAB unchanged; rollback plan |
+| Pods keep working the old way | Med · High | Two pilot pods prove it first; onboarding waves with training; dashboard per pod |
+| Agent run cost grows faster than planned | Med · Med | Token budgets per step and run; cost in every run report, reviewed monthly |
 
 ---
 
-## 6. Team (slide 18)
+## 6. Team (slide 17)
 
 **17 people at peak, 10 roles, 100% offshore** (16.5 FTE at peak, 247.5 FTE-months).
 
@@ -137,7 +152,7 @@ The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exi
 
 ---
 
-## 7. Commercials and value (slides 15, 19)
+## 7. Commercials and value (slides 13, 18)
 
 ### Price
 | Option | Amount |
@@ -153,7 +168,9 @@ The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exi
   - Also fold the handover into the managed service: about $3.76M.
 - **Rates are assumed.** Blended ~$139/h offshore, ranging $100-195/h by role. **Replace with the IG rate card before the commercials go to the client.** The commercials slide carries no speaker notes, by decision.
 
-### Value (slide 15: all pods)
+### Value (slide 13: all pods, in the three years after go-live)
+Years 1-3 start once the 18-month implementation is done (month 19 on) and every pod is live. The build period is not in these numbers.
+
 | | Today | With the harness | Saved |
 |---|---|---|---|
 | Year 1 | $16M | $7M | $9M (56%) |
@@ -161,9 +178,9 @@ The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exi
 | Year 3 | $16M | $3M | $13M (81%) |
 | **3 years** | **$48M** | **$15M** | **$33M (69%)** |
 
-- **Return:** about **7x the $4.79M fixed fee**, paid back within year 1.
+- **Return:** about **7x the $4.79M fixed fee**, paid back within the first year after go-live.
 - **How it works:** in every pod, a squad of 4-5 developers plus a QA becomes 1 developer directing the harness agent, plus 1 QA.
-- **Floor vs target:** slide 14's 20-25% lower net run cost is the commitment. Slide 15 is the target.
+- **Floor vs target:** slide 12's 20-25% lower net run cost is the commitment. Slide 13 is the target.
 
 ---
 
@@ -176,18 +193,18 @@ The thresholds are proposed targets, confirmed with Ascension at the Phase 0 exi
 | What if it makes a mistake? | Tests, Code Analyzer, Change Guardian and human gates catch it before release. Every change has a rollback plan. |
 | Is patient data safe? | DLP redacts it; agents get only a bounded context slice. |
 | Will people lose jobs? | Ascension chooses: redeploy, attrition, or keep the team and deliver more. Reviewed quarterly. |
-| Is the saving guaranteed? | The 20-25% floor and the phase exits are the commitment; slide 15 is the target. |
+| Is the saving guaranteed? | The 20-25% floor and the phase exits are the commitment; slide 13 is the target. |
 | What if a phase fails? | It extends and the next phase does not start. On the fixed fee, IG carries the overrun. |
-| What if a better model comes out? | The model is swappable behind MCP; the eval set checks any new model first. |
+| What if a better model comes out? | The model is set by configuration in the agent runtime, and the tools stay the same because they sit behind MCP. Any new model must pass the evaluation set first. |
 | What about AGI? | A direction, not in the price. Autonomy grows only with evidence and Ascension's approval. |
 
 ---
 
 ## 9. Open items and risks before the client meeting
 
-1. **Rates.** Replace the assumed bill rates with the IG rate card (commercials, slide 19).
-2. **Savings ambition.** Year 1 at $7M means a 56% cut during the rollout year, while pods only go live through month 17. Present slide 15 as the target and slide 14 as the floor. Year 3 at $3M includes ~$1.24M for the managed service.
+1. **Rates.** Replace the assumed bill rates with the IG rate card (commercials, slide 18).
+2. **Savings ambition.** The three years on slide 13 start after go-live. Present slide 13 as the target and slide 12 as the floor. Year 3 at $3M includes ~$1.24M for the managed service.
 3. **Client effort.** Ascension's experts label the golden set and the weekly samples (a few hours a week). This should be added to the team slide's "Ascension provides" list.
 4. **Codex set-up.** Confirm with Ascension's Codex Enterprise admins that custom plugins and MCP servers are allowed.
-5. **Architecture slide.** Optional "Stops after 5 attempts" differentiator tag on the target architecture slide (pending).
+5. **Architecture slide.** Optional "Stops after 5 attempts" differentiator tag on the target architecture slide (slide 27, pending).
 6. **Pod baselines.** All per-pod figures are confirmed against each pod's Phase 0 baseline.

@@ -45,6 +45,37 @@ RULES = [
     (r"AI-DRIVEN MULTI-AGENT DELIVERY", "AI-DRIVEN SALESFORCE DELIVERY"),
     (r"MULTI-AGENT DELIVERY", "AGENTIC HARNESS"),
     (r"[Mm]ulti-[Aa]gent [Dd]elivery", "Agentic Harness"),
+    # the model is chosen in the runtime; MCP keeps the tools portable, not the model
+    (r"OpenAI Codex Enterprise;\nswappable via MCP", "OpenAI Codex Enterprise;\nmodel set in config;\ntools portable via MCP"),
+    (r"Nothing in the architecture is locked to GCP",
+     "Only the graph store is Google Cloud native, and it reloads from the JSON snapshot"),
+    (r"model swappable behind MCP", "model set by config, tools via MCP"),
+    (r"Codex Enterprise; the model is swappable\.",
+     "Codex Enterprise. The model is set by configuration in the agent runtime; the tools sit behind MCP, so they "
+     "stay the same whichever model runs them."),
+    # the graph runs on Spanner Graph: Ascension is on Google Cloud, so the graph store is native there
+    (r"In-memory directed property graph", "Spanner Graph: managed property graph on Google Cloud"),
+    (r"O\(1\) node access; type indexes", "Indexed lookups by node id and type"),
+    (r"save_to_file\(path\) / load_from_file\(path\); snapshot diffing",
+     "Loaded from the versioned JSON snapshot; snapshot diffing"),
+    (r"Query time < 0\.01s · ~1 MB typical · scales to 1M\+ nodes", "GQL queries in milliseconds · scales horizontally"),
+    (r"load_from_json\(path\)", "load_snapshot(snapshot_id)"),
+    (r"Semantica ContextGraph and the adapter API run as a Cloud Run service",
+     "Spanner Graph holds the graph; the adapter API runs as a Cloud Run service"),
+    (r"Scales to zero between syncs and queries",
+     "Spanner Graph is native to Google Cloud: no separate graph database to buy or approve"),
+    (r"The graph service is a container, so it runs anywhere containers run",
+     "The adapter is a container, and the graph reloads from JSON into any graph store"),
+    (r"query < 0\.01s", "GQL queries in milliseconds"),
+    (r"(in )?under 0\.01 ?s(econds)?\b", "in milliseconds"),
+    (r"In-memory knowledge graph", "Managed graph on Google Cloud"),
+    (r"In-memory directed graph", "Spanner property graph (GQL)"),
+    (r"^O\(1\) node access$", "Indexed lookups"),
+    (r"^save / load_from_file$", "Load from JSON snapshot"),
+    (r"Query < 0\.01s · 1M\+ nodes", "Millisecond GQL · scales out"),
+    (r"loaded into the in-memory graph", "loaded into Spanner Graph"),
+    (r"SemanticaGraphAdapter", "SpannerGraphAdapter"),
+    (r"Semantica ContextGraph", "Spanner Graph"),
 ]
 RULES = [(re.compile(p, re.M), r) for p, r in RULES]
 

@@ -35,9 +35,12 @@ REFRESH = {
 INSERT_AFTER = {
     "ASCENSION MAD APPROACH · PLATFORM": [story_slides.harness_slide, story_slides.autonomy_slide],
     "ASCENSION MAD APPROACH · SECURITY, RELIABILITY AND INPUT GUARDRAILS": [story_slides.evals_scorecard_slide],
-    "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": plan_slides.exits_slide,
+    "ASCENSION MAD APPROACH · IMPLEMENTATION TIMELINE": [plan_slides.exits_slide, plan_slides.risks_slide],
     "layout:Closer_1": story_slides.reliability_rings_slide,       # back-up Q&A, after Thank you
 }
+
+# Master slides moved behind Thank you, after the back-up slides inserted there
+MOVE_TO_BACKUP = ["ASCENSION MAD APPROACH · CHANGE MANAGEMENT"]
 
 # The detailed design, opened straight in the draw.io web app from the public repo.
 LLD_RAW = ("https://raw.githubusercontent.com/chintasurya/Design/refs/heads/claude/funny-babbage-t29499/"
@@ -99,10 +102,21 @@ def main(src=MASTER, out=OUT):
             build(prs, layout)
             inserts.append((prev, list(lst)[-1], eyebrow(slide)))
             prev = list(lst)[-1]                # several new slides follow one another
+    closer = next((list(lst)[i] for i, sl in enumerate(originals) if sl.slide_layout.name == "Closer_1"), None)
+    anchor = closer
     for after, new, name in inserts:
         lst.remove(new)
         after.addnext(new)
-        print("inserted slide %d after: %s" % (list(lst).index(new) + 1, name))
+        if after is anchor:
+            anchor = new                         # back-up slides stack up behind Thank you
+        print("inserted slide %d after: %s" % (list(lst).index(new) + 1, name or "Thank you"))
+    for i, slide in enumerate(originals):
+        if anchor is not None and eyebrow(slide) in MOVE_TO_BACKUP:
+            el = next(e for e in lst if int(e.get("id")) == slide.slide_id)
+            lst.remove(el)
+            anchor.addnext(el)
+            anchor = el
+            print("moved behind Thank you: %s" % eyebrow(slide))
     for old, new, name in swaps:
         lst.remove(new)
         old.addnext(new)

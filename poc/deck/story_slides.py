@@ -206,7 +206,7 @@ def platform_slide(prs, layout):
     cv.text(0.85, 5.95, 2.1, 0.3, "Infrastructure", size=13, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(0.85, 6.26, 2.1, 0.22, "Runs in Ascension's cloud; model-swappable", size=7, color=SOFT)
     infra = [("Salesforce", "Health Cloud, Marketing\n+ Data Cloud"), ("Delivery", "Copado, Git, Jira,\nZephyr"),
-             ("Models", "OpenAI Codex Enterprise;\nswappable via MCP"), ("Cloud", "Google Cloud: Cloud Run,\nSpanner, BigQuery")]
+             ("Models", "OpenAI Codex Enterprise;\nmodel set in config;\ntools portable via MCP"), ("Cloud", "Google Cloud: Cloud Run,\nSpanner, BigQuery")]
     for i, (t, d) in enumerate(infra):
         ix = 3.05 + i * 1.6
         cv.text(ix, 5.78, 1.55, 0.24, t, size=10, bold=True, color=WHITE)
@@ -346,8 +346,8 @@ def guardrails_slide(prs, layout):
 # All pods: Ascension's spend and the savings ramp as pods go live on the harness.
 ALL_PODS_SPEND = 16.0e6                      # a year, across all pods, as provided
 YEAR_SAVINGS = [9.0e6, 11.0e6, 13.0e6]       # spend with the harness: $7M, $5M, $3M
-YEAR_NOTES = ["Pods move to agent-first squads through the year.",
-              "Every pod on the harness for the full year.",
+YEAR_NOTES = ["Every pod live on the harness; squads settle into the agent-first model.",
+              "Agents take on more of each story as skills and evals mature.",
               "Full run rate: agents carry the delivery, people steer."]
 
 
@@ -360,7 +360,7 @@ def pod_economics_slide(prs, layout):
     cv.header("ASCENSION MAD APPROACH · WHAT IT MEANS FOR ASCENSION",
               "All pods: %s a year today. About %s back over three years" % (money(ALL_PODS_SPEND), money(total_save)),
               "Across every pod, each squad of 4-5 developers becomes 1 developer directing 1 MAD agent, plus 1 QA. "
-              "Savings grow as pods go live.")
+              "Savings count from go-live, after the 18-month implementation.")
     X0, W = 0.45, 12.43
 
     # ---- the squad shift
@@ -407,7 +407,7 @@ def pod_economics_slide(prs, layout):
     for i, sv in enumerate(YEAR_SAVINGS):
         x = X0 + i * (cw + 0.23)
         cv.rect(x, y, cw, ch, WHITE, RULE)
-        cv.text(x + 0.2, y + 0.12, cw - 0.4, 0.3, "Year %d" % (i + 1), size=13, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.2, y + 0.12, cw - 0.4, 0.3, "Year %d after go-live" % (i + 1), size=13, bold=True, anchor=MSO_ANCHOR.MIDDLE)
         cv.label(x + 0.2, y + 0.52, 1.6, "Today")
         cv.text(x + 0.2, y + 0.68, 1.6, 0.46, money(ALL_PODS_SPEND), size=22, font=LIGHT, color=MUTE,
                 anchor=MSO_ANCHOR.MIDDLE)
@@ -425,13 +425,13 @@ def pod_economics_slide(prs, layout):
     # ---- three years, all pods
     by, bh = 5.4, 1.08
     cv.rect(X0, by, W, bh, BLACK)
-    cv.text(X0 + 0.25, by + 0.1, 4.0, 0.2, "THREE YEARS, ALL PODS", size=7.5, bold=True, color=YELLOW, track=200)
+    cv.text(X0 + 0.25, by + 0.1, 4.0, 0.2, "THREE YEARS AFTER GO-LIVE, ALL PODS", size=7.5, bold=True, color=YELLOW, track=200)
     fee = plan_slides.build_price()[1]
     cells = [("Spend today", money(spend3), "%s a year x 3" % money(ALL_PODS_SPEND)),
              ("With the harness", money(spend3 - total_save), "agents included"),
              ("Saved over 3 years", money(total_save), "%d%% of three years' spend" % round(100 * total_save / spend3)),
              ("Return on the build fee", "%.0fx" % (total_save / fee),
-              "%s fixed fee, paid back in year %d" % (money(fee), next(i + 1 for i in range(3)
+              "%s fee, paid back in year %d after go-live" % (money(fee), next(i + 1 for i in range(3)
                                                                   if sum(YEAR_SAVINGS[:i + 1]) >= fee)))]
     cwid = W / 4
     for i, (lab, big, small) in enumerate(cells):
@@ -442,8 +442,8 @@ def pod_economics_slide(prs, layout):
                 bold=hero, color=(CYAN if i == 2 else YELLOW) if hero else WHITE, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(cx, by + 0.86, cwid - 0.3, 0.18, small, size=7.5, color=SOFT)
     cv.text(X0, 6.56, W, 0.32,
-            "Ascension's spend across all pods, about %s a year, as provided. Savings ramp as pods go live (two pods "
-            "by month 9, all pods by month 17) and include agent run costs. Planning estimates, confirmed against each "
+            "Ascension's spend across all pods, about %s a year, as provided. Years 1-3 start once the 18-month implementation is "
+            "done (month 19 on) and every pod is live; they include agent run costs and the managed service. Planning estimates, confirmed against each "
             "pod's Phase 0 baseline; the business outcomes slide's 20-25%% is the floor." % money(ALL_PODS_SPEND),
             size=6.5, color=MUTE)
     set_notes(s, POD_NOTES)
@@ -472,7 +472,7 @@ WALK IT
 - Registry: what agents are allowed to use. Tools behind the MCP gateway, pod skills, templates and output schemas.
 - Context: Phase 1, the knowledge graph. Six sources, cited retrieval, provenance on every fact.
 - Govern: the Change Guardian, input and output guardrails, three identities, human gates, the evaluation set, the change passport and token budgets.
-- Bottom: it runs on what Ascension already owns. Salesforce, Copado, Git, Jira, Zephyr, Google Cloud, and Codex Enterprise; the model is swappable.
+- Bottom: it runs on what Ascension already owns. Salesforce, Copado, Git, Jira, Zephyr, Google Cloud, and Codex Enterprise. The model is set by configuration in the agent runtime; the tools sit behind MCP, so they stay the same whichever model runs them.
 
 DIFFERENTIATORS
 Grounded in the org; no pod breaks another; one team for every pod. The next two slides show the detail behind this picture."""
@@ -503,14 +503,15 @@ IF ASKED
 POD_NOTES = """SLIDE: What it means for Ascension, all pods   (about 3 minutes)
 
 KEY MESSAGE
-Ascension spends about $16M a year across all pods, $48M over three years. With agent-first squads on the harness, annual spend comes down to about $7M in year 1, $5M in year 2 and $3M in year 3: about $33M saved over three years, roughly 69% of the spend and about 7x the build fee.
+Ascension spends about $16M a year across all pods, $48M over three years. Once the 18-month implementation is done and every pod is on the harness, annual spend comes down to about $7M in the first year after go-live, $5M in the second and $3M in the third: about $33M saved over three years, roughly 69% of the spend and about 7x the build fee.
 
 WALK IT
 - Top strip: the mechanism. In every pod, a squad of 4-5 developers and a QA becomes 1 developer directing the harness agent team, plus 1 QA. The agent drafts overnight; people design, review and approve. Every human gate stays.
-- Year 1: $16M to about $7M, saving $9M (56%), as pods move to agent-first squads through the year.
-- Year 2: $16M to about $5M, saving $11M (69%), every pod on the harness for the full year.
+- The clock: these three years start after the implementation (month 19 on), when every pod is already live. The 18 months of build are not in these numbers.
+- Year 1 after go-live: $16M to about $7M, saving $9M (56%), as squads settle into the agent-first model.
+- Year 2: $16M to about $5M, saving $11M (69%), as agents take on more of each story.
 - Year 3: $16M to about $3M, saving $13M (81%), full run rate.
-- Three years: $48M becomes about $15M. $33M saved, about 7x the $4.79M fixed build fee, paid back within year 1.
+- Three years: $48M becomes about $15M. $33M saved, about 7x the $4.79M fixed build fee, paid back within the first year after go-live.
 
 HOW THE NUMBERS ARE BUILT (for you, not the slide)
 - $16M a year is Ascension's figure for all pods.
@@ -518,7 +519,7 @@ HOW THE NUMBERS ARE BUILT (for you, not the slide)
 - These are target figures set with Insight Global leadership. The business outcomes slide's 20-25% is the floor we commit to; every pod is measured against its own Phase 0 baseline.
 
 BE READY FOR
-- "Year 1 is during the rollout; how can it already be $7M?" Answer: the target assumes pods move onto agent-first squads quickly after the pilots; it is confirmed pod by pod against the baseline.
+- "Does year 1 overlap the rollout?" No. Year 1 starts after the 18-month implementation, with every pod live. During the build, savings are measured pod by pod against the Phase 0 baseline at each phase exit.
 - "What happens to the people?" Ascension chooses: redeploy to backlog and other work, absorb through attrition, or keep people and deliver more. Reviewed quarterly.
 - "Is it guaranteed?" The commitment is the floor and the phase exits; these figures are the target."""
 

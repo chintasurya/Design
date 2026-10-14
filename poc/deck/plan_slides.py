@@ -66,7 +66,7 @@ EXITS = [
      "Pod leads + sponsor", "Production authorised (Phase 3 exit)"),
     ("All 9-10 pods live on the harness",
      ["Same onboarding checklist passed by every remaining pod",
-      "Wave 1 pods on track to 10-20% lower net cost in year 1 (business outcomes slide)",
+      "Wave 1 pods measured against their Phase 0 baseline and on track to the go-live savings target",
       "No severity-1 incident caused by the harness in the last 30 days"],
      "Pod leads + sponsor", "Wave 1 pods measured and stable (Phase 4 exit)"),
     ("The run team operating the harness without the build team",
@@ -315,6 +315,151 @@ def exits_slide(prs, layout):
             anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, EXITS_NOTES)
     return s
+
+
+# ------------------------------------------------------------------ risks
+# (risk, area, if it happens, likelihood, impact, mitigation, early warning, owner)
+RISKS = [
+    ("Access and environments arrive late", "Delivery",
+     "Phase 1 cannot start; the plan slips month by month",
+     "Med", "High",
+     "Access list, sandboxes and named approvers are the Phase 0 exit; Phase 1 starts only after it is signed. "
+     "Read-only access first, write access later.",
+     "Phase 0 items still open in week 3",
+     "Ascension sponsor + IG engagement lead"),
+    ("Experts have no time to label evals", "People",
+     "Golden set stays thin; evals cannot be trusted",
+     "High", "High",
+     "Hours per pod agreed at Phase 0 (a few hours a week). Agents pre-label, experts only confirm. The weekly "
+     "sample is small by design.",
+     "Weekly sample not reviewed within 5 days",
+     "Pod leads"),
+    ("Codex policy blocks plugins or MCP", "Platform",
+     "Developers cannot start the harness from Codex",
+     "Med", "High",
+     "Confirmed with Ascension's Codex Enterprise admins in Phase 0. Fallback: the harness runs headless on "
+     "Cloud Run with the same tools and gateway.",
+     "No admin approval by the Phase 0 exit",
+     "Codex admins + AI harness architect"),
+    ("Patient data or secrets reach a model", "Security",
+     "HIPAA exposure; trust in the programme is lost",
+     "Low", "High",
+     "The graph holds metadata, never patient records. DLP redacts on the way in and scans on the way out. "
+     "OpenAI terms (BAA, zero retention) confirmed in Phase 0; pen test before production.",
+     "Any DLP hit on an output",
+     "Cloud security engineer + Ascension security"),
+    ("Graph facts are incomplete or stale", "Data",
+     "Agents build on a wrong picture of the org",
+     "Med", "High",
+     "Phase 1 exit: ≥90% agreement with architects on 10-15 past changes. Freshness and coverage checks; "
+     "nightly drift watch; unknowns go to the owner, never guessed.",
+     "Coverage or freshness below target",
+     "Knowledge graph engineers"),
+    ("Agent quality drifts, or a new model behaves differently", "Quality",
+     "More rework; reviewers lose confidence",
+     "Med", "Med",
+     "Evals gate every prompt, skill and model change; held-out set; weekly blind sample. The model is pinned "
+     "and changes only by config after passing evals. Max 5 attempts, then an owner.",
+     "pass@1 or judge agreement falls",
+     "AI harness architect"),
+    ("A change breaks another pod's process", "Delivery",
+     "Incident in a shared object; pods stop trusting the harness",
+     "Med", "High",
+     "Change Guardian checks design, commit and promotion against the ownership graph; affected pods sign; CAB "
+     "unchanged; every release has a rollback plan.",
+     "Guardian blocks or approval backlog rising",
+     "Pod leads + Guardian rulebook owner"),
+    ("Pods keep working the old way", "Adoption",
+     "Harness built but under-used; benefits do not land",
+     "Med", "High",
+     "Two pilot pods prove it on their own baseline before any scale-up. Onboarding waves with training; a "
+     "dashboard per pod; people keep every approval.",
+     "Stories through the harness below plan",
+     "Ascension sponsor + engagement lead"),
+    ("Agent run cost grows faster than planned", "Platform",
+     "Model and cloud usage eat into the benefit",
+     "Med", "Med",
+     "Token budgets per step and per run; a run stops at its budget. Cost per step is in every run report and "
+     "reviewed monthly.",
+     "Cost per story over budget two weeks running",
+     "Cloud and DevOps engineers"),
+]
+RATING_FILL = {"High": MAGENTA_T, "Med": YELLOW_T, "Low": GREEN_T}
+RATING_LINE = {"High": MAGENTA, "Med": "C9A800", "Low": GREEN}
+
+
+def risks_slide(prs, layout):
+    s = prs.slides.add_slide(layout)
+    cv = Canvas(s)
+    cv.header("ASCENSION MAD APPROACH · RISKS AND MITIGATIONS",
+              "What could go wrong, and what is already in the plan to stop it",
+              "Every risk has a mitigation built into the phases, a signal that warns us early and a named owner. "
+              "The register is reviewed at every phase exit.")
+    X0 = 0.45
+    cols = [("Risk", 2.45), ("If it happens", 2.0), ("Likelihood · impact", 1.15), ("How we mitigate it", 3.85),
+            ("Early warning", 1.6), ("Owner", 1.38)]
+    tw = sum(w for _, w in cols)
+    y = 1.28
+    x = X0
+    for name, w in cols:
+        cv.text(x + 0.08, y, w - 0.1, 0.24, name, size=8, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        x += w
+    cv.rect(X0, y + 0.26, tw, 0.015, BLACK)
+    y += 0.3
+    rh = (CONTENT_FLOOR - 0.3 - y) / len(RISKS)
+    for i, (risk, area, effect, like, imp, mitig, warn, owner) in enumerate(RISKS):
+        if i % 2 == 0:
+            cv.rect(X0, y, tw, rh, GREY)
+        x = X0
+        cv.text(x + 0.08, y + 0.05, cols[0][1] - 0.14, rh - 0.08,
+                [[(risk, {"bold": True, "size": 8})], [(area.upper(), {"color": MUTE, "size": 6, "track": 150})]],
+                size=7.5, anchor=MSO_ANCHOR.MIDDLE)
+        x += cols[0][1]
+        cv.text(x + 0.08, y + 0.05, cols[1][1] - 0.14, rh - 0.08, effect, size=7, anchor=MSO_ANCHOR.MIDDLE)
+        x += cols[1][1]
+        for j, r in enumerate((like, imp)):
+            px = x + 0.08 + j * 0.52
+            cv.rect(px, y + rh / 2 - 0.1, 0.46, 0.2, RATING_FILL[r], RATING_LINE[r], 0.75,
+                    MSO_SHAPE.ROUNDED_RECTANGLE, 0.4)
+            cv.text(px, y + rh / 2 - 0.1, 0.46, 0.2, r, size=6.5, bold=True, align=PP_ALIGN.CENTER,
+                    anchor=MSO_ANCHOR.MIDDLE)
+        x += cols[2][1]
+        cv.text(x + 0.08, y + 0.04, cols[3][1] - 0.14, rh - 0.06, mitig, size=7, anchor=MSO_ANCHOR.MIDDLE)
+        x += cols[3][1]
+        cv.text(x + 0.08, y + 0.05, cols[4][1] - 0.14, rh - 0.08, warn, size=7, color=MUTE,
+                anchor=MSO_ANCHOR.MIDDLE)
+        x += cols[4][1]
+        cv.text(x + 0.08, y + 0.05, cols[5][1] - 0.12, rh - 0.08, owner, size=7, bold=True,
+                anchor=MSO_ANCHOR.MIDDLE)
+        y += rh
+    cv.rect(X0, y, tw, 0.015, BLACK)
+    cv.text(X0, y + 0.05, tw, 0.22,
+            "Likelihood and impact are our starting view, agreed with Ascension at the Phase 0 exit. The engagement "
+            "lead keeps the register; new risks are added at each phase exit and in the monthly steering meeting.",
+            size=6.5, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
+    set_notes(s, RISKS_NOTES)
+    return s
+
+
+RISKS_NOTES = """SLIDE: Risks and mitigations   (about 3 minutes)
+
+KEY MESSAGE
+We are not asking Ascension to trust that nothing goes wrong. Every risk we can see has a mitigation already built into the phases, a signal that warns us early, and a named owner.
+
+WALK IT (pick three, do not read all nine)
+- Expert time (the only High / High): evals are only as good as the labels. We agree the hours per pod at Phase 0, agents pre-label and experts only confirm, and the weekly sample is small by design.
+- Patient data: low likelihood because the graph holds metadata, never patient records, and DLP runs in and out; high impact, so OpenAI's terms (BAA, zero data retention) are confirmed in Phase 0 and a pen test runs before production.
+- Adoption: the scale-up waits until two pilot pods have proven it on their own baseline. That is the strongest mitigation we have: pods see a peer pod's numbers, not our slides.
+
+HOW IT TIES TO THE REST OF THE DECK
+- Most mitigations are phase exits (the previous slide): nothing moves on until the exit is signed.
+- Quality and model drift are handled by the evals slide: every change passes the evaluation set, and every step stops after five attempts.
+- Cross-pod breakage is the Change Guardian (back-up slide).
+
+BE READY FOR
+- "What is your biggest risk?" Honest answer: expert time for labelling. Without labelled examples, the evals cannot be trusted, so we ask for it up front.
+- "What if Codex does not allow your plugin?" The harness runs headless on Cloud Run with the same tools and gateway; developers start runs from the approval page or Jira instead of Codex.
+- "Who owns the register?" Our engagement lead, reviewed with Ascension's sponsor at every phase exit."""
 
 
 # ------------------------------------------------------------------ team
