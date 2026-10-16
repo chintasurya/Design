@@ -179,12 +179,23 @@ def chatgpt_api(tmp_path, monkeypatch):
     graphs = GraphService(LocalJsonStore(str(tmp_path / "kg.json")))
     graphs.replace(sample_graph())
     spawner = Spawner()
-    sessions = CodexSessions(s, MemoryVault(), spawn=spawner)
+    plan = {"n": 0}
+
+    def fetch_usage(token, account):  # each call: 2 more points of the 5-hour window, 0.5 credits
+        plan["n"] += 1
+        return {"plan_type": "plus", "rate_limit": {
+            "primary_window": {"used_percent": 10 + 2 * plan["n"], "limit_window_seconds": 18000, "reset_at": 1},
+            "secondary_window": {"used_percent": 3, "limit_window_seconds": 604800, "reset_at": 2}},
+            "credits": {"has_credits": True, "unlimited": False, "balance": str(20 - 0.5 * plan["n"])}}
+
+    sessions = CodexSessions(s, MemoryVault(), spawn=spawner, fetch_usage=fetch_usage)
     jira = FakeJira([issue("KAN-7", "Add Risk Score to Account", "Acceptance Criteria\n- Score 0-100")])
     prompts = []
 
-    def requirement_exec(conn, ws, prompt, on_line, home=None, sandbox=None, output_schema=None):
-        prompts.append({"prompt": prompt, "home": home, "sandbox": sandbox, "schema": output_schema})
+    def requirement_exec(conn, ws, prompt, on_line, home=None, sandbox=None, output_schema=None,
+                         instructions=None, extra_args=None):
+        prompts.append({"prompt": prompt, "home": home, "sandbox": sandbox, "schema": output_schema,
+                        "instructions": instructions, "extra_args": extra_args})
         spec = {**SPEC, "components": [{"action": "create", "type": "CustomField", "api_name": "Account.Risk_Score__c",
                                         "description": "score", "exists_in_org": False, "evidence": "guess"}]}
         return {"exit_code": 0, "final_message": json.dumps({"reply": "Here is the spec.", "spec": spec}),
@@ -221,11 +232,40 @@ def test_each_developer_connects_their_own_codex(chatgpt_api):
     assert run["status"] == "succeeded", run
     call = prompts[-1]
     assert call["home"] == svc.sessions.home("alice@example.com") and call["sandbox"] == "read-only"
+    # lean: our own short instructions, no tools, no environment block
+    assert call["instructions"].startswith("You are the Requirement Agent")
+    assert "shell_tool" in call["extra_args"] and "include_environment_context=false" in call["extra_args"]
+    assert "You are the Requirement Agent" not in call["prompt"]  # instructions are not sent twice
+    # plan usage around the call: 2 points of the 5-hour limit and half a credit
+    assert run["plan_usage"]["primary_pct_used"] == 2 and run["plan_usage"]["credits_used"] == 0.5
     assert '"KAN-7"' in call["prompt"] and "knowledge_graph" in call["prompt"]  # the gateway looked it up
     assert call["schema"]["required"] == ["reply", "spec"]
     comp = run["result"]["spec"]["components"][0]
     assert comp["exists_in_org"] and comp["action"] == "modify"  # still grounded against the graph
     assert run["usage"]["ticket"] == "KAN-7" and run["usage"]["total_tokens"] == 3500
+
+    # the same unchanged ticket again: the stored spec, no model call
+    calls = len(prompts)
+    again = client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7"}, headers=ALICE).json()
+    cached = client.get(f"/v1/runs/{again['runId']}", headers=ALICE).json()
+    assert len(prompts) == calls and "Reused" in cached["result"]["reply"]
+    assert cached["usage"]["calls"] == 0 and cached["usage"]["total_tokens"] == 0
+    client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7 again"}, headers=ALICE)
+    assert len(prompts) == calls + 1  # asked to refresh, so it calls Codex
+
+    # reading a ticket or listing tickets never calls the model
+    calls = len(prompts)
+    read = client.post("/v1/requirements/chat", json={"message": "Read KAN-7"}, headers=ALICE).json()
+    r = client.get(f"/v1/runs/{read['runId']}", headers=ALICE).json()
+    assert len(prompts) == calls and "Score 0-100" in r["result"]["reply"] and "no model call" in r["result"]["reply"]
+    assert r["usage"]["model"] == "knowledge graph (no model call)" and r["usage"]["total_tokens"] == 0
+    listed = client.post("/v1/requirements/chat", json={"message": "list my open tickets"}, headers=ALICE).json()
+    r = client.get(f"/v1/runs/{listed['runId']}", headers=ALICE).json()
+    assert len(prompts) == calls and "KAN-7 · Add Risk Score to Account" in r["result"]["reply"]
+
+    plan_now = client.get("/v1/codex/plan", headers=ALICE).json()
+    assert plan_now["available"] and plan_now["plan"] == "plus" and plan_now["secondary"]["window_minutes"] == 10080
+    assert client.get("/v1/codex/plan", headers=BOB).json()["available"] is False
 
     # a follow-up keeps the conversation and the ticket in view
     client.post("/v1/requirements/chat", json={"message": "what could break?",

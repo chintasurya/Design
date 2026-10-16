@@ -1,5 +1,6 @@
 import { LightningElement } from 'lwc';
 import usageSummary from '@salesforce/apex/AgentConsoleController.usageSummary';
+import codexPlan from '@salesforce/apex/AgentConsoleController.codexPlan';
 
 // Categorical slots 1 and 2 of the validated palette, in fixed order.
 const SERIES = [
@@ -24,6 +25,22 @@ function short(n) {
     if (v >= 1e6) return `${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M`;
     if (v >= 1e3) return `${(v / 1e3).toFixed(v >= 1e4 ? 0 : 1)}k`;
     return String(v);
+}
+
+function credits(n) {
+    const v = Number(n || 0);
+    return v === 0 ? '0' : v < 1 ? v.toFixed(2) : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function pct(n) {
+    return `${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+}
+
+function hours(w) {
+    const m = (w && w.window_minutes) || 0;
+    if (m >= 1440 * 6) return 'Weekly';
+    if (m >= 60) return `${Math.round(m / 60)}-hour`;
+    return m ? `${m}-minute` : 'Usage';
 }
 
 function niceMax(v) {
@@ -52,6 +69,7 @@ export default class AgentDashboard extends LightningElement {
     loading = false;
     error;
     hoverIndex = -1;
+    plan;
 
     dayOptions = [
         { label: 'Last 7 days', value: '7' },
@@ -68,7 +86,12 @@ export default class AgentDashboard extends LightningElement {
         this.loading = true;
         this.error = undefined;
         try {
-            this.data = JSON.parse(await usageSummary({ days: Number(this.days) }));
+            const [usage, plan] = await Promise.all([
+                usageSummary({ days: Number(this.days) }),
+                codexPlan().catch(() => '{"available":false}')
+            ]);
+            this.data = JSON.parse(usage);
+            this.plan = JSON.parse(plan);
         } catch (e) {
             this.error = errorText(e);
         } finally {
@@ -109,11 +132,43 @@ export default class AgentDashboard extends LightningElement {
             { key: 'total', label: 'Total tokens', value: fmt(this.data && this.data.total_tokens),
                 sub: `${fmt((req.runs || 0) + (dev.runs || 0))} agent runs` },
             { key: 'req', label: 'Requirement agent', value: fmt(req.total_tokens), swatch: `background:${SERIES[0].color}`,
-                sub: `${fmt(req.runs)} runs · ${fmt(req.calls)} model calls · avg ${fmt(req.avg_per_run)} per run` },
+                sub: `${fmt(req.runs)} runs · ${fmt(req.no_model_runs)} answered from the graph with no model call · ` +
+                    `avg ${fmt(req.avg_per_run)} per run` },
             { key: 'dev', label: 'Developer agent', value: fmt(dev.total_tokens), swatch: `background:${SERIES[1].color}`,
                 sub: `${fmt(dev.runs)} runs · ${fmt(dev.calls)} Codex attempts · avg ${fmt(dev.avg_per_run)} per run` },
             { key: 'mix', label: 'Input / output', value: `${short((req.input_tokens || 0) + (dev.input_tokens || 0))} / ${short((req.output_tokens || 0) + (dev.output_tokens || 0))}`,
-                sub: `${short((req.cached_input_tokens || 0) + (dev.cached_input_tokens || 0))} input tokens served from cache · ${fmt(ok)} deployed` }
+                sub: `${short((req.cached_input_tokens || 0) + (dev.cached_input_tokens || 0))} input tokens served from cache · ${fmt(ok)} deployed` },
+            { key: 'credits', label: 'Codex credits used', value: credits((req.credits_used || 0) + (dev.credits_used || 0)),
+                sub: `Requirement ${credits(req.credits_used)} · Developer ${credits(dev.credits_used)} · ` +
+                    `${pct((req.limit_pct_used || 0) + (dev.limit_pct_used || 0))} of your 5-hour limit` }
+        ];
+    }
+
+    // ---------------------------------------------------------------- plan
+    get hasPlan() {
+        return !!(this.plan && this.plan.available);
+    }
+
+    get planReason() {
+        return (this.plan && this.plan.reason) || 'Connect to Codex on the Agent Console to see your plan.';
+    }
+
+    get planTiles() {
+        const p = this.plan || {};
+        const limitTile = (w, name) => {
+            if (!w) return { key: name, label: name, value: '-', sub: 'not reported for your plan' };
+            const reset = w.resets_at ? new Date(w.resets_at * 1000).toLocaleString() : '';
+            return { key: name, label: name, value: pct(w.used_percent), sub: reset ? `resets ${reset}` : '',
+                barStyle: `width:${Math.min(100, w.used_percent)}%` };
+        };
+        const c = p.credits || {};
+        const balance = c.unlimited ? 'Unlimited' : c.balance !== null && c.balance !== undefined ? credits(c.balance) : '-';
+        return [
+            limitTile(p.primary, `${hours(p.primary)} limit used`),
+            limitTile(p.secondary, `${hours(p.secondary)} limit used`),
+            { key: 'balance', label: 'Credits balance', value: balance,
+                sub: `${p.plan ? `${p.plan.charAt(0).toUpperCase()}${p.plan.slice(1)} plan` : ''}` +
+                    `${p.limit_reached ? ' · limit reached' : ''}` }
         ];
     }
 
@@ -283,6 +338,8 @@ export default class AgentDashboard extends LightningElement {
             agentLabel: r.agent === 'developer' ? 'Developer' : 'Requirement',
             agentStyle: `background:${r.agent === 'developer' ? SERIES[1].color : SERIES[0].color}`,
             inLabel: fmt(r.input_tokens),
+            creditsLabel: r.credits_used === null || r.credits_used === undefined ? '-' : credits(r.credits_used),
+            limitLabel: r.limit_pct_used === null || r.limit_pct_used === undefined ? '-' : pct(r.limit_pct_used),
             outLabel: fmt(r.output_tokens),
             totalLabel: fmt(r.total_tokens),
             statusClass: `status status_${r.status}`

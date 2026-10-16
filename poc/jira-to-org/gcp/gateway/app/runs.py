@@ -121,12 +121,13 @@ class RunContext:
         self.store.update(self.run_id, steps=self._steps)
 
     def add_usage(self, agent: str, model: str | None, input_tokens: int = 0, output_tokens: int = 0,
-                  cached_input_tokens: int = 0, reasoning_tokens: int = 0, ticket: str | None = None) -> None:
+                  cached_input_tokens: int = 0, reasoning_tokens: int = 0, ticket: str | None = None,
+                  calls: int = 1) -> None:
         """Accumulate model tokens on the run; the dashboard sums these."""
         u = self._usage or {"agent": agent, "model": model, "ticket": ticket, "calls": 0, "input_tokens": 0,
                             "cached_input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0,
                             "total_tokens": 0}
-        u["calls"] += 1
+        u["calls"] += calls
         u["input_tokens"] += int(input_tokens or 0)
         u["cached_input_tokens"] += int(cached_input_tokens or 0)
         u["output_tokens"] += int(output_tokens or 0)
@@ -136,6 +137,23 @@ class RunContext:
         u["ticket"] = ticket or u.get("ticket")
         self._usage = u
         self.store.update(self.run_id, usage=u)
+
+    def plan_usage(self, before: dict | None, after: dict | None) -> None:
+        """How much of the developer's Codex plan this run used: limit
+        percentage points and credits, from snapshots taken around it."""
+        if not after:
+            return
+        def pct(snap: dict | None, window: str) -> float | None:
+            return ((snap or {}).get(window) or {}).get("used_percent")
+        def bal(snap: dict | None) -> float | None:
+            return ((snap or {}).get("credits") or {}).get("balance")
+        delta = {"after": after}
+        for window in ("primary", "secondary"):
+            if pct(before, window) is not None and pct(after, window) is not None:
+                delta[f"{window}_pct_used"] = round(pct(after, window) - pct(before, window), 2)
+        if bal(before) is not None and bal(after) is not None:
+            delta["credits_used"] = round(bal(before) - bal(after), 4)
+        self.store.update(self.run_id, plan_usage=delta)
 
     def usage_ticket(self, ticket: str | None) -> None:
         if self._usage and ticket:

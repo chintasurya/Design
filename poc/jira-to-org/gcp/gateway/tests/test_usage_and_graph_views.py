@@ -45,3 +45,15 @@ def test_usage_endpoint_counts_a_real_requirement_run(api):  # noqa: F811
     client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7"}, headers=KEY)
     out = client.get("/v1/usage", params={"days": 3}, headers=KEY).json()
     assert out["agents"]["requirement"]["total_tokens"] == 2400 and out["recent"][0]["ticket"] == "KAN-7"
+
+
+def test_usage_counts_credits_limits_and_no_model_answers():
+    now = datetime(2026, 10, 16, 12, tzinfo=timezone.utc)
+    paid = run("requirement", "KAN-6", 3000, "2026-10-16")
+    paid["plan_usage"] = {"credits_used": 0.75, "primary_pct_used": 2}
+    free = run("requirement", "KAN-6", 0, "2026-10-16")
+    free["usage"]["calls"] = 0
+    out = summarize([paid, free], days=3, now=now)
+    req = out["agents"]["requirement"]
+    assert (req["credits_used"], req["limit_pct_used"], req["no_model_runs"], req["runs"]) == (0.75, 2, 1, 2)
+    assert out["recent"][0]["credits_used"] == 0.75 and out["recent"][0]["limit_pct_used"] == 2

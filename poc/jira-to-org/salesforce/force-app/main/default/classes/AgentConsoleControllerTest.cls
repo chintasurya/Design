@@ -47,6 +47,8 @@ private class AgentConsoleControllerTest {
         AgentConsoleController.codexCompleteLogin(' http://127.0.0.1:1455/auth/callback?code=c&state=s ');
         System.assert(m.last.getEndpoint().endsWith('/v1/codex/login/complete'));
         System.assert(m.last.getBody().contains('"redirectUrl":"http://127.0.0.1:1455/auth/callback?code=c&state=s"'));
+        AgentConsoleController.codexPlan();
+        System.assert(m.last.getEndpoint().endsWith('/v1/codex/plan'));
         AgentConsoleController.codexLogout();
         System.assert(m.last.getEndpoint().endsWith('/v1/codex/logout'));
         System.assertEquals('POST', m.last.getMethod());

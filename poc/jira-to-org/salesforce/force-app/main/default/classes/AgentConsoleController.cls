@@ -54,6 +54,12 @@ public with sharing class AgentConsoleController {
         return send('POST', '/v1/codex/login/complete', new Map<String, Object>{ 'redirectUrl' => url });
     }
 
+    /** Agent Dashboard: the developer's Codex plan right now (limits used, credits). */
+    @AuraEnabled
+    public static String codexPlan() {
+        return send('GET', '/v1/codex/plan', null);
+    }
+
     @AuraEnabled
     public static String codexLogout() {
         return send('POST', '/v1/codex/logout', new Map<String, Object>());

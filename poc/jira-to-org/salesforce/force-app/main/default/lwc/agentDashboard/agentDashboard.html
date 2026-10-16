@@ -21,6 +21,25 @@
                 <p class="error">{error}</p>
             </template>
 
+            <section class="panel">
+                <h2 class="panel__title">Your Codex plan</h2>
+                <template lwc:if={hasPlan}>
+                    <div class="tiles tiles_plan">
+                        <template for:each={planTiles} for:item="t">
+                            <div key={t.key} class="tile">
+                                <p class="tile__label">{t.label}</p>
+                                <p class="tile__value">{t.value}</p>
+                                <template lwc:if={t.barStyle}>
+                                    <div class="meter"><span class="meter__fill" style={t.barStyle}></span></div>
+                                </template>
+                                <p class="tile__sub">{t.sub}</p>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template lwc:else><p class="empty">{planReason}</p></template>
+            </section>
+
             <div class="tiles">
                 <template for:each={tiles} for:item="t">
                     <div key={t.key} class="tile">
@@ -148,7 +167,7 @@
                     <h2 class="panel__title">Recent agent runs</h2>
                     <template lwc:if={hasRecent}>
                         <table class="runs">
-                            <thead><tr><th>When</th><th>Agent</th><th>Ticket</th><th>Status</th><th class="num">In</th><th class="num">Out</th><th class="num">Total</th></tr></thead>
+                            <thead><tr><th>When</th><th>Agent</th><th>Ticket</th><th>Status</th><th class="num">In</th><th class="num">Out</th><th class="num">Total</th><th class="num">Limit</th><th class="num">Credits</th></tr></thead>
                             <tbody>
                                 <template for:each={recent} for:item="r">
                                     <tr key={r.key}>
@@ -159,6 +178,8 @@
                                         <td class="num">{r.inLabel}</td>
                                         <td class="num">{r.outLabel}</td>
                                         <td class="num"><strong>{r.totalLabel}</strong></td>
+                                        <td class="num">{r.limitLabel}</td>
+                                        <td class="num">{r.creditsLabel}</td>
                                     </tr>
                                 </template>
                             </tbody>

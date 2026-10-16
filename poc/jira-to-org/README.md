@@ -53,7 +53,7 @@ build, deploy and test the POC, within these limits:
 
 | | |
 |---|---|
-| Salesforce app | **Jira to Org** (App Launcher), org `orgfarm-0054ddc238-dev-ed` |
+| Salesforce app | **Agentic Harness** (App Launcher; API name `Jira_to_Org`), org `orgfarm-0054ddc238-dev-ed` |
 | Gateway | Cloud Run `agent-gateway`, `https://agent-gateway-6y7zlyimaa-uc.a.run.app`, project `jira-to-org-poc-2610`, `us-central1` |
 | Knowledge graph | BigQuery `jira-to-org-poc-2610.agent_kg`; first snapshot `8314ed7b9897`, 828 nodes · 991 edges |
 | Runs, conversations, token usage | Firestore `agent_runs`, `agent_conversations` |
@@ -117,12 +117,32 @@ Developer agent   ─► codex exec in the SFDX workspace, as you
   org's named credential holds the gateway key. Production would have
   Salesforce sign the identity per user (per-user principals or JWT).
 
+### Token budget: why reading a ticket costs nothing
+
+Measured live: one Requirement agent call through Codex was 15.7k input
+tokens, of which the gateway's own context (ticket, graph matches and
+relationships, instructions) was about 2.7k. The other ~13k was Codex's
+built-in coding-agent instructions, tool definitions and environment block,
+sent on every call. So the agents now take the cheapest path first:
+
+| Ask | Path | Model tokens |
+|---|---|---|
+| "Read KAN-6", "KAN-6", "status of KAN-8", "list my open tickets" | answered from Jira and the knowledge graph | **0** |
+| "Analyze KAN-6" for a ticket analysed before and unchanged | stored spec reused | **0** |
+| "Analyze KAN-6" (new or changed), "what could break if…" | lean Codex: own short instructions (`model_instructions_file`), no tools, no environment block, low reasoning, trimmed graph context | target 2–4k |
+| Developer agent | lean Codex coding run: short brief + workspace rules instead of Codex's prompt; no web search, apps, plugins or sub-agents | multi-turn; measured on the dashboard |
+
+The **Agent Dashboard** shows tokens and, for a ChatGPT sign-in, the Codex
+plan itself: % of the 5-hour and weekly limits used and the credits balance
+(read from the same endpoint Codex's `/status` uses), plus per run how many
+limit points and credits it used, and how many answers needed no model.
+
 ### For testers
 
 - An admin assigns the **Agent Console User** permission set to each
   tester (Setup → Users → the user → Permission Set Assignments). It grants
   the app, the three tabs, the Apex controller and the gateway credential.
-- Open **Jira to Org** → **Agent Console** → **Connect to Codex** →
+- Open **Agentic Harness** → **Agent Console** → **Connect to Codex** →
   **Sign in to Codex**, sign in with your own account, then paste the
   `localhost:1455/...` address your browser shows into the console.
 - Try: *"List my open tickets"*, *"Analyze KAN-1"*, or create a new story in

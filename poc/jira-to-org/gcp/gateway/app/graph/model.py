@@ -241,16 +241,19 @@ class Graph:
         verb = e.edge_type.lower().replace("_", " ")
         return f"{a.label()} --{verb}--> {b.label()}"
 
-    def context_slice(self, text: str, max_nodes: int = 60) -> dict:
+    def out_edges(self, node_id: str) -> list[Edge]:
+        return list(self._out.get(node_id, []))
+
+    def context_slice(self, text: str, max_nodes: int = 60, max_related: int = 120, max_matches: int = 12) -> dict:
         """What an agent gets: the matches, then the behaviour around them, as sentences."""
-        matches = self.search(text)
+        matches = self.search(text, limit=max_matches)
         seed_ids = [n.id for n, _ in matches]
         nodes, edges = self.neighbourhood(seed_ids, hops=2, max_nodes=max_nodes)
         edges.sort(key=lambda e: EDGE_PRIORITY.get(e.edge_type, 99))
         return {
             "matches": [{"id": n.id, "type": n.node_type, "api_name": n.api_name or n.name,
                          "score": s, "properties": _short_props(n)} for n, s in matches],
-            "related": [self.describe_edge(e) for e in edges[:120]],
+            "related": [self.describe_edge(e) for e in edges[:max_related]],
             "node_count": len(nodes),
             "graph_size": {"nodes": len(self.nodes), "edges": len(self.edges)},
         }

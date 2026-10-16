@@ -52,6 +52,21 @@
     margin: 0.15rem 0;
 }
 
+.meter {
+    height: 0.4rem;
+    border-radius: 0.2rem;
+    background: var(--grid);
+    margin: 0.3rem 0;
+    overflow: hidden;
+}
+
+.meter__fill {
+    display: block;
+    height: 100%;
+    background: #2a78d6;
+    border-radius: 0.2rem;
+}
+
 .tile__sub {
     font-size: 0.75rem;
     color: var(--text-muted);

@@ -229,6 +229,16 @@ def codex_login_complete(body: CompleteLoginBody, svc: Services = Depends(get_se
         raise HTTPException(502, f"Codex sign-in failed: {exc}") from exc
 
 
+@app.get("/v1/codex/plan", dependencies=[Depends(require_key)])
+def codex_plan(svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
+    """The developer's Codex plan right now: limits used and credits."""
+    if not svc.chatgpt_mode or not user:
+        return {"available": False, "reason": "plan usage applies to a developer's own Codex sign-in"}
+    snap = svc.sessions.plan_usage(user)
+    return {"available": snap is not None, **(snap or {}),
+            **({} if snap else {"reason": "not connected, or Codex did not report usage"})}
+
+
 @app.post("/v1/codex/logout", dependencies=[Depends(require_key)])
 def codex_logout(svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
     if not svc.chatgpt_mode or not user:
@@ -255,7 +265,9 @@ def chat(body: ChatBody, svc: Services = Depends(get_services), user: str = Depe
 
     def work_codex(ctx: RunContext) -> dict:
         agent = CodexRequirementAgent(svc.codex_exec, svc.codex, home, jira, svc.graphs,
-                                      svc.settings.workspace_root)
+                                      svc.settings.workspace_root,
+                                      cache_get=svc.runs.get_conversation, cache_set=svc.runs.set_conversation,
+                                      plan_usage=lambda: svc.sessions.plan_usage(user))
         convo = svc.runs.get_conversation(conversation_id)
         history = convo.get("history", [])
         try:
@@ -299,7 +311,9 @@ def develop(body: DevelopBody, svc: Services = Depends(get_services), user: str 
         spec["ticket_url"] = spec["ticket"]["url"]
     run = svc.runs.create("developer", {"ticketKey": key, "user": user})
     after = (lambda: svc.sessions.save(user)) if home else None
-    svc.submit(run, lambda ctx: developer.develop(run["id"], spec, ctx, codex_home=home, after_codex=after))
+    plan = (lambda: svc.sessions.plan_usage(user)) if home else None
+    svc.submit(run, lambda ctx: developer.develop(run["id"], spec, ctx, codex_home=home, after_codex=after,
+                                                  plan_usage=plan))
     return {"runId": run["id"]}
 
 

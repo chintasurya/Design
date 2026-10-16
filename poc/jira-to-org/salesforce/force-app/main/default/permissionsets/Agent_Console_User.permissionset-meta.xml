@@ -8,7 +8,7 @@
         <apexClass>AgentConsoleController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>Use the Jira to Org app: Agent Console, Knowledge Graph and Agent Dashboard, calling the agent gateway through the Agent_Gateway named credential.</description>
+    <description>Use the Agentic Harness app: Agent Console, Knowledge Graph and Agent Dashboard, calling the agent gateway through the Agent_Gateway named credential.</description>
     <externalCredentialPrincipalAccesses>
         <enabled>true</enabled>
         <externalCredentialPrincipal>Agent_Gateway-GatewayPrincipal</externalCredentialPrincipal>

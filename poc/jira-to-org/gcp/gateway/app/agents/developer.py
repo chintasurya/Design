@@ -20,7 +20,7 @@ import subprocess
 import tempfile
 from typing import Callable, Iterator
 
-from ..codex import CodexConnection, run_codex
+from ..codex import LEAN_CODING, CodexConnection, run_codex
 from ..config import Settings
 from ..graph.model import Edge, Node
 from ..graph.store import GraphService
@@ -66,6 +66,18 @@ org access, so do not run `sf` or make network calls.
   profile: `permissionsets/Jira_Agent_Access.permissionset-meta.xml`.
 - Keep the change as small as the acceptance criteria allow.
 - When you finish, reply with a short summary: files changed and why.
+"""
+
+
+# Replaces Codex's long built-in coding prompt (see codex.LEAN_CODING): a short
+# brief plus the workspace rules, so each turn re-sends far less.
+DEVELOPER_INSTRUCTIONS = """\
+You are a Salesforce developer agent. The current directory is a Salesforce DX
+project. SPEC.md says what to build; the rules below say how. Work efficiently:
+read only the files you need (SPEC.md first, then any retrieved file you must
+change), make the edits with apply_patch, and do not explore the repository
+broadly or re-read files. Do not use the network and do not run `sf`.
+
 """
 
 
@@ -348,7 +360,8 @@ class DeveloperAgent:
                 "else as it is, and follow AGENTS.md:\n- " + "\n- ".join(errors))
 
     def develop(self, run_id: str, spec: dict, ctx: RunContext, codex_home: str | None = None,
-                after_codex: Callable[[], None] | None = None) -> dict:
+                after_codex: Callable[[], None] | None = None,
+                plan_usage: Callable[[], dict | None] | None = None) -> dict:
         """`codex_home` is the developer's own signed-in Codex (ChatGPT sign-in
         mode); `after_codex` saves its refreshed tokens after each attempt."""
         key = spec.get("ticket_key", "")
@@ -365,8 +378,13 @@ class DeveloperAgent:
         tests: list[str] = []
         for attempt in range(1, self.s.max_fix_attempts + 2):
             ctx.step(f"Codex attempt {attempt}", "running")
+            before = plan_usage() if plan_usage else None
             out = self.codex_runner(self.codex, ws, self._prompt(spec, errors), lambda line: ctx.step(line),
-                                    home=codex_home)
+                                    home=codex_home,
+                                    instructions=DEVELOPER_INSTRUCTIONS + AGENTS_MD.format(api=self.s.sf_api_version),
+                                    extra_args=LEAN_CODING)
+            if plan_usage:
+                ctx.plan_usage(before, plan_usage())
             if after_codex:
                 after_codex()
             summary = out.get("final_message") or summary

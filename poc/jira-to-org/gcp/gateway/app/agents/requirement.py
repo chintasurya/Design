@@ -9,11 +9,13 @@ questions in the LWC keep their context.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import tempfile
 from typing import Any
 
-from ..graph.store import GraphService
+from ..codex import LEAN_NO_TOOLS
+from ..graph.store import GraphService, now_iso
 from ..jira import TICKET_KEY, JiraClient, simplify
 from ..runs import RunContext
 
@@ -278,20 +280,40 @@ CODEX_OUTPUT_SCHEMA: dict[str, Any] = {
 }
 
 
+ANALYSIS = re.compile(r"\b(analy[sz]\w*|spec|prepare|refine|develop\w*|build|implement\w*|plan\w*|design|"
+                      r"impact|break\w*|risk\w*|estimat\w*|approach|ready|review|reuse|exist\w*|how\b)", re.I)
+LISTING = re.compile(r"\b(list|show|open|my|all)\b.*\btickets?\b|\btickets?\b.*\b(open|list)\b", re.I)
+SPEC_REQUEST = re.compile(r"\b(analy[sz]\w*|spec|prepare|refine)\b", re.I)
+FORCE = re.compile(r"\b(again|refresh|re-?analy[sz]e|fresh)\b", re.I)
+LINK_WORDS = {"TICKET_MENTIONS": "Mentions", "TICKET_IMPLEMENTED_BY": "Built by the Developer agent",
+              "TICKET_PARENT_OF": "Parent of", "TICKET_LINKS_TO": "Linked to"}
+
+
 class CodexRequirementAgent:
+    """Cheapest answer first:
+
+    1. no model: reading a ticket or listing tickets is answered from Jira
+       and the knowledge graph directly (0 tokens);
+    2. cache: a ticket analysed before and not changed since gets its spec
+       back (0 tokens);
+    3. lean Codex: real analysis runs Codex with these instructions in place
+       of its ~13k-token coding-agent prompt, no tools, and a trimmed context.
+    """
+
     def __init__(self, codex_exec, codex_conn, home: str, jira: JiraClient, graphs: GraphService,
-                 workspace_root: str):
+                 workspace_root: str, cache_get=None, cache_set=None, plan_usage=None):
         self.codex_exec = codex_exec
         self.codex_conn = codex_conn
         self.home = home
         self.jira = jira
         self.graphs = graphs
         self.workspace_root = workspace_root
+        self.cache_get = cache_get or (lambda key: {})
+        self.cache_set = cache_set or (lambda key, value: None)
+        self.plan_usage = plan_usage or (lambda: None)
 
-    def _context(self, message: str, last_ticket: str | None, ctx: RunContext) -> tuple[dict, dict[str, dict]]:
-        keys = list(dict.fromkeys(TICKET_KEY.findall(message.upper())))[:3]
-        if not keys and last_ticket:
-            keys = [last_ticket]
+    # -- lookups ---------------------------------------------------------------
+    def _tickets(self, keys: list[str], ctx: RunContext) -> dict[str, dict]:
         tickets: dict[str, dict] = {}
         for key in keys:
             try:
@@ -299,37 +321,112 @@ class CodexRequirementAgent:
                 ctx.step(f"Read {key}", detail=tickets[key].get("summary") or "")
             except Exception as exc:  # noqa: BLE001 - "not found" is an answer, not a failure
                 ctx.step(f"{key} not found in Jira", "error", str(exc)[:200])
-        context: dict[str, Any] = {"jira_project": self.jira.project_key, "tickets": list(tickets.values())}
-        if not tickets:
-            issues = self.jira.project_issues(only_open=False, max_results=30)
-            context["project_tickets"] = [
-                {k: t[k] for k in ("key", "summary", "type", "status", "priority", "assignee")}
-                for t in (simplify(i) for i in issues)]
-            ctx.step(f"Listed {len(issues)} Jira tickets", detail=f"project {self.jira.project_key}")
-        text = " ".join([message] + [f"{t['summary']} {t['description']}" for t in tickets.values()])
-        g = self.graphs.graph()
-        context["knowledge_graph"] = g.context_slice(text)
-        ctx.step(f"Queried knowledge graph: {len(context['knowledge_graph']['matches'])} matches")
-        return context, tickets
+        return tickets
 
+    def _graph_lines(self, key: str) -> list[str]:
+        g = self.graphs.graph()
+        grouped: dict[str, list[str]] = {}
+        for e in g.out_edges(f"ticket:{key.lower()}"):
+            n = g.nodes.get(e.to_id)
+            if n:
+                grouped.setdefault(LINK_WORDS.get(e.edge_type, e.edge_type), []).append(
+                    f"{n.api_name or n.name} ({n.node_type})")
+        return [f"- {label}: {', '.join(sorted(set(items)))}" for label, items in grouped.items()]
+
+    # -- 0-token answers -------------------------------------------------------
+    def _answer_ticket(self, t: dict) -> str:
+        lines = [f"{t['key']} · {t['summary']}",
+                 f"Status: {t.get('status')} · {t.get('type')} · Priority {t.get('priority') or '-'}"
+                 f" · Assignee {t.get('assignee') or 'unassigned'}"]
+        desc = (t.get("description") or "").split("Acceptance Criteria")[0].strip()
+        if desc:
+            lines += ["", desc[:700]]
+        if t.get("acceptance_criteria"):
+            lines += ["", "Acceptance criteria:"] + [f"- {a}" for a in t["acceptance_criteria"]]
+        graph = self._graph_lines(t["key"])
+        lines += ["", "In the knowledge graph:"] + (graph or ["- nothing linked to it yet"])
+        lines += ["", "Answered from Jira and the knowledge graph, no model call. "
+                      f"Say \"analyze {t['key']}\" for a development spec."]
+        return "\n".join(lines)
+
+    def _answer_list(self, ctx: RunContext, only_open: bool) -> str:
+        issues = self.jira.project_issues(only_open=only_open, max_results=30)
+        ctx.step(f"Listed {len(issues)} Jira tickets", detail=f"project {self.jira.project_key}")
+        if not issues:
+            return f"No {'open ' if only_open else ''}tickets in {self.jira.project_key}."
+        rows = [simplify(i) for i in issues]
+        head = f"{'Open' if only_open else 'All'} tickets in {self.jira.project_key} ({len(rows)}):"
+        return "\n".join([head] + [f"- {r['key']} · {r['summary']} ({r['status']})" for r in rows]
+                         + ["", "Answered from Jira, no model call."])
+
+    def _no_model(self, ctx: RunContext, ticket: str | None) -> None:
+        ctx.add_usage("requirement", "knowledge graph (no model call)", 0, 0, 0, 0, ticket, calls=0)
+
+    # -- the turn --------------------------------------------------------------
     def chat(self, message: str, history: list[dict], last_ticket: str | None, ctx: RunContext) -> dict:
-        context, tickets = self._context(message, last_ticket, ctx)
-        transcript = "\n".join(f"{h['role']}: {h['text'][:1500]}" for h in history[-6:])
-        prompt = (CODEX_INSTRUCTIONS + "\nCONTEXT:\n" + json.dumps(context, default=str)[:60000]
+        keys = list(dict.fromkeys(TICKET_KEY.findall(message.upper())))[:3]
+        wants_analysis = bool(ANALYSIS.search(message))
+        # only "analyze KAN-x" itself may reuse a stored spec; a new question about it may not
+        spec_request = bool(keys) and bool(SPEC_REQUEST.search(message))
+
+        if keys and not wants_analysis:                      # 1. read a ticket: no model
+            tickets = self._tickets(keys, ctx)
+            ctx.step("Answered from Jira and the knowledge graph (no model call)")
+            self._no_model(ctx, keys[0])
+            reply = "\n\n".join(self._answer_ticket(t) for t in tickets.values()) or \
+                f"{', '.join(keys)} was not found in {self.jira.project_key}."
+            return {"reply": reply, "spec": None}
+        if not keys and LISTING.search(message) and not wants_analysis:
+            only_open = not re.search(r"\ball\b", message, re.I)
+            reply = self._answer_list(ctx, only_open)
+            ctx.step("Answered from Jira (no model call)")
+            self._no_model(ctx, None)
+            return {"reply": reply, "spec": None}
+
+        if not keys and last_ticket:
+            keys = [last_ticket]
+        tickets = self._tickets(keys, ctx)
+        key = next(iter(tickets), None)
+
+        if key and spec_request and not FORCE.search(message) and len(tickets) == 1:   # 2. cache
+            cached = self.cache_get(f"spec-{key}")
+            if cached.get("spec") and cached.get("updated") == tickets[key].get("updated"):
+                ctx.step(f"Reused the spec for {key}: the ticket has not changed since it was analysed "
+                         "(no model call)")
+                self._no_model(ctx, key)
+                return {"reply": cached.get("reply", "") + f"\n\n(Reused from {cached.get('at', 'earlier')}; "
+                        f"the ticket has not changed. Say \"analyze {key} again\" to refresh.)",
+                        "spec": cached["spec"]}
+
+        # 3. lean Codex
+        g = self.graphs.graph()
+        text = " ".join([message] + [f"{t['summary']} {t['description']}" for t in tickets.values()])
+        context: dict[str, Any] = {"jira_project": self.jira.project_key, "tickets": list(tickets.values()),
+                                   "knowledge_graph": g.context_slice(text, max_related=40, max_matches=10)}
+        context["knowledge_graph"].pop("graph_size", None)
+        if not tickets:
+            context["project_tickets"] = [
+                {k: t[k] for k in ("key", "summary", "status")}
+                for t in (simplify(i) for i in self.jira.project_issues(only_open=False, max_results=30))]
+        ctx.step(f"Queried knowledge graph: {len(context['knowledge_graph']['matches'])} matches")
+        transcript = "\n".join(f"{h['role']}: {h['text'][:600]}" for h in history[-4:])
+        prompt = ("CONTEXT:\n" + json.dumps(context, default=str, separators=(",", ":"))[:24000]
                   + ("\n\nEARLIER IN THIS CONVERSATION:\n" + transcript if transcript else "")
                   + "\n\nDEVELOPER'S MESSAGE:\n" + message)
-        ctx.step("Requirement agent thinking on your Codex account", "running")
+        ctx.step("Requirement agent thinking on your Codex account (lean call)", "running")
+        before = self.plan_usage()
         workspace = tempfile.mkdtemp(prefix="req-", dir=self.workspace_root)
         try:
             out = self.codex_exec(self.codex_conn, workspace, prompt, lambda line: None, home=self.home,
-                                  sandbox="read-only", output_schema=CODEX_OUTPUT_SCHEMA)
+                                  sandbox="read-only", output_schema=CODEX_OUTPUT_SCHEMA,
+                                  instructions=CODEX_INSTRUCTIONS, extra_args=LEAN_NO_TOOLS)
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
+        ctx.plan_usage(before, self.plan_usage())
         u = out.get("usage") or {}
         if u:
-            ticket = next(iter(tickets), None)
             ctx.add_usage("requirement", "codex (your ChatGPT sign-in)", u.get("input_tokens", 0),
-                          u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, ticket)
+                          u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, key)
         if out.get("exit_code") not in (0, None) and not out.get("final_message"):
             raise RuntimeError("Codex did not answer: " + (out.get("log_tail") or "no output")[-400:])
         try:
@@ -337,9 +434,14 @@ class CodexRequirementAgent:
         except json.JSONDecodeError:
             answer = {"reply": out.get("final_message") or "", "spec": None}
         spec = answer.get("spec")
+        reply = (answer.get("reply") or "").strip()
         if spec:
-            spec = ground_spec(spec, self.graphs.graph(), tickets)
+            spec = ground_spec(spec, g, tickets)
             ctx.step(f"Requirement spec ready for {spec.get('ticket_key')}",
                      detail=f"{len(spec.get('components', []))} components · risk {spec.get('risk')}")
             ctx.usage_ticket(spec.get("ticket_key"))
-        return {"reply": (answer.get("reply") or "").strip(), "spec": spec}
+            sk = (spec.get("ticket_key") or key or "").upper()
+            if sk in tickets:
+                self.cache_set(f"spec-{sk}", {"spec": spec, "reply": reply, "at": now_iso(),
+                                              "updated": tickets[sk].get("updated")})
+        return {"reply": reply, "spec": spec}

@@ -41,6 +41,7 @@ from .config import Settings
 from .graph.store import now_iso
 
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"  # what Codex's /status reads
 URL = re.compile(r"https://\S+")
 LOGIN_TTL_S = 15 * 60
 
@@ -110,6 +111,40 @@ def account_from_auth(auth_text: str) -> dict:
         return {"email": claims.get("email"), "plan": auth.get("chatgpt_plan_type")}
     except Exception:  # noqa: BLE001
         return {}
+
+
+def _window(w: Any) -> dict | None:
+    if not isinstance(w, dict) or w.get("used_percent") is None:
+        return None
+    return {"used_percent": float(w["used_percent"]),
+            "window_minutes": round(int(w.get("limit_window_seconds") or 0) / 60),
+            "resets_at": w.get("reset_at")}
+
+
+def parse_plan_usage(body: dict) -> dict:
+    """The /wham/usage payload, reduced to what the dashboard shows."""
+    rl = body.get("rate_limit") or {}
+    cr = body.get("credits") or {}
+    balance = cr.get("balance")
+    try:
+        balance = float(balance) if balance not in (None, "") else None
+    except (TypeError, ValueError):
+        balance = None
+    return {"plan": body.get("plan_type"), "limit_reached": bool(rl.get("limit_reached")),
+            "primary": _window(rl.get("primary_window")), "secondary": _window(rl.get("secondary_window")),
+            "credits": {"has_credits": bool(cr.get("has_credits")), "unlimited": bool(cr.get("unlimited")),
+                        "balance": balance},
+            "at": now_iso()}
+
+
+def _fetch_usage(access_token: str, account_id: str | None) -> dict:
+    headers = {"Authorization": f"Bearer {access_token}", "originator": "codex_cli_rs",
+               "User-Agent": "codex_cli_rs", "Accept": "application/json"}
+    if account_id:
+        headers["ChatGPT-Account-Id"] = account_id
+    req = urllib.request.Request(USAGE_URL, headers=headers)
+    with urllib.request.urlopen(req, timeout=15) as res:
+        return json.loads(res.read().decode())
 
 
 def parse_device_prompt(text: str) -> tuple[str | None, str | None]:
@@ -205,12 +240,14 @@ def _spawn(cmd: list[str], env: dict) -> Any:
 
 class CodexSessions:
     def __init__(self, settings: Settings, vault: SessionVault, spawn: Callable[[list[str], dict], Any] = _spawn,
-                 replay: Callable[[str], None] = _replay):
+                 replay: Callable[[str], None] = _replay,
+                 fetch_usage: Callable[[str, str | None], dict] = _fetch_usage):
         self.s = settings
         self.flow = getattr(settings, "codex_login_flow", "device")
         self.vault = vault
         self.spawn = spawn
         self.replay = replay
+        self.fetch_usage = fetch_usage
         self._logins: dict[str, _Login] = {}
         self._cache: dict[str, dict] | None = None
         self._lock = threading.RLock()
@@ -346,6 +383,21 @@ class CodexSessions:
             if code == 0 and os.path.exists(self._auth_path(user)):
                 self.save(user)
                 self._logins.pop(user_key(user), None)
+
+    def plan_usage(self, user: str) -> dict | None:
+        """The developer's Codex plan right now: % of the 5-hour and weekly
+        limits used, and credits. None when it cannot be read (no session,
+        expired token, endpoint unreachable); the dashboard says so."""
+        if not self.connected(user):
+            return None
+        try:
+            with open(self._auth_path(user), encoding="utf-8") as fh:
+                tokens = (json.load(fh).get("tokens") or {})
+            if not tokens.get("access_token"):
+                return None
+            return parse_plan_usage(self.fetch_usage(tokens["access_token"], tokens.get("account_id")))
+        except Exception:  # noqa: BLE001 - usage is informational; a run never fails for it
+            return None
 
     def logout(self, user: str) -> dict:
         with self._lock:

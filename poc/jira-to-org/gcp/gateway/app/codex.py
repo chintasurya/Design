@@ -29,6 +29,20 @@ MODEL_PREFERENCE = ("gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-max", "gpt-
                     "gpt-5-codex", "gpt-5.2", "gpt-5.1", "gpt-5")
 
 
+# Codex's built-in coding-agent instructions, tool definitions and environment
+# block are ~13k input tokens on every call, measured live. The agents here
+# need almost none of that, so each run replaces the instructions with its own
+# short file and switches off what it does not use.
+LEAN_COMMON = ["--disable", "apps", "--disable", "plugins", "--disable", "multi_agent",
+               "-c", 'web_search="disabled"', "-c", "include_environment_context=false",
+               "-c", "project_doc_max_bytes=0"]
+# Requirement agent: it reads the context it is given and answers; no tools at all.
+LEAN_NO_TOOLS = LEAN_COMMON + ["--disable", "shell_tool", "--disable", "unified_exec",
+                               "--disable", "apply_patch_freeform", "-c", 'model_reasoning_effort="low"']
+# Developer agent: keeps the shell and patch tools it edits files with.
+LEAN_CODING = LEAN_COMMON + ["--disable", "unified_exec"]
+
+
 class CodexNotConnectedError(RuntimeError):
     pass
 
@@ -157,7 +171,8 @@ def summarize_event(event: dict) -> str | None:
 
 def run_codex(conn: CodexConnection, workspace: str, prompt: str,
               on_line: Callable[[str], None], home: str | None = None, sandbox: str | None = None,
-              output_schema: dict | None = None) -> dict:
+              output_schema: dict | None = None, instructions: str | None = None,
+              extra_args: list[str] | None = None) -> dict:
     """Run `codex exec` in the workspace. Codex gets no Salesforce or Jira
     credential: its environment is PATH and its own home, nothing else. The
     gateway, not Codex, deploys - and only after validation and approval.
@@ -172,6 +187,13 @@ def run_codex(conn: CodexConnection, workspace: str, prompt: str,
     cmd = [s.codex_bin, "exec", "--json", "--skip-git-repo-check", "--ephemeral",
            "-C", workspace, "-s", sandbox or s.codex_sandbox, "-o", last,
            "-c", 'approval_policy="never"', "-c", 'shell_environment_policy.inherit="core"']
+    if instructions:
+        # outside the workspace, so it is never mistaken for part of the change set
+        instr_path = os.path.join(home, f"instructions-{os.path.basename(workspace)}.md")
+        with open(instr_path, "w", encoding="utf-8") as fh:
+            fh.write(instructions)
+        cmd += ["-c", f'model_instructions_file="{instr_path}"']
+    cmd += extra_args or []
     if output_schema is not None:
         schema_path = os.path.join(workspace, ".codex-output-schema.json")
         with open(schema_path, "w", encoding="utf-8") as fh:

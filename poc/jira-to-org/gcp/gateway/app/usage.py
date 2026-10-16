@@ -14,7 +14,7 @@ COUNTERS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_t
 
 
 def _empty() -> dict:
-    return {"runs": 0, **{k: 0 for k in COUNTERS}}
+    return {"runs": 0, "no_model_runs": 0, "credits_used": 0.0, "limit_pct_used": 0.0, **{k: 0 for k in COUNTERS}}
 
 
 def summarize(runs: list[dict], days: int = 14, now: datetime | None = None) -> dict:
@@ -39,6 +39,11 @@ def summarize(runs: list[dict], days: int = 14, now: datetime | None = None) -> 
         t["runs"] += 1
         for k in COUNTERS:
             t[k] += int(u.get(k) or 0)
+        if not u.get("calls"):
+            t["no_model_runs"] += 1
+        plan = run.get("plan_usage") or {}
+        t["credits_used"] = round(t["credits_used"] + max(0.0, float(plan.get("credits_used") or 0)), 4)
+        t["limit_pct_used"] = round(t["limit_pct_used"] + max(0.0, float(plan.get("primary_pct_used") or 0)), 2)
         outcomes[agent][run.get("status", "unknown")] += 1
         if day in by_day:
             by_day[day][agent] += int(u.get("total_tokens") or 0)
@@ -58,7 +63,9 @@ def summarize(runs: list[dict], days: int = 14, now: datetime | None = None) -> 
                            "user": who,
                            "model": u.get("model"), "input_tokens": u.get("input_tokens", 0),
                            "output_tokens": u.get("output_tokens", 0), "total_tokens": u.get("total_tokens", 0),
-                           "calls": u.get("calls", 0), "created_at": run.get("created_at")})
+                           "calls": u.get("calls", 0), "created_at": run.get("created_at"),
+                           "cached_input_tokens": u.get("cached_input_tokens", 0),
+                           "credits_used": plan.get("credits_used"), "limit_pct_used": plan.get("primary_pct_used")})
     for a in AGENTS:
         totals[a]["avg_per_run"] = round(totals[a]["total_tokens"] / totals[a]["runs"]) if totals[a]["runs"] else 0
         totals[a]["outcomes"] = dict(outcomes[a])

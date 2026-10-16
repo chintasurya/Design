@@ -4,11 +4,11 @@
         <headerColor>#0B5CAB</headerColor>
         <shouldOverrideOrgTheme>false</shouldOverrideOrgTheme>
     </brand>
-    <description>Jira to Org POC: the Requirement and Developer agents, their knowledge graph, and their token usage.</description>
+    <description>Agentic Harness POC: the Requirement and Developer agents, their knowledge graph, and their token usage.</description>
     <formFactors>Large</formFactors>
     <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
     <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
-    <label>Jira to Org</label>
+    <label>Agentic Harness</label>
     <navType>Standard</navType>
     <tabs>Agent_Console</tabs>
     <tabs>Knowledge_Graph</tabs>
