@@ -59,6 +59,11 @@ def test_requirement_agent_reads_ticket_queries_graph_and_grounds_the_spec(tmp_p
     # every follow-up turn chains on the previous response and re-sends the instructions and tools
     assert client.requests[1]["previous_response_id"] == "resp_1"
     assert all(r["tools"] and r["instructions"] for r in client.requests)
+    usage = store.get(rid)["usage"]
+    # four Responses calls, each 1000 in / 200 out, attributed to the ticket from the spec
+    assert usage == {"agent": "requirement", "model": "gpt-test", "ticket": "KAN-7", "calls": 4,
+                     "input_tokens": 4000, "cached_input_tokens": 1600, "output_tokens": 800,
+                     "reasoning_tokens": 200, "total_tokens": 4800}
     steps = [s["name"] for s in store.get(rid)["steps"]]
     assert "Read KAN-7" in steps and any(s.startswith("Field check Account.Risk_Score__c: exists") for s in steps)
 
@@ -93,7 +98,8 @@ def codex_writes(files_per_attempt):
         for rel, content in files_per_attempt[len(attempts) - 1].items():
             write(ws, rel, content)
         on_line("edited files")
-        return {"exit_code": 0, "final_message": f"attempt {len(attempts)} done"}
+        return {"exit_code": 0, "final_message": f"attempt {len(attempts)} done",
+                "usage": {"input_tokens": 5000, "cached_input_tokens": 3000, "output_tokens": 700, "turns": 1}}
 
     runner.attempts = attempts
     return runner
@@ -151,6 +157,8 @@ def test_validation_errors_go_back_to_codex_and_the_loop_is_bounded(tmp_path):
     agent.develop(rid, SPEC, c)
     assert len(runner.attempts) == 2 and "Variable does not exist: scor" in runner.attempts[1]
     assert store.get(rid)["status"] == "waiting_approval"
+    u = store.get(rid)["usage"]  # both Codex attempts are counted
+    assert (u["agent"], u["ticket"], u["calls"], u["total_tokens"]) == ("developer", "KAN-7", 2, 11400)
 
     always_failing = codex_writes([GOOD, GOOD, GOOD])
     agent, _, _ = developer(tmp_path, always_failing, [FAILURE, FAILURE, FAILURE])

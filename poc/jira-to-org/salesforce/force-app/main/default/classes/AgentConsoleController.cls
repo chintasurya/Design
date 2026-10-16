@@ -16,6 +16,7 @@ public with sharing class AgentConsoleController {
     private static final Integer TIMEOUT_MS = 120000;
     private static final Pattern RUN_ID = Pattern.compile('^[a-f0-9]{8,32}$');
     private static final Pattern TICKET_KEY = Pattern.compile('^[A-Z][A-Z0-9]{1,9}-[0-9]+$');
+    private static final Pattern NODE_ID = Pattern.compile('^[a-z]+:[A-Za-z0-9_.\\-]{1,200}$');
 
     @AuraEnabled
     public static String status() {
@@ -84,6 +85,34 @@ public with sharing class AgentConsoleController {
     @AuraEnabled
     public static String rebuildGraph() {
         return send('POST', '/v1/graph/rebuild', new Map<String, Object>());
+    }
+
+    /** Knowledge Graph tab: how the kinds of component connect. */
+    @AuraEnabled
+    public static String graphSchema() {
+        return send('GET', '/v1/graph/schema', null);
+    }
+
+    /** Knowledge Graph tab: one component and its direct connections, by search text or node id. */
+    @AuraEnabled
+    public static String graphNeighbourhood(String query, String nodeId) {
+        if (String.isNotBlank(nodeId)) {
+            if (!NODE_ID.matcher(nodeId).matches()) {
+                throw error('Not a graph node id: ' + nodeId);
+            }
+            return send('GET', '/v1/graph/neighbourhood?id=' + EncodingUtil.urlEncode(nodeId, 'UTF-8'), null);
+        }
+        if (String.isBlank(query)) {
+            throw error('Type a component name to look up.');
+        }
+        return send('GET', '/v1/graph/neighbourhood?q=' + EncodingUtil.urlEncode(query.trim().abbreviate(200), 'UTF-8'), null);
+    }
+
+    /** Agent Dashboard tab: token usage of both agents over the last N days. */
+    @AuraEnabled
+    public static String usageSummary(Integer days) {
+        Integer d = days == null ? 14 : Math.max(1, Math.min(90, days));
+        return send('GET', '/v1/usage?days=' + d, null);
     }
 
     private static String checkedRunId(String runId) {

@@ -1,0 +1,149 @@
+<template>
+    <lightning-card icon-name="standard:dashboard">
+        <h1 slot="title" class="slds-text-heading_small">
+            Agent dashboard
+            <span class="slds-text-body_small slds-text-color_weak slds-var-m-left_x-small">
+                model tokens used by the Requirement and Developer agents
+            </span>
+        </h1>
+        <div slot="actions" class="actions">
+            <lightning-combobox label="Range" variant="label-hidden" value={days} options={dayOptions}
+                onchange={handleDays} class="range"></lightning-combobox>
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh"
+                onclick={handleRefresh}></lightning-button-icon>
+        </div>
+
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading usage" size="small"></lightning-spinner>
+            </template>
+            <template lwc:if={error}>
+                <p class="error">{error}</p>
+            </template>
+
+            <div class="tiles">
+                <template for:each={tiles} for:item="t">
+                    <div key={t.key} class="tile">
+                        <p class="tile__label">
+                            <template lwc:if={t.swatch}><span class="swatch" style={t.swatch}></span></template>
+                            {t.label}
+                        </p>
+                        <p class="tile__value">{t.value}</p>
+                        <p class="tile__sub">{t.sub}</p>
+                    </div>
+                </template>
+            </div>
+
+            <section class="panel">
+                <div class="panel__head">
+                    <h2 class="panel__title">Tokens per day</h2>
+                    <span class="muted">{rangeLabel}</span>
+                    <ul class="legend">
+                        <template for:each={legend} for:item="l">
+                            <li key={l.key}><span class="swatch" style={l.style}></span>{l.label}</li>
+                        </template>
+                    </ul>
+                </div>
+                <template lwc:if={hasData}>
+                    <div class="chart">
+                        <svg viewBox={viewBox} class="plot" role="img" aria-label="Tokens per day by agent">
+                            <template for:each={ticks} for:item="t">
+                                <g key={t.key}>
+                                    <line x1={t.x1} x2={t.x2} y1={t.y} y2={t.y} class="grid"></line>
+                                    <text x={t.lx} y={t.ly} class="axis axis_y">{t.label}</text>
+                                </g>
+                            </template>
+                            <template for:each={bars} for:item="b">
+                                <g key={b.key}>
+                                    <rect x={b.hitX} y="0" width={b.hitW} height={baselineY} class={b.hitClass}
+                                        data-index={b.index} onmouseenter={handleBarEnter}
+                                        onmouseleave={handleBarLeave}></rect>
+                                    <path d={b.reqPath} fill={reqColor} class="bar"></path>
+                                    <path d={b.devPath} fill={devColor} class="bar"></path>
+                                    <template lwc:if={b.peak}>
+                                        <text x={b.labelX} y={b.peakY} class="peak">{b.peakLabel}</text>
+                                    </template>
+                                    <template lwc:if={b.showLabel}>
+                                        <text x={b.labelX} y={axisY} class="axis axis_x">{b.date}</text>
+                                    </template>
+                                </g>
+                            </template>
+                        </svg>
+                        <template lwc:if={tooltip}>
+                            <div class="tooltip" style={tooltip.style}>
+                                <p class="tooltip__title">{tooltip.date}</p>
+                                <p><span class="swatch" style="background:#2a78d6"></span>Requirement <strong>{tooltip.req}</strong></p>
+                                <p><span class="swatch" style="background:#eb6834"></span>Developer <strong>{tooltip.dev}</strong></p>
+                                <p class="tooltip__total">Total {tooltip.total}</p>
+                            </div>
+                        </template>
+                    </div>
+                    <details class="table">
+                        <summary>Show as a table</summary>
+                        <table>
+                            <thead><tr><th>Date</th><th class="num">Requirement</th><th class="num">Developer</th><th class="num">Total</th></tr></thead>
+                            <tbody>
+                                <template for:each={dayRows} for:item="r">
+                                    <tr key={r.key}><td>{r.date}</td><td class="num">{r.req}</td><td class="num">{r.dev}</td><td class="num">{r.total}</td></tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </details>
+                </template>
+                <template lwc:else>
+                    <p class="empty">{emptyText}</p>
+                </template>
+            </section>
+
+            <div class="split">
+                <section class="panel">
+                    <h2 class="panel__title">Tokens per Jira ticket</h2>
+                    <template lwc:if={hasTickets}>
+                        <table class="tickets">
+                            <thead><tr><th>Ticket</th><th></th><th class="num">Requirement</th><th class="num">Developer</th><th class="num">Total</th></tr></thead>
+                            <tbody>
+                                <template for:each={tickets} for:item="t">
+                                    <tr key={t.key}>
+                                        <td class="mono">{t.ticket}</td>
+                                        <td class="barcell"><span class="minibar" style={t.reqStyle}></span><span class="minibar" style={t.devStyle}></span></td>
+                                        <td class="num">{t.reqLabel}</td>
+                                        <td class="num">{t.devLabel}</td>
+                                        <td class="num"><strong>{t.totalLabel}</strong></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                    <template lwc:else><p class="empty">No ticket work yet.</p></template>
+                    <p class="label">By model</p>
+                    <ul class="models">
+                        <template for:each={models} for:item="m"><li key={m.key}>{m.text}</li></template>
+                    </ul>
+                </section>
+
+                <section class="panel">
+                    <h2 class="panel__title">Recent agent runs</h2>
+                    <template lwc:if={hasRecent}>
+                        <table class="runs">
+                            <thead><tr><th>When</th><th>Agent</th><th>Ticket</th><th>Status</th><th class="num">In</th><th class="num">Out</th><th class="num">Total</th></tr></thead>
+                            <tbody>
+                                <template for:each={recent} for:item="r">
+                                    <tr key={r.key}>
+                                        <td>{r.when}</td>
+                                        <td><span class="swatch" style={r.agentStyle}></span>{r.agentLabel}</td>
+                                        <td class="mono">{r.ticket}</td>
+                                        <td><span class={r.statusClass}>{r.status}</span></td>
+                                        <td class="num">{r.inLabel}</td>
+                                        <td class="num">{r.outLabel}</td>
+                                        <td class="num"><strong>{r.totalLabel}</strong></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                    <template lwc:else><p class="empty">No agent runs yet.</p></template>
+                </section>
+            </div>
+        </div>
+    </lightning-card>
+</template>

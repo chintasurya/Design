@@ -1,0 +1,210 @@
+:host {
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #8a8983;
+    --line: #b9b8b0;
+    --line-hover: #52514e;
+}
+
+.actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.search {
+    width: 18rem;
+}
+
+.meta,
+.caption {
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+}
+
+.error {
+    color: #ba0517;
+    margin-bottom: 0.5rem;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+}
+
+.legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.swatch {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+}
+
+.canvas {
+    position: relative;
+    background: var(--surface-1);
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    min-height: 20rem;
+}
+
+.graph {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 36rem;
+}
+
+.link__hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 14;
+}
+
+.link__line {
+    fill: none;
+    stroke: var(--line);
+    stroke-linecap: round;
+}
+
+.link__head {
+    fill: var(--line);
+}
+
+.link:hover .link__line {
+    stroke: var(--line-hover);
+}
+
+.link:hover .link__head {
+    fill: var(--line-hover);
+}
+
+.link__label {
+    font-size: 11px;
+    fill: var(--text-secondary);
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: var(--surface-1);
+    stroke-width: 4px;
+}
+
+.node__dot {
+    stroke: var(--surface-1);
+    stroke-width: 2;
+}
+
+.node:hover .node__dot {
+    stroke: var(--text-primary);
+}
+
+.node_click {
+    cursor: pointer;
+}
+
+.node__label {
+    font-size: 12px;
+    font-weight: 700;
+    fill: var(--text-primary);
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: var(--surface-1);
+    stroke-width: 4px;
+}
+
+.node__sub {
+    font-size: 11px;
+    fill: var(--text-secondary);
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: var(--surface-1);
+    stroke-width: 4px;
+}
+
+.tooltip {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    max-width: 22rem;
+    background: #fff;
+    border: 1px solid #c9c9c9;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    pointer-events: none;
+}
+
+.tooltip__title {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0.25rem;
+}
+
+.matches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.chip {
+    border: 1px solid #c9c9c9;
+    border-radius: 1rem;
+    background: #fff;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.table {
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.table summary {
+    cursor: pointer;
+    color: #0b5cab;
+}
+
+.table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+
+.table th,
+.table td {
+    text-align: left;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.notes {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+}

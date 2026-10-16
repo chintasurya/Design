@@ -364,6 +364,10 @@ class DeveloperAgent:
             ctx.step(f"Codex attempt {attempt}", "running")
             out = self.codex_runner(self.codex, ws, self._prompt(spec, errors), lambda line: ctx.step(line))
             summary = out.get("final_message") or summary
+            u = out.get("usage") or {}
+            if u:
+                ctx.add_usage("developer", self.s.codex_model or "codex-cli default", u.get("input_tokens", 0),
+                              u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, key)
             if out.get("exit_code") not in (0, None):
                 ctx.step("Codex exited with an error", "error", out.get("log_tail", "")[-1500:])
             kept, problems = self.guard(ws, self.changes(ws))

@@ -191,6 +191,16 @@ class RequirementAgent:
         return spec
 
     # -- loop ----------------------------------------------------------------
+    def _count(self, resp: Any, ctx: RunContext, ticket: str | None) -> None:
+        u = getattr(resp, "usage", None)
+        if u is None:
+            return
+        cached = getattr(getattr(u, "input_tokens_details", None), "cached_tokens", 0) or 0
+        reasoning = getattr(getattr(u, "output_tokens_details", None), "reasoning_tokens", 0) or 0
+        ctx.add_usage("requirement", getattr(resp, "model", None) or self.model,
+                      getattr(u, "input_tokens", 0) or 0, getattr(u, "output_tokens", 0) or 0,
+                      cached, reasoning, ticket)
+
     def chat(self, message: str, previous_response_id: str | None, ctx: RunContext) -> dict:
         keys = TICKET_KEY.findall(message.upper())
         ctx.step("Requirement agent thinking", detail=f"ticket(s): {', '.join(keys)}" if keys else message[:200])
@@ -198,7 +208,9 @@ class RequirementAgent:
                                   "input": [{"role": "user", "content": message}]}
         if previous_response_id:
             kwargs["previous_response_id"] = previous_response_id
+        ticket = keys[0] if keys else None
         resp = self.client.responses.create(**kwargs)
+        self._count(resp, ctx, ticket)
         for _ in range(MAX_TURNS):
             calls = [o for o in resp.output if getattr(o, "type", None) == "function_call"]
             if not calls:
@@ -214,8 +226,11 @@ class RequirementAgent:
                                 "output": json.dumps(result, default=str)[:30000]})
             resp = self.client.responses.create(model=self.model, instructions=INSTRUCTIONS, tools=TOOLS,
                                                 previous_response_id=resp.id, input=outputs)
+            self._count(resp, ctx, ticket)
         else:
             ctx.step("Stopped after the tool-call limit", "error", f"{MAX_TURNS} turns")
+        if self.spec:
+            ctx.usage_ticket(self.spec.get("ticket_key"))
         return {"reply": (getattr(resp, "output_text", "") or "").strip(), "spec": self.spec,
                 "response_id": resp.id}
 

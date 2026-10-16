@@ -1,0 +1,281 @@
+:host {
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #8a8983;
+    --grid: #e6e5e0;
+}
+
+.actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.range {
+    width: 10rem;
+}
+
+.error {
+    color: #ba0517;
+    margin-bottom: 0.5rem;
+}
+
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.tile {
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    background: var(--surface-1);
+}
+
+.tile__label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.tile__value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    margin: 0.15rem 0;
+}
+
+.tile__sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.panel {
+    border: 1px solid #e5e5e5;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    background: var(--surface-1);
+    margin-bottom: 0.75rem;
+}
+
+.panel__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.panel__title {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.muted {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.legend {
+    display: flex;
+    gap: 1rem;
+    margin-left: auto;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+}
+
+.legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.swatch {
+    display: inline-block;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 2px;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+}
+
+.chart {
+    position: relative;
+}
+
+.plot {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.grid {
+    stroke: var(--grid);
+    stroke-width: 1;
+}
+
+.axis {
+    font-size: 11px;
+    fill: var(--text-muted);
+}
+
+.axis_y {
+    text-anchor: end;
+}
+
+.axis_x {
+    text-anchor: middle;
+}
+
+.peak {
+    font-size: 11px;
+    font-weight: 700;
+    fill: var(--text-primary);
+    text-anchor: middle;
+}
+
+.bar {
+    pointer-events: none;
+}
+
+.hit {
+    fill: transparent;
+}
+
+.hit_active {
+    fill: rgba(0, 0, 0, 0.04);
+}
+
+.tooltip {
+    position: absolute;
+    top: 0.5rem;
+    background: #fff;
+    border: 1px solid #c9c9c9;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.tooltip__title {
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.tooltip__total {
+    border-top: 1px solid #e5e5e5;
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+}
+
+.split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+    gap: 0.75rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid #e5e5e5;
+    vertical-align: middle;
+}
+
+th {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.mono {
+    font-family: 'Salesforce Mono', Menlo, Consolas, monospace;
+}
+
+.barcell {
+    width: 30%;
+    white-space: nowrap;
+}
+
+.minibar {
+    display: inline-block;
+    height: 0.6rem;
+    vertical-align: middle;
+}
+
+.minibar + .minibar {
+    margin-left: 2px;
+    border-radius: 0 2px 2px 0;
+}
+
+.status {
+    border-radius: 1rem;
+    padding: 0.05rem 0.5rem;
+    font-size: 0.75rem;
+    background: #f3f3f3;
+}
+
+.status_succeeded {
+    background: #e2f5e9;
+    color: #22683e;
+}
+
+.status_failed,
+.status_rejected {
+    background: #fde6e6;
+    color: #ba0517;
+}
+
+.status_waiting_approval,
+.status_running,
+.status_queued {
+    background: #fef1d7;
+    color: #8c4b02;
+}
+
+.table {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+}
+
+.table summary {
+    cursor: pointer;
+    color: #0b5cab;
+}
+
+.label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin: 0.75rem 0 0.25rem;
+}
+
+.models {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.empty {
+    color: var(--text-muted);
+    padding: 1rem 0;
+}

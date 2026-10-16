@@ -33,6 +33,7 @@ from .graph.store import BigQueryStore, GraphService, LocalJsonStore
 from .jira import JiraClient, JiraError, simplify
 from .runs import FirestoreRunStore, MemoryRunStore, RunContext, Runner
 from .salesforce import SalesforceClient
+from .usage import summarize
 
 RUN_ID = re.compile(r"^[a-f0-9]{8,32}$")
 
@@ -285,3 +286,26 @@ def graph_stats(svc: Services = Depends(get_services)) -> dict:
 @app.get("/v1/graph/search", dependencies=[Depends(require_key)])
 def graph_search(q: str, svc: Services = Depends(get_services)) -> dict:
     return svc.graphs.graph().context_slice(q[:500])
+
+
+@app.get("/v1/graph/schema", dependencies=[Depends(require_key)])
+def graph_schema(svc: Services = Depends(get_services)) -> dict:
+    g = svc.graphs.graph()
+    return {**g.schema(), "nodes": len(g.nodes), "edges": len(g.edges), "snapshot": svc.graphs.snapshot(),
+            "notes": g.notes[-10:]}
+
+
+@app.get("/v1/graph/neighbourhood", dependencies=[Depends(require_key)])
+def graph_neighbourhood(q: str = "", id: str = "", svc: Services = Depends(get_services)) -> dict:
+    g = svc.graphs.graph()
+    matches = [{"id": n.id, "type": n.node_type, "label": n.api_name or n.name} for n, _ in g.search(q[:200], 8)] if q else []
+    centre = id if id in g.nodes else (matches[0]["id"] if matches else "")
+    if not centre:
+        raise HTTPException(404, f"nothing in the graph matches '{q or id}'")
+    return {**g.ego(centre), "matches": matches}
+
+
+@app.get("/v1/usage", dependencies=[Depends(require_key)])
+def usage(days: int = 14, svc: Services = Depends(get_services)) -> dict:
+    days = max(1, min(90, days))
+    return summarize(svc.runs.list_recent(1000), days)

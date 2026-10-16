@@ -176,6 +176,7 @@ def run_codex(conn: CodexConnection, workspace: str, prompt: str,
     timer = threading.Timer(s.codex_timeout_s, proc.kill)
     timer.start()
     raw_tail: list[str] = []
+    usage = {"input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "turns": 0}
     try:
         assert proc.stdin and proc.stdout
         proc.stdin.write(prompt)
@@ -185,10 +186,16 @@ def run_codex(conn: CodexConnection, workspace: str, prompt: str,
             if not line:
                 continue
             try:
-                summary = summarize_event(json.loads(line))
+                event = json.loads(line)
             except json.JSONDecodeError:
-                summary = None
                 raw_tail = (raw_tail + [line])[-20:]
+                continue
+            if event.get("type") == "turn.completed":
+                u = event.get("usage") or {}
+                for k in ("input_tokens", "cached_input_tokens", "output_tokens"):
+                    usage[k] += int(u.get(k) or 0)
+                usage["turns"] += 1
+            summary = summarize_event(event)
             if summary:
                 on_line(summary)
         code = proc.wait()
@@ -199,4 +206,4 @@ def run_codex(conn: CodexConnection, workspace: str, prompt: str,
         with open(last, encoding="utf-8") as fh:
             final = fh.read().strip()
         os.remove(last)
-    return {"exit_code": code, "final_message": final, "log_tail": "\n".join(raw_tail)}
+    return {"exit_code": code, "final_message": final, "log_tail": "\n".join(raw_tail), "usage": usage}

@@ -183,9 +183,13 @@ class FakeOpenAI:
         self.requests.append(kwargs)
         step = self.script.pop(0)
         rid = f"resp_{len(self.requests)}"
+        usage = SimpleNamespace(input_tokens=1000, output_tokens=200,
+                                input_tokens_details=SimpleNamespace(cached_tokens=400),
+                                output_tokens_details=SimpleNamespace(reasoning_tokens=50))
         if isinstance(step, str):
-            return SimpleNamespace(id=rid, output=[SimpleNamespace(type="message")], output_text=step)
-        return SimpleNamespace(id=rid, output=step, output_text="")
+            return SimpleNamespace(id=rid, output=[SimpleNamespace(type="message")], output_text=step,
+                                   usage=usage, model="gpt-test")
+        return SimpleNamespace(id=rid, output=step, output_text="", usage=usage, model="gpt-test")
 
 
 def write(ws, rel, content):

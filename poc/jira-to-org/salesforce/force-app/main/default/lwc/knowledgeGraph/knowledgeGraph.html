@@ -1,0 +1,127 @@
+<template>
+    <lightning-card icon-name="standard:hierarchy">
+        <h1 slot="title" class="slds-text-heading_small">
+            Knowledge graph
+            <span class="slds-text-body_small slds-text-color_weak slds-var-m-left_x-small">
+                read-only reference · GCP BigQuery
+            </span>
+        </h1>
+        <div slot="actions" class="actions">
+            <lightning-input type="search" label="Find a component" variant="label-hidden"
+                placeholder="Object, field, class, flow or KAN-5" value={query}
+                onchange={handleQuery} onkeydown={handleQueryKey} class="search"></lightning-input>
+            <lightning-button label="Show" onclick={handleSearch}></lightning-button>
+            <template lwc:if={isEgo}>
+                <lightning-button label="Whole graph" onclick={handleShowSchema}></lightning-button>
+            </template>
+        </div>
+
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <p class="meta">{snapshotLabel}</p>
+            <template lwc:if={error}>
+                <p class="error">{error}</p>
+            </template>
+
+            <ul class="legend">
+                <template for:each={legend} for:item="l">
+                    <li key={l.key}><span class="swatch" style={l.style}></span>{l.label}</li>
+                </template>
+            </ul>
+
+            <div class="canvas">
+                <template lwc:if={loading}>
+                    <lightning-spinner alternative-text="Loading graph" size="medium"></lightning-spinner>
+                </template>
+
+                <!-- whole graph, one circle per kind of node -->
+                <template lwc:if={isSchema}>
+                    <p class="caption">How the graph connects: each circle is a kind of component (size = how many),
+                        each arrow a kind of relationship (number = how many). Hover for detail.</p>
+                    <svg viewBox={viewBox} class="graph" role="img" aria-label="Knowledge graph by node type">
+                        <template for:each={schemaLinks} for:item="l">
+                            <g key={l.key} class="link" data-index={l.index} onmouseenter={handleEdgeEnter}
+                                onmouseleave={handleLeave}>
+                                <path d={l.d} class="link__hit"></path>
+                                <path d={l.d} class="link__line" stroke-width={l.width}></path>
+                                <polygon points={l.head} class="link__head"></polygon>
+                                <text x={l.lx} y={l.ly} class="link__label">{l.label}</text>
+                            </g>
+                        </template>
+                        <template for:each={schemaNodes} for:item="n">
+                            <g key={n.key} class="node" data-index={n.index} data-type={n.type}
+                                onmouseenter={handleNodeEnter} onmouseleave={handleLeave} onclick={handleNodeClick}>
+                                <circle cx={n.x} cy={n.y} r={n.r} fill={n.fill} class="node__dot"></circle>
+                                <text x={n.x} y={n.labelY} class="node__label">{n.label}</text>
+                                <text x={n.x} y={n.subY} class="node__sub">{n.sub}</text>
+                            </g>
+                        </template>
+                    </svg>
+                </template>
+
+                <!-- one component and what it touches -->
+                <template lwc:if={isEgo}>
+                    <p class="caption">{egoTitle}</p>
+                    <svg viewBox={viewBox} class="graph" role="img" aria-label={egoTitle}>
+                        <template for:each={egoLinks} for:item="l">
+                            <g key={l.key} class="link" data-index={l.index} onmouseenter={handleEdgeEnter}
+                                onmouseleave={handleLeave}>
+                                <path d={l.d} class="link__hit"></path>
+                                <path d={l.d} class="link__line" stroke-width={l.width}></path>
+                                <polygon points={l.head} class="link__head"></polygon>
+                            </g>
+                        </template>
+                        <template for:each={egoNodes} for:item="n">
+                            <g key={n.key} class="node node_click" data-index={n.index} data-id={n.id}
+                                onmouseenter={handleNodeEnter} onmouseleave={handleLeave} onclick={handleNodeClick}>
+                                <circle cx={n.x} cy={n.y} r={n.r} fill={n.fill} class="node__dot"></circle>
+                                <text x={n.x} y={n.labelY} class="node__label">{n.label}</text>
+                                <text x={n.x} y={n.subY} class="node__sub">{n.sub}</text>
+                            </g>
+                        </template>
+                    </svg>
+                    <template lwc:if={hasMatches}>
+                        <p class="label">Other matches</p>
+                        <div class="matches">
+                            <template for:each={matches} for:item="m">
+                                <button key={m.id} class="chip" data-id={m.id} onclick={handleMatch}>{m.text}</button>
+                            </template>
+                        </div>
+                    </template>
+                </template>
+
+                <template lwc:if={hasHover}>
+                    <div class="tooltip">
+                        <p class="tooltip__title">{hover.title}</p>
+                        <ul>
+                            <template for:each={hoverLines} for:item="h">
+                                <li key={h.key}>{h.text}</li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
+
+            <template lwc:if={isSchema}>
+                <details class="table">
+                    <summary>Show as a table</summary>
+                    <table>
+                        <thead><tr><th>From</th><th>Relationship</th><th>To</th><th class="num">Count</th></tr></thead>
+                        <tbody>
+                            <template for:each={schemaRows} for:item="r">
+                                <tr key={r.key}><td>{r.from}</td><td>{r.verb}</td><td>{r.to}</td><td class="num">{r.count}</td></tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </details>
+                <template lwc:if={hasNotes}>
+                    <details class="table">
+                        <summary>What this snapshot covers</summary>
+                        <ul class="notes">
+                            <template for:each={notes} for:item="n"><li key={n.key}>{n.text}</li></template>
+                        </ul>
+                    </details>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>

@@ -23,6 +23,7 @@ class RunStore(Protocol):
     def update(self, run_id: str, **fields: Any) -> dict: ...
     def get_conversation(self, conversation_id: str) -> dict: ...
     def set_conversation(self, conversation_id: str, data: dict) -> None: ...
+    def list_recent(self, limit: int = 500) -> list[dict]: ...
 
 
 def _new_run(kind: str, payload: dict) -> dict:
@@ -55,6 +56,11 @@ class MemoryRunStore:
             run["updated_at"] = now_iso()
             return copy.deepcopy(run)
 
+    def list_recent(self, limit: int = 500) -> list[dict]:
+        with self._lock:
+            runs = sorted(self._runs.values(), key=lambda r: r["created_at"], reverse=True)
+            return copy.deepcopy(runs[:limit])
+
     def get_conversation(self, conversation_id: str) -> dict:
         with self._lock:
             return dict(self._conversations.get(conversation_id, {}))
@@ -86,6 +92,12 @@ class FirestoreRunStore:
         self.runs.document(run_id).update(fields)
         return self.get(run_id) or {}
 
+    def list_recent(self, limit: int = 500) -> list[dict]:
+        from google.cloud import firestore
+
+        query = self.runs.order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit)
+        return [d.to_dict() for d in query.stream()]
+
     def get_conversation(self, conversation_id: str) -> dict:
         snap = self.conversations.document(conversation_id).get()
         return snap.to_dict() if snap.exists else {}
@@ -100,11 +112,35 @@ class RunContext:
     def __init__(self, store: RunStore, run_id: str):
         self.store = store
         self.run_id = run_id
-        self._steps: list[dict] = (store.get(run_id) or {}).get("steps", [])
+        run = store.get(run_id) or {}
+        self._steps: list[dict] = run.get("steps", [])
+        self._usage: dict | None = run.get("usage")
 
     def step(self, name: str, status: str = "done", detail: str = "") -> None:
         self._steps.append({"at": now_iso(), "name": name, "status": status, "detail": detail[:2000]})
         self.store.update(self.run_id, steps=self._steps)
+
+    def add_usage(self, agent: str, model: str | None, input_tokens: int = 0, output_tokens: int = 0,
+                  cached_input_tokens: int = 0, reasoning_tokens: int = 0, ticket: str | None = None) -> None:
+        """Accumulate model tokens on the run; the dashboard sums these."""
+        u = self._usage or {"agent": agent, "model": model, "ticket": ticket, "calls": 0, "input_tokens": 0,
+                            "cached_input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0,
+                            "total_tokens": 0}
+        u["calls"] += 1
+        u["input_tokens"] += int(input_tokens or 0)
+        u["cached_input_tokens"] += int(cached_input_tokens or 0)
+        u["output_tokens"] += int(output_tokens or 0)
+        u["reasoning_tokens"] += int(reasoning_tokens or 0)
+        u["total_tokens"] = u["input_tokens"] + u["output_tokens"]
+        u["model"] = model or u.get("model")
+        u["ticket"] = ticket or u.get("ticket")
+        self._usage = u
+        self.store.update(self.run_id, usage=u)
+
+    def usage_ticket(self, ticket: str | None) -> None:
+        if self._usage and ticket:
+            self._usage["ticket"] = ticket
+            self.store.update(self.run_id, usage=self._usage)
 
     def status(self, status: str, **fields: Any) -> None:
         self.store.update(self.run_id, status=status, **fields)

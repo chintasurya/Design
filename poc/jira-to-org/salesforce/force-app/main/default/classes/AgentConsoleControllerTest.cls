@@ -58,6 +58,17 @@ private class AgentConsoleControllerTest {
         System.assert(m.last.getEndpoint().endsWith('/reject'));
         AgentConsoleController.rebuildGraph();
         System.assert(m.last.getEndpoint().endsWith('/v1/graph/rebuild'));
+
+        AgentConsoleController.graphSchema();
+        System.assert(m.last.getEndpoint().endsWith('/v1/graph/schema'));
+        AgentConsoleController.graphNeighbourhood('Opportunity Region', null);
+        System.assert(m.last.getEndpoint().endsWith('/v1/graph/neighbourhood?q=Opportunity+Region'));
+        AgentConsoleController.graphNeighbourhood(null, 'field:opportunity.region__c');
+        System.assert(m.last.getEndpoint().endsWith('?id=field%3Aopportunity.region__c'));
+        AgentConsoleController.usageSummary(500);
+        System.assert(m.last.getEndpoint().endsWith('/v1/usage?days=90'), 'days are clamped');
+        AgentConsoleController.usageSummary(null);
+        System.assert(m.last.getEndpoint().endsWith('/v1/usage?days=14'));
         Test.stopTest();
     }
 
@@ -69,7 +80,9 @@ private class AgentConsoleControllerTest {
         try { AgentConsoleController.startDevelopment('not a key', '{}', false); } catch (AuraHandledException e) { refused++; }
         try { AgentConsoleController.startDevelopment('KAN-1', 'not json', false); } catch (AuraHandledException e) { refused++; }
         try { AgentConsoleController.askRequirementAgent('  ', null); } catch (AuraHandledException e) { refused++; }
-        System.assertEquals(4, refused);
+        try { AgentConsoleController.graphNeighbourhood(null, '../v1/usage'); } catch (AuraHandledException e) { refused++; }
+        try { AgentConsoleController.graphNeighbourhood('  ', null); } catch (AuraHandledException e) { refused++; }
+        System.assertEquals(6, refused);
         System.assertEquals(null, m.last, 'no callout may be made for refused input');
     }
 

@@ -265,6 +265,46 @@ class Graph:
         return {"nodes": len(self.nodes), "edges": len(self.edges),
                 "node_types": dict(sorted(by_type.items())), "edge_types": dict(sorted(by_edge.items()))}
 
+    def schema(self) -> dict:
+        """The graph at type level: which kinds of thing connect to which, and how often."""
+        node_counts: dict[str, int] = defaultdict(int)
+        for n in self.nodes.values():
+            node_counts[n.node_type] += 1
+        links: dict[tuple[str, str, str], int] = defaultdict(int)
+        for e in self.edges.values():
+            links[(self.nodes[e.from_id].node_type, e.edge_type, self.nodes[e.to_id].node_type)] += 1
+        return {
+            "node_types": [{"type": t, "count": c} for t, c in sorted(node_counts.items(), key=lambda p: -p[1])],
+            "edge_types": [{"from_type": a, "edge_type": et, "to_type": b, "count": c}
+                           for (a, et, b), c in sorted(links.items(), key=lambda p: -p[1])],
+        }
+
+    def ego(self, node_id: str, max_nodes: int = 36) -> dict:
+        """One component and what it touches directly, behaviour first, for drawing.
+        Fields are folded into a count unless the centre is a field itself."""
+        centre = self.nodes[node_id]
+        nodes: dict[str, Node] = {node_id: centre}
+        edges: list[dict] = []
+        hidden_fields = 0
+        for e, other in self.neighbours(node_id):
+            o = self.nodes[other]
+            if o.node_type == "Field" and centre.node_type == "SObject":
+                hidden_fields += 1
+                continue
+            if other not in nodes:
+                if len(nodes) >= max_nodes:
+                    continue
+                nodes[other] = o
+            edges.append({"from": e.from_id, "to": e.to_id, "type": e.edge_type, "origin": e.origin})
+        return {
+            "centre": node_id,
+            "nodes": [{"id": n.id, "type": n.node_type, "label": n.api_name or n.name,
+                       "degree": len(self._out.get(n.id, [])) + len(self._in.get(n.id, [])),
+                       "properties": _short_props(n)} for n in nodes.values()],
+            "edges": edges,
+            "fields_folded": hidden_fields,
+        }
+
     # -- serialisation ------------------------------------------------------
     def to_dict(self) -> dict:
         return {"nodes": [asdict(n) for n in self.nodes.values()],
