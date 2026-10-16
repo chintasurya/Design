@@ -66,8 +66,19 @@ bq --location="$BQ_LOCATION" show "$GCP_PROJECT:$BQ_DATASET" >/dev/null 2>&1 \
   || bq --location="$BQ_LOCATION" mk --dataset --description "Jira-to-Org knowledge graph" "$GCP_PROJECT:$BQ_DATASET"
 gcloud projects add-iam-policy-binding "$GCP_PROJECT" --member "serviceAccount:$SA" \
   --role roles/bigquery.jobUser --condition=None >/dev/null
-bq add-iam-policy-binding --member="serviceAccount:$SA" --role=roles/bigquery.dataEditor \
-  "$GCP_PROJECT:$BQ_DATASET" >/dev/null
+# dataset-level IAM bindings need allowlisting, so grant WRITER through the dataset's access list
+ACL="$(mktemp)"
+bq show --format=prettyjson "$GCP_PROJECT:$BQ_DATASET" > "$ACL"
+python3 - "$ACL" "$SA" <<'PY'
+import json, sys
+path, sa = sys.argv[1], sys.argv[2]
+ds = json.load(open(path))
+if not any(a.get("userByEmail") == sa for a in ds.get("access", [])):
+    ds.setdefault("access", []).append({"role": "WRITER", "userByEmail": sa})
+json.dump({"access": ds["access"]}, open(path, "w"))
+PY
+bq update --source "$ACL" "$GCP_PROJECT:$BQ_DATASET" >/dev/null
+rm -f "$ACL"
 
 echo "== Firestore (agent runs and conversations)"
 gcloud firestore databases describe --database="(default)" >/dev/null 2>&1 \
