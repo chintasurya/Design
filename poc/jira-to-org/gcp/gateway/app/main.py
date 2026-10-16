@@ -2,6 +2,7 @@
 
     POST /v1/codex/connect          connect first; nothing agentic works before it
     GET  /v1/codex/login            poll a developer's Codex sign-in (ChatGPT mode)
+    POST /v1/codex/login/complete   browser sign-in: the redirect address the developer pasted
     POST /v1/codex/logout           sign the developer out of Codex
     GET  /v1/status                 what is connected, graph size
     GET  /v1/jira/tickets           ticket picker
@@ -159,6 +160,10 @@ class ConnectBody(BaseModel):
     apiKey: str | None = Field(default=None, max_length=400)
 
 
+class CompleteLoginBody(BaseModel):
+    redirectUrl: str = Field(min_length=10, max_length=4000)
+
+
 class ChatBody(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     conversationId: str | None = Field(default=None, max_length=64)
@@ -209,6 +214,19 @@ def codex_login(svc: Services = Depends(get_services), user: str = Depends(curre
     if not svc.chatgpt_mode:
         return {**svc.codex.status(), "mode": "apikey"}
     return svc.sessions.status(user)
+
+
+@app.post("/v1/codex/login/complete", dependencies=[Depends(require_key)])
+def codex_login_complete(body: CompleteLoginBody, svc: Services = Depends(get_services),
+                         user: str = Depends(current_user)) -> dict:
+    if not svc.chatgpt_mode or not user:
+        raise HTTPException(400, "browser sign-in applies to a developer's own Codex session")
+    try:
+        return svc.sessions.complete(user, body.redirectUrl)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(502, f"Codex sign-in failed: {exc}") from exc
 
 
 @app.post("/v1/codex/logout", dependencies=[Depends(require_key)])

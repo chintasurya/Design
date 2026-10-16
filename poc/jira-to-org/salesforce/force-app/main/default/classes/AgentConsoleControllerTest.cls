@@ -44,6 +44,9 @@ private class AgentConsoleControllerTest {
 
         AgentConsoleController.codexLoginStatus();
         System.assert(m.last.getEndpoint().endsWith('/v1/codex/login'));
+        AgentConsoleController.codexCompleteLogin(' http://127.0.0.1:1455/auth/callback?code=c&state=s ');
+        System.assert(m.last.getEndpoint().endsWith('/v1/codex/login/complete'));
+        System.assert(m.last.getBody().contains('"redirectUrl":"http://127.0.0.1:1455/auth/callback?code=c&state=s"'));
         AgentConsoleController.codexLogout();
         System.assert(m.last.getEndpoint().endsWith('/v1/codex/logout'));
         System.assertEquals('POST', m.last.getMethod());
@@ -90,7 +93,8 @@ private class AgentConsoleControllerTest {
         try { AgentConsoleController.askRequirementAgent('  ', null); } catch (AuraHandledException e) { refused++; }
         try { AgentConsoleController.graphNeighbourhood(null, '../v1/usage'); } catch (AuraHandledException e) { refused++; }
         try { AgentConsoleController.graphNeighbourhood('  ', null); } catch (AuraHandledException e) { refused++; }
-        System.assertEquals(6, refused);
+        try { AgentConsoleController.codexCompleteLogin('https://evil.example/auth/callback?code=x'); } catch (AuraHandledException e) { refused++; }
+        System.assertEquals(7, refused);
         System.assertEquals(null, m.last, 'no callout may be made for refused input');
     }
 

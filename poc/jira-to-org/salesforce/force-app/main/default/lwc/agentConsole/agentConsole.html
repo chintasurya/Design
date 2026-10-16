@@ -31,7 +31,27 @@
                         Both agents run on your own Codex account: your plan, your limits.
                         Connect first; nothing reads Jira or touches the org until you do.
                     </p>
-                    <template lwc:if={device}>
+                    <template lwc:if={isBrowserFlow}>
+                        <div class="device">
+                            <p class="device__step"><strong>1.</strong> Sign in to Codex with your own account.
+                                Single sign-on (SSO) works here.</p>
+                            <a href={device.authUrl} target="_blank" rel="noopener" class="device__button">
+                                Sign in to Codex</a>
+                            <p class="device__step"><strong>2.</strong> After you sign in, your browser opens a page
+                                that says <em>This site can't be reached</em>. That is expected. Copy the
+                                whole address from the address bar (it starts with
+                                <code>http://localhost:1455/auth/callback</code>) and paste it here:</p>
+                            <lightning-input label="Address from your browser" variant="label-hidden"
+                                value={redirectUrl} onchange={handleRedirectUrl}
+                                placeholder="http://localhost:1455/auth/callback?code=..."></lightning-input>
+                            <lightning-button variant="brand" label={finishLabel} onclick={handleFinishLogin}
+                                disabled={finishDisabled} class="slds-var-m-top_small"></lightning-button>
+                            <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_x-small">
+                                Do this before {deviceExpires}. The address works once and only for this sign-in.
+                            </p>
+                        </div>
+                    </template>
+                    <template lwc:if={isDeviceFlow}>
                         <div class="device">
                             <p class="device__step"><strong>1.</strong> Open this link and sign in to your Codex
                                 (ChatGPT) account:</p>

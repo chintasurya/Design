@@ -36,6 +36,8 @@ keys = {
     "AUTO_DEPLOY": os.environ.get("AUTO_DEPLOY", "false"),
     # chatgpt: every developer signs in to their own Codex | apikey: one OpenAI key on the gateway
     "CODEX_AUTH_MODE": os.environ.get("CODEX_AUTH_MODE", "chatgpt"),
+    # browser: normal Codex sign-in page (SSO), paste back the redirect | device: one-time code
+    "CODEX_LOGIN_FLOW": os.environ.get("CODEX_LOGIN_FLOW", "browser"),
 }
 with open(sys.argv[1], "w") as fh:
     for k, v in keys.items():

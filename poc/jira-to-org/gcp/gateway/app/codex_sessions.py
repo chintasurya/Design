@@ -1,11 +1,18 @@
 """Per-developer Codex sign-in: each Salesforce user connects their own Codex.
 
-"Connect to Codex" starts `codex login --device-auth` in a Codex home that
-belongs to that Salesforce user. The CLI prints a link and a one-time code
-(it expires after 15 minutes); the developer opens the link, signs in to
-their own ChatGPT / Codex account (their plan, their workspace, their
-limits) and enters the code. The CLI then finishes on its own and writes
-`auth.json`.
+"Connect to Codex" signs the developer in to their own ChatGPT / Codex
+account (their plan, their workspace and SSO, their limits), in a Codex home
+that belongs to that Salesforce user. Two flows:
+
+* browser (default): `codex login` prints the normal OpenAI sign-in link and
+  waits for the redirect on 127.0.0.1:1455 inside the gateway. The developer
+  signs in (SSO works), their browser fails to open that localhost address,
+  and they paste it into the console; the gateway replays it to the waiting
+  CLI, which exchanges the code (PKCE: useless without that process) and
+  writes `auth.json`. The CLI owns one fixed port, so one browser sign-in
+  runs at a time per gateway instance.
+* device: `codex login --device-auth` prints a link and a one-time code;
+  this needs device-code sign-in enabled on the ChatGPT account.
 
 Cloud Run instances are disposable, so each developer's `auth.json` is also
 kept in Secret Manager (one secret, `codex-sessions`, holding a map keyed by a
@@ -18,6 +25,9 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import urllib.error
+import urllib.parse
+import urllib.request
 import json
 import os
 import re
@@ -114,17 +124,76 @@ def parse_device_prompt(text: str) -> tuple[str | None, str | None]:
     return url, code
 
 
+def parse_browser_prompt(text: str) -> str | None:
+    """`codex login` prints 'navigate to this URL to authenticate:' then the authorize URL."""
+    for line in (ANSI.sub("", line).strip() for line in text.splitlines()):
+        m = URL.search(line)
+        if m and "/oauth/authorize" in m.group(0):
+            return m.group(0)
+    return None
+
+
+def callback_target(auth_url: str, pasted: str) -> str:
+    """The local address to replay the pasted redirect to, after checking it is
+    the callback this login is waiting for and nothing else."""
+    redirect = urllib.parse.parse_qs(urllib.parse.urlparse(auth_url).query).get("redirect_uri", [""])[0]
+    expected = urllib.parse.urlparse(redirect)
+    got = urllib.parse.urlparse(pasted.strip())
+    if got.scheme != "http" or got.hostname not in {"localhost", "127.0.0.1"}:
+        raise ValueError("Paste the address that starts with http://localhost:1455/auth/callback")
+    if got.path != (expected.path or "/auth/callback") or (got.port or 80) != (expected.port or 1455):
+        raise ValueError("That is not the Codex sign-in callback address")
+    query = urllib.parse.parse_qs(got.query)
+    if "error" in query:
+        raise ValueError("Codex sign-in was refused: " + query.get("error_description", query["error"])[0])
+    if not query.get("code") or not query.get("state"):
+        raise ValueError("The address is missing its code; copy the whole address bar")
+    return f"http://127.0.0.1:{expected.port or 1455}{got.path}?{got.query}"
+
+
+def _replay(url: str) -> None:
+    """GET the callback on the CLI's local server, then its local success page,
+    which is what lets the CLI exit."""
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect)
+    try:
+        res = opener.open(url, timeout=60)
+        location = res.headers.get("Location")
+    except urllib.error.HTTPError as err:
+        if err.code not in (301, 302, 303, 307, 308):
+            raise RuntimeError(err.read().decode(errors="replace")[:300] or f"HTTP {err.code}") from err
+        location = err.headers.get("Location")
+    if location and urllib.parse.urlparse(location).hostname in {"localhost", "127.0.0.1"}:
+        try:
+            opener.open(location.replace("://localhost", "://127.0.0.1"), timeout=30).read()
+        except Exception:  # noqa: BLE001 - the success page is a courtesy; auth.json is what matters
+            pass
+
+
 class _Login:
-    def __init__(self, proc: Any):
+    def __init__(self, proc: Any, flow: str, user: str):
         self.proc = proc
+        self.flow = flow
+        self.user = user
         self.lines: list[str] = []
         self.started = time.time()
         self.ready = threading.Event()
 
+    def text(self) -> str:
+        return "".join(self.lines)
+
+    def prompt_ready(self) -> bool:
+        if self.flow == "browser":
+            return parse_browser_prompt(self.text()) is not None
+        return parse_device_prompt(self.text())[1] is not None
+
     def reader(self) -> None:
         for line in self.proc.stdout:
             self.lines.append(line)
-            if parse_device_prompt("".join(self.lines))[1]:
+            if self.prompt_ready():
                 self.ready.set()
         self.ready.set()
 
@@ -135,10 +204,13 @@ def _spawn(cmd: list[str], env: dict) -> Any:
 
 
 class CodexSessions:
-    def __init__(self, settings: Settings, vault: SessionVault, spawn: Callable[[list[str], dict], Any] = _spawn):
+    def __init__(self, settings: Settings, vault: SessionVault, spawn: Callable[[list[str], dict], Any] = _spawn,
+                 replay: Callable[[str], None] = _replay):
         self.s = settings
+        self.flow = getattr(settings, "codex_login_flow", "device")
         self.vault = vault
         self.spawn = spawn
+        self.replay = replay
         self._logins: dict[str, _Login] = {}
         self._cache: dict[str, dict] | None = None
         self._lock = threading.RLock()
@@ -205,10 +277,17 @@ class CodexSessions:
                                    + (f" ({account.get('email')})" if account.get("email") else "") + "."}
             login = self._logins.get(user_key(user))
             if login and login.proc.poll() is None and time.time() - login.started < LOGIN_TTL_S:
-                url, code = parse_device_prompt("".join(login.lines))
-                return {"mode": "chatgpt", "connected": False, "pending": True, "verificationUrl": url,
-                        "userCode": code, "expiresAt": login.started + LOGIN_TTL_S,
+                if login.flow == "browser":
+                    return {"mode": "chatgpt", "connected": False, "pending": True, "flow": "browser",
+                            "authUrl": parse_browser_prompt(login.text()), "expiresAt": login.started + LOGIN_TTL_S,
+                            "message": "Sign in to Codex with your account (SSO works), then paste the address "
+                                       "your browser ends up on."}
+                url, code = parse_device_prompt(login.text())
+                return {"mode": "chatgpt", "connected": False, "pending": True, "flow": "device",
+                        "verificationUrl": url, "userCode": code, "expiresAt": login.started + LOGIN_TTL_S,
                         "message": "Open the link, sign in to your Codex account and enter the code."}
+            if login and login.proc.poll() is None:
+                login.proc.kill()  # expired
             if login:
                 tail = ANSI.sub("", "".join(login.lines)).strip().splitlines()[-3:]
                 self._logins.pop(user_key(user), None)
@@ -223,12 +302,41 @@ class CodexSessions:
             current = self.status(user)
             if current["connected"] or current.get("pending"):
                 return current
+            if self.flow == "browser":
+                busy = [lg for lg in self._logins.values()
+                        if lg.flow == "browser" and lg.proc.poll() is None
+                        and time.time() - lg.started < LOGIN_TTL_S]
+                if busy:
+                    return {"mode": "chatgpt", "connected": False, "pending": False, "busy": True,
+                            "message": "Another developer is signing in to Codex right now. "
+                                       "Try again in a minute."}
             env = {"PATH": os.environ.get("PATH", ""), "HOME": self.home(user), "CODEX_HOME": self.home(user),
-                   "LANG": "C.UTF-8"}
-            login = _Login(self.spawn([self.s.codex_bin, "login", "--device-auth"], env))
+                   "LANG": "C.UTF-8", "BROWSER": "/bin/true"}  # nothing to open on a server
+            cmd = [self.s.codex_bin, "login", "-c", 'cli_auth_credentials_store="file"']
+            if self.flow != "browser":
+                cmd.append("--device-auth")
+            login = _Login(self.spawn(cmd, env), self.flow, user)
             self._logins[user_key(user)] = login
             threading.Thread(target=self._watch, args=(user, login), daemon=True).start()
         login.ready.wait(30)
+        return self.status(user)
+
+    def complete(self, user: str, pasted_url: str) -> dict:
+        """Browser flow: replay the redirect the developer pasted to the waiting CLI."""
+        with self._lock:
+            login = self._logins.get(user_key(user))
+            if not login or login.flow != "browser" or login.proc.poll() is not None:
+                return {**self.status(user), "message": "No Codex sign-in is waiting. Click Connect to Codex again."}
+            target = callback_target(parse_browser_prompt(login.text()) or "", pasted_url)
+        self.replay(target)
+        for _ in range(100):  # the CLI exchanges the code and writes auth.json
+            if login.proc.poll() is not None:
+                break
+            time.sleep(0.2)
+        with self._lock:
+            if os.path.exists(self._auth_path(user)):
+                self.save(user)
+                self._logins.pop(user_key(user), None)
         return self.status(user)
 
     def _watch(self, user: str, login: _Login) -> None:

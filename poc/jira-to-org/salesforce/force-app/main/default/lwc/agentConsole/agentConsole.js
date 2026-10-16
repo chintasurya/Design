@@ -3,6 +3,7 @@ import status from '@salesforce/apex/AgentConsoleController.status';
 import connectCodex from '@salesforce/apex/AgentConsoleController.connectCodex';
 import codexLoginStatus from '@salesforce/apex/AgentConsoleController.codexLoginStatus';
 import codexLogout from '@salesforce/apex/AgentConsoleController.codexLogout';
+import codexCompleteLogin from '@salesforce/apex/AgentConsoleController.codexCompleteLogin';
 import listTickets from '@salesforce/apex/AgentConsoleController.listTickets';
 import askRequirementAgent from '@salesforce/apex/AgentConsoleController.askRequirementAgent';
 import startDevelopment from '@salesforce/apex/AgentConsoleController.startDevelopment';
@@ -62,7 +63,9 @@ export default class AgentConsole extends LightningElement {
     apiKey = '';
     connectMessage = '';
     codex;
-    device; // pending Codex device sign-in: verificationUrl, userCode, expiresAt
+    device; // pending Codex sign-in: browser (authUrl) or device (verificationUrl, userCode), expiresAt
+    redirectUrl = '';
+    finishing = false;
     gateway;
     gatewayError;
 
@@ -162,7 +165,7 @@ export default class AgentConsole extends LightningElement {
         this.needsKey = r.mode === 'apikey' && !r.connected && !!r.needsKey;
         this.device = r.mode === 'chatgpt' && r.pending ? r : undefined;
         clearTimeout(this.timers.login);
-        if (this.device) {
+        if (this.device && this.device.flow !== 'browser') {
             // poll until the developer approves the code in their browser
             // eslint-disable-next-line @lwc/lwc/no-async-operation
             this.timers.login = setTimeout(() => this.pollLogin(), 3000);
@@ -185,6 +188,40 @@ export default class AgentConsole extends LightningElement {
         } catch (e) {
             this.device = undefined;
             this.connectMessage = errorText(e);
+        }
+    }
+
+    get isBrowserFlow() {
+        return !!this.device && this.device.flow === 'browser';
+    }
+
+    get isDeviceFlow() {
+        return !!this.device && this.device.flow !== 'browser';
+    }
+
+    get finishDisabled() {
+        return this.finishing || !this.redirectUrl.trim();
+    }
+
+    get finishLabel() {
+        return this.finishing ? 'Connecting…' : 'Finish connecting';
+    }
+
+    handleRedirectUrl(event) {
+        this.redirectUrl = event.target.value;
+    }
+
+    async handleFinishLogin() {
+        this.finishing = true;
+        this.connectMessage = '';
+        try {
+            const r = JSON.parse(await codexCompleteLogin({ redirectUrl: this.redirectUrl }));
+            this.redirectUrl = '';
+            this.applyConnect(r);
+        } catch (e) {
+            this.connectMessage = errorText(e);
+        } finally {
+            this.finishing = false;
         }
     }
 

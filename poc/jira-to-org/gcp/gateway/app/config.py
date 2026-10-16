@@ -51,6 +51,7 @@ class Settings:
 
     # Codex / OpenAI
     codex_auth_mode: str      # chatgpt: each developer signs in to their own Codex | apikey: one gateway key
+    codex_login_flow: str     # browser: normal sign-in page (SSO), paste back the redirect | device: one-time code
     openai_model: str         # empty = pick the best available at connect time
     codex_model: str          # empty = Codex CLI's own default
     codex_bin: str
@@ -97,6 +98,7 @@ def load() -> Settings:
         ),
         kg_flow_metadata_max=int(env("KG_FLOW_METADATA_MAX", "100")),
         codex_auth_mode=env("CODEX_AUTH_MODE", "chatgpt"),
+        codex_login_flow=env("CODEX_LOGIN_FLOW", "browser"),
         openai_model=env("OPENAI_MODEL"),
         codex_model=env("CODEX_MODEL"),
         codex_bin=env("CODEX_BIN", "codex"),

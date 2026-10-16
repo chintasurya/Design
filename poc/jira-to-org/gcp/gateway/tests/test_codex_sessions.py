@@ -41,7 +41,7 @@ class FakeLogin:
     waits until the test 'approves' in the browser and writes auth.json."""
 
     def __init__(self, cmd, env):
-        assert cmd[1:] == ["login", "--device-auth"]
+        assert cmd[1] == "login" and cmd[-1] == "--device-auth"
         self.home = env["CODEX_HOME"]
         self.approved = threading.Event()
         self.code = None
@@ -106,6 +106,70 @@ def test_sign_in_survives_a_new_instance_and_sign_out_forgets_it(tmp_path):
 
     fresh.logout("alice@example.com")
     assert vault.data == {} and not fresh.connected("alice@example.com")
+
+
+BROWSER_OUT = ("Starting local login server on http://localhost:1455.\n"
+               "If your browser did not open, navigate to this URL to authenticate:\n\n"
+               "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_x&redirect_uri="
+               "http%3A%2F%2F127.0.0.1%3A1455%2Fauth%2Fcallback&code_challenge=c&state=s1\n\n"
+               "On a remote or headless machine? Use `codex login --device-auth` instead.\n")
+
+
+class FakeBrowserLogin:
+    """Stands in for `codex login` (browser flow): prints the real output, then
+    waits for the callback on its local port."""
+
+    def __init__(self, cmd, env):
+        assert cmd[1] == "login" and "--device-auth" not in cmd and env["BROWSER"] == "/bin/true"
+        self.home = env["CODEX_HOME"]
+        self.done = threading.Event()
+        self.code = None
+        self.stdout = iter(BROWSER_OUT.splitlines(keepends=True))
+
+    def callback(self, url):  # what the CLI's local server does with the replayed request
+        assert url == "http://127.0.0.1:1455/auth/callback?code=AUTHCODE&state=s1"
+        with open(os.path.join(self.home, "auth.json"), "w") as fh:
+            fh.write(AUTH)
+        self.code = 0
+        self.done.set()
+
+    def poll(self):
+        return self.code
+
+    def wait(self):
+        self.done.wait(5)
+        return self.code if self.code is not None else 1
+
+    def kill(self):
+        self.code = -9
+        self.done.set()
+
+
+def test_browser_sign_in_with_sso_and_a_pasted_redirect(tmp_path):
+    from app.codex_sessions import callback_target
+
+    logins = []
+    spawn = lambda cmd, env: logins.append(FakeBrowserLogin(cmd, env)) or logins[-1]  # noqa: E731
+    s = settings(tmp_path, codex_auth_mode="chatgpt", codex_login_flow="browser")
+    sessions = CodexSessions(s, MemoryVault(), spawn=spawn, replay=lambda url: logins[-1].callback(url))
+    started = sessions.connect("alice@example.com")
+    assert started["pending"] and started["flow"] == "browser"
+    assert started["authUrl"].startswith("https://auth.openai.com/oauth/authorize?")
+    # one browser sign-in at a time: the CLI owns port 1455
+    assert sessions.connect("bob@example.com")["busy"] is True
+
+    with pytest.raises(ValueError, match="not the Codex sign-in callback"):
+        sessions.complete("alice@example.com", "http://localhost:9999/auth/callback?code=x&state=y")
+    with pytest.raises(ValueError, match="starts with http://localhost:1455"):
+        sessions.complete("alice@example.com", "https://evil.example/auth/callback?code=x&state=y")
+    with pytest.raises(ValueError, match="refused"):
+        callback_target(started["authUrl"], "http://localhost:1455/auth/callback?error=access_denied&state=s1")
+
+    # the browser lands on 127.0.0.1 or localhost; both are accepted
+    done = sessions.complete("alice@example.com", "http://127.0.0.1:1455/auth/callback?code=AUTHCODE&state=s1")
+    assert done["connected"] and done["account"]["email"] == "alice@example.com"
+    assert user_key("alice@example.com") in sessions.vault.data
+    assert sessions.connect("bob@example.com")["pending"]  # the port is free again
 
 
 @pytest.fixture

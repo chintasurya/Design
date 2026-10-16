@@ -39,6 +39,21 @@ public with sharing class AgentConsoleController {
         return send('GET', '/v1/codex/login', null);
     }
 
+    /**
+     * Browser sign-in: after signing in to Codex (SSO), the browser lands on
+     * http://localhost:1455/auth/callback?code=...&state=... and cannot load it.
+     * The developer pastes that address; the gateway hands it to the waiting Codex CLI.
+     */
+    @AuraEnabled
+    public static String codexCompleteLogin(String redirectUrl) {
+        String url = String.isBlank(redirectUrl) ? '' : redirectUrl.trim();
+        if (!(url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:'))
+                || !url.contains('/auth/callback?')) {
+            throw error('Paste the whole address from your browser; it starts with http://localhost:1455/auth/callback');
+        }
+        return send('POST', '/v1/codex/login/complete', new Map<String, Object>{ 'redirectUrl' => url });
+    }
+
     @AuraEnabled
     public static String codexLogout() {
         return send('POST', '/v1/codex/logout', new Map<String, Object>());
