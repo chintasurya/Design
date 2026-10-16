@@ -40,11 +40,12 @@ build, deploy and test the POC, within these limits:
    GCP Billing, Salesforce billing or Atlassian billing. Anything that
    touches billing or personal settings needs the owner's approval first;
    ask and wait.
-3. **Credentials come from the environment settings only**
-   (`GCP_SA_KEY_JSON`, `GCP_PROJECT`, `GCP_REGION`, `JIRA_*`,
-   `SF_AUTH_URL`, `SF_CLIENT_ID`, `SF_CLIENT_SECRET`), never from chat. A
-   credential that shows up in chat or a screenshot is treated as exposed:
-   do not use it, and ask the owner to rotate it.
+3. **Credentials never go into the repo.** They come from the environment
+   settings (`GCP_SA_KEY_JSON`, `GCP_PROJECT`, `GCP_REGION`, `JIRA_*`,
+   `SF_AUTH_URL`, `SF_CLIENT_ID`, `SF_CLIENT_SECRET`) or, where the owner
+   chooses, from chat (the Jira token was given that way on 2026-10-16).
+   Inside a session they live only in the scratchpad; on GCP only in Secret
+   Manager. Anything given in chat is rotated by the owner when the POC ends.
 4. **Stay in this POC.** Jira project `KAN`, the org
    `orgfarm-0054ddc238-dev-ed`, the GCP project `jira-to-org-poc-2610`.
 
