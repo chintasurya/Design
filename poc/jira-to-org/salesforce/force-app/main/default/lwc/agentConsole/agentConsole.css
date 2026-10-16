@@ -9,6 +9,34 @@
     margin-top: 0.5rem;
 }
 
+.device {
+    margin: 0.75rem auto 0;
+    padding: 1rem;
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    border-radius: 0.5rem;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    text-align: left;
+}
+
+.device__step {
+    margin-top: 0.5rem;
+}
+
+.device__link {
+    display: inline-block;
+    margin: 0.25rem 0 0.5rem 1.25rem;
+    word-break: break-all;
+}
+
+.device__code {
+    margin: 0.25rem 0 0.5rem 1.25rem;
+    font-family: 'Salesforce Mono', Menlo, Consolas, monospace;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    user-select: all;
+}
+
 .connect__message {
     margin-top: 0.75rem;
 }

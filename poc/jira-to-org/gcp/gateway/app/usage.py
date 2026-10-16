@@ -23,6 +23,7 @@ def summarize(runs: list[dict], days: int = 14, now: datetime | None = None) -> 
     totals = {a: _empty() for a in AGENTS}
     by_day = {(start + timedelta(days=i)).isoformat(): {a: 0 for a in AGENTS} for i in range(days)}
     by_ticket: dict[str, dict] = defaultdict(lambda: {"requirement": 0, "developer": 0, "total": 0, "runs": 0})
+    by_user: dict[str, dict] = defaultdict(lambda: {"requirement": 0, "developer": 0, "total": 0, "runs": 0})
     outcomes = {a: defaultdict(int) for a in AGENTS}
     models: dict[str, int] = defaultdict(int)
     recent = []
@@ -46,9 +47,15 @@ def summarize(runs: list[dict], days: int = 14, now: datetime | None = None) -> 
         bt[agent] += int(u.get("total_tokens") or 0)
         bt["total"] += int(u.get("total_tokens") or 0)
         bt["runs"] += 1
+        who = (run.get("payload") or {}).get("user") or "(unknown)"
+        bu = by_user[who]
+        bu[agent] += int(u.get("total_tokens") or 0)
+        bu["total"] += int(u.get("total_tokens") or 0)
+        bu["runs"] += 1
         models[u.get("model") or "unknown"] += int(u.get("total_tokens") or 0)
         if len(recent) < 25:
             recent.append({"id": run.get("id"), "agent": agent, "ticket": u.get("ticket"), "status": run.get("status"),
+                           "user": who,
                            "model": u.get("model"), "input_tokens": u.get("input_tokens", 0),
                            "output_tokens": u.get("output_tokens", 0), "total_tokens": u.get("total_tokens", 0),
                            "calls": u.get("calls", 0), "created_at": run.get("created_at")})
@@ -64,6 +71,7 @@ def summarize(runs: list[dict], days: int = 14, now: datetime | None = None) -> 
         "agents": totals,
         "by_day": [{"date": d, **v} for d, v in by_day.items()],
         "by_ticket": sorted(({"ticket": k, **v} for k, v in by_ticket.items()), key=lambda r: -r["total"])[:20],
+        "by_user": sorted(({"user": k, **v} for k, v in by_user.items()), key=lambda r: -r["total"])[:50],
         "models": [{"model": m, "total_tokens": n} for m, n in sorted(models.items(), key=lambda p: -p[1])],
         "recent": recent,
     }

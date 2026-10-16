@@ -61,10 +61,12 @@ build, deploy and test the POC, within these limits:
 
 ### The app's three tabs
 
-1. **Agent Console.** Connect to Codex (paste an OpenAI API key the first
-   time; it is verified, then stored in Secret Manager), then chat with the
-   Requirement agent, send its spec to the Developer agent, review the
-   files, and approve the deploy.
+1. **Agent Console.** **Connect to Codex** signs *you* in to *your own*
+   Codex account (your ChatGPT plan or company workspace, your limits): the
+   console shows a link and a one-time code, you approve in your browser,
+   and it connects by itself. Then chat with the Requirement agent, send its
+   spec to the Developer agent, review the files, and approve the deploy.
+   Both agents run on your Codex session; **Sign out of Codex** ends it.
 2. **Knowledge Graph.** A read-only reference. The opening view is the
    graph by kind: one circle per kind of component (size = how many), one
    arrow per kind of relationship (number = how many). Search for any
@@ -77,12 +79,43 @@ build, deploy and test the POC, within these limits:
    agent's count is every Responses API call in a turn; the Developer
    agent's is every `codex exec` attempt, retries included.
 
+### How "Connect to Codex" works (per developer)
+
+```
+Agent Console ──► Apex (sends your Salesforce username) ──► gateway
+                                                             │ codex login --device-auth, in a Codex home for you alone
+   you ◄── link + one-time code ◄────────────────────────────┘
+   you approve at auth.openai.com/codex/device with your own Codex / ChatGPT account
+                                                             │ CLI finishes → auth.json → Secret Manager (codex-sessions)
+Requirement agent ─► codex exec --output-schema, read-only, as you
+Developer agent   ─► codex exec in the SFDX workspace, as you
+```
+
+- Nobody shares a key. Each developer's usage lands on their own Codex plan
+  or workspace credits, and the dashboard shows tokens per developer.
+- Sessions are kept in one Secret Manager secret, `codex-sessions`, keyed by a
+  hash of the Salesforce username, so they survive Cloud Run restarts. Each
+  save destroys the previous version. **Sign out of Codex** deletes yours.
+- In this mode the Requirement agent cannot call live tools mid-answer (a
+  Codex session only works through the Codex CLI), so the gateway looks up
+  the tickets and the graph first and hands Codex the facts. Field existence
+  is still re-checked against the graph afterwards.
+- If the code page says device sign-in is turned off, turn on device code
+  authorization for Codex in your ChatGPT security settings (or ask your
+  workspace admin), then click Connect again.
+- `CODEX_AUTH_MODE=apikey` on the gateway switches back to one shared
+  OpenAI API key for everyone.
+- Known limit: the gateway trusts the username Apex sends, because only your
+  org's named credential holds the gateway key. Production would have
+  Salesforce sign the identity per user (per-user principals or JWT).
+
 ### For testers
 
 - An admin assigns the **Agent Console User** permission set to each
   tester (Setup → Users → the user → Permission Set Assignments). It grants
   the app, the three tabs, the Apex controller and the gateway credential.
-- Open **Jira to Org** → **Agent Console** → **Connect to Codex**.
+- Open **Jira to Org** → **Agent Console** → **Connect to Codex**, open the
+  link it shows, sign in to your own Codex/ChatGPT account and enter the code.
 - Try: *"List my open tickets"*, *"Analyze KAN-1"*, or create a new story in
   `KAN` (e.g. *"Add a Next Step Date field on Opportunity"*), then
   *"Analyze KAN-6"* → **Send to Developer agent** → review → **Deploy to org**.
@@ -236,8 +269,9 @@ Then give the named credential its key, once:
 ### 5. Use it
 
 1. App Launcher → **Agent Console**.
-2. **Connect to Codex.** If the gateway has no key yet it asks for one; paste
-   it, it is verified and stored in Secret Manager.
+2. **Connect to Codex.** Open the link it shows, sign in to your own Codex
+   account and enter the one-time code; the console connects by itself. (With
+   `CODEX_AUTH_MODE=apikey` it asks for an OpenAI API key instead.)
 3. **Rebuild knowledge graph** (bottom bar), once, and after big org changes.
 4. Pick a ticket on the left, or ask: *"Analyze KAN-3"*, *"which tickets are
    ready?"*, *"what does the org already have on Account?"*. The agent's tool

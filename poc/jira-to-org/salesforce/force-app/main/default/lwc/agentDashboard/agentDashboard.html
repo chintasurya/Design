@@ -95,6 +95,29 @@
                 </template>
             </section>
 
+            <section class="panel">
+                <h2 class="panel__title">Tokens per developer</h2>
+                <p class="muted">Each developer's agents run on their own Codex account, so this is their own usage.</p>
+                <template lwc:if={hasDevelopers}>
+                    <table class="tickets">
+                        <thead><tr><th>Developer</th><th></th><th class="num">Requirement</th><th class="num">Developer agent</th><th class="num">Total</th><th class="num">Runs</th></tr></thead>
+                        <tbody>
+                            <template for:each={developers} for:item="d">
+                                <tr key={d.key}>
+                                    <td>{d.user}</td>
+                                    <td class="barcell"><span class="minibar" style={d.reqStyle}></span><span class="minibar" style={d.devStyle}></span></td>
+                                    <td class="num">{d.reqLabel}</td>
+                                    <td class="num">{d.devLabel}</td>
+                                    <td class="num"><strong>{d.totalLabel}</strong></td>
+                                    <td class="num">{d.runs}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </template>
+                <template lwc:else><p class="empty">No agent runs yet.</p></template>
+            </section>
+
             <div class="split">
                 <section class="panel">
                     <h2 class="panel__title">Tokens per Jira ticket</h2>

@@ -93,8 +93,9 @@ def connected(s):
 def codex_writes(files_per_attempt):
     attempts = []
 
-    def runner(conn, ws, prompt, on_line):
+    def runner(conn, ws, prompt, on_line, home=None, **_):
         attempts.append(prompt)
+        runner.homes.append(home)
         for rel, content in files_per_attempt[len(attempts) - 1].items():
             write(ws, rel, content)
         on_line("edited files")
@@ -102,6 +103,7 @@ def codex_writes(files_per_attempt):
                 "usage": {"input_tokens": 5000, "cached_input_tokens": 3000, "output_tokens": 700, "turns": 1}}
 
     runner.attempts = attempts
+    runner.homes = []
     return runner
 
 

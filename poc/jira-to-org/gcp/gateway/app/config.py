@@ -50,6 +50,7 @@ class Settings:
     kg_flow_metadata_max: int
 
     # Codex / OpenAI
+    codex_auth_mode: str      # chatgpt: each developer signs in to their own Codex | apikey: one gateway key
     openai_model: str         # empty = pick the best available at connect time
     codex_model: str          # empty = Codex CLI's own default
     codex_bin: str
@@ -95,6 +96,7 @@ def load() -> Settings:
             ).split(",") if o.strip()
         ),
         kg_flow_metadata_max=int(env("KG_FLOW_METADATA_MAX", "100")),
+        codex_auth_mode=env("CODEX_AUTH_MODE", "chatgpt"),
         openai_model=env("OPENAI_MODEL"),
         codex_model=env("CODEX_MODEL"),
         codex_bin=env("CODEX_BIN", "codex"),

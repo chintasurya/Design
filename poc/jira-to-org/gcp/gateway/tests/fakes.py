@@ -17,7 +17,7 @@ def settings(tmp_path, **over) -> Settings:
         jira_start_transition="In Progress", jira_done_transition="Done",
         sf_login_url="https://example.my.salesforce.com", sf_api_version="62.0",
         kg_standard_objects=("Account", "Contact"), kg_flow_metadata_max=10,
-        openai_model="", codex_model="", codex_bin="codex", codex_home=str(tmp_path / "codex-home"),
+        codex_auth_mode="apikey", openai_model="", codex_model="", codex_bin="codex", codex_home=str(tmp_path / "codex-home"),
         codex_sandbox="workspace-write", codex_timeout_s=60, sf_bin="sf",
         workspace_root=str(tmp_path / "runs"), max_fix_attempts=2, auto_deploy=False,
     )

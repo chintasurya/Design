@@ -39,6 +39,14 @@ private class AgentConsoleControllerTest {
 
         AgentConsoleController.connectCodex(null);
         System.assertEquals('{}', m.last.getBody());
+        System.assertEquals(UserInfo.getUserName(), m.last.getHeader('X-Salesforce-User'),
+            'every call says which developer is asking');
+
+        AgentConsoleController.codexLoginStatus();
+        System.assert(m.last.getEndpoint().endsWith('/v1/codex/login'));
+        AgentConsoleController.codexLogout();
+        System.assert(m.last.getEndpoint().endsWith('/v1/codex/logout'));
+        System.assertEquals('POST', m.last.getMethod());
 
         AgentConsoleController.listTickets(false);
         System.assert(m.last.getEndpoint().endsWith('/v1/jira/tickets?only_open=false'));

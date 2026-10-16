@@ -9,6 +9,8 @@ questions in the LWC keep their context.
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 from typing import Any
 
 from ..graph.store import GraphService
@@ -111,6 +113,30 @@ TOOLS: list[dict[str, Any]] = [
 ]
 
 
+def ground_spec(spec: dict, g: Any, tickets_seen: dict[str, dict]) -> dict:
+    """Re-check every CustomField in the plan against the graph. The model's
+    claim is not evidence; the graph's lookup is."""
+    for comp in spec.get("components", []):
+        if comp.get("type") == "CustomField" and "." in comp.get("api_name", ""):
+            obj, fld = comp["api_name"].split(".", 1)
+            res = g.field_exists(obj, fld)
+            if res.get("exists"):
+                comp["exists_in_org"] = True
+                comp["evidence"] = f"graph: {res.get('field')} already exists ({res.get('data_type') or 'type unknown'})"
+                if res.get("note"):
+                    comp["evidence"] += f"; {res['note']}"
+                if comp.get("action") == "create":
+                    comp["action"] = "modify"
+                    spec.setdefault("open_questions", []).append(
+                        f"{res.get('field')} already exists; the plan was changed from create to modify. "
+                        "Confirm it should be changed rather than reused as is.")
+    key = spec.get("ticket_key", "").upper()
+    if key in tickets_seen:
+        spec["ticket_url"] = tickets_seen[key].get("url")
+        spec["ticket"] = tickets_seen[key]
+    return spec
+
+
 class RequirementAgent:
     def __init__(self, client, model: str, jira: JiraClient, graphs: GraphService):
         self.client = client
@@ -169,26 +195,7 @@ class RequirementAgent:
         return {"error": f"unknown tool {name}"}
 
     def _ground(self, spec: dict) -> dict:
-        """Re-check every 'create CustomField' against the graph. The model's
-        claim is not evidence; the graph's lookup is."""
-        g = self.graphs.graph()
-        for comp in spec.get("components", []):
-            if comp.get("type") == "CustomField" and "." in comp.get("api_name", ""):
-                obj, fld = comp["api_name"].split(".", 1)
-                res = g.field_exists(obj, fld)
-                if res.get("exists"):
-                    comp["exists_in_org"] = True
-                    comp["evidence"] = f"graph: {res.get('field')} already exists ({res.get('data_type')})"
-                    if comp.get("action") == "create":
-                        comp["action"] = "modify"
-                        spec.setdefault("open_questions", []).append(
-                            f"{res.get('field')} already exists; the plan was changed from create to modify. "
-                            "Confirm it should be changed rather than reused as is.")
-        key = spec.get("ticket_key", "").upper()
-        if key in self.tickets_seen:
-            spec["ticket_url"] = self.tickets_seen[key].get("url")
-            spec["ticket"] = self.tickets_seen[key]
-        return spec
+        return ground_spec(spec, self.graphs.graph(), self.tickets_seen)
 
     # -- loop ----------------------------------------------------------------
     def _count(self, resp: Any, ctx: RunContext, ticket: str | None) -> None:
@@ -234,3 +241,105 @@ class RequirementAgent:
         return {"reply": (getattr(resp, "output_text", "") or "").strip(), "spec": self.spec,
                 "response_id": resp.id}
 
+
+# ---------------------------------------------------------------------------
+# ChatGPT sign-in mode: the same agent, run through the developer's own Codex.
+#
+# A developer's Codex session only works through the Codex CLI, so this agent
+# cannot hand the model live tools the way the Responses API loop above does.
+# The gateway does the lookups first (the tickets named, or the open tickets,
+# and the graph neighbourhood) and gives Codex the facts; Codex answers in a
+# fixed JSON shape. Existence is still re-checked against the graph after.
+
+CODEX_INSTRUCTIONS = """\
+You are the Requirement Agent for a Salesforce org, answering in a chat inside
+Salesforce. Everything you know about Jira and the org is in CONTEXT below;
+it was looked up for this message. Do not run commands, open files or browse:
+answer from CONTEXT only. If a ticket is not in CONTEXT, say it was not found.
+
+When asked to analyze, refine or prepare a ticket for development, fill `spec`
+completely: what to create or modify, with API names the org actually has
+(from the graph), what already exists and must be reused, what could break,
+a test plan, and open questions. Every Apex class needs a test class. A field
+the graph lists as existing must be reused, never created again; if the graph
+says it has no field-level security, plan to grant it. Mark
+ready_for_development false when the ticket is ambiguous. Otherwise set `spec`
+to null and just answer.
+
+`reply` is what the developer reads: short, concrete, plain text with simple
+"-" bullets.
+"""
+
+CODEX_OUTPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {"reply": {"type": "string"}, "spec": {"anyOf": [SPEC_SCHEMA, {"type": "null"}]}},
+    "required": ["reply", "spec"],
+    "additionalProperties": False,
+}
+
+
+class CodexRequirementAgent:
+    def __init__(self, codex_exec, codex_conn, home: str, jira: JiraClient, graphs: GraphService,
+                 workspace_root: str):
+        self.codex_exec = codex_exec
+        self.codex_conn = codex_conn
+        self.home = home
+        self.jira = jira
+        self.graphs = graphs
+        self.workspace_root = workspace_root
+
+    def _context(self, message: str, last_ticket: str | None, ctx: RunContext) -> tuple[dict, dict[str, dict]]:
+        keys = list(dict.fromkeys(TICKET_KEY.findall(message.upper())))[:3]
+        if not keys and last_ticket:
+            keys = [last_ticket]
+        tickets: dict[str, dict] = {}
+        for key in keys:
+            try:
+                tickets[key] = simplify(self.jira.get_issue(key), self.jira.browse_url(key))
+                ctx.step(f"Read {key}", detail=tickets[key].get("summary") or "")
+            except Exception as exc:  # noqa: BLE001 - "not found" is an answer, not a failure
+                ctx.step(f"{key} not found in Jira", "error", str(exc)[:200])
+        context: dict[str, Any] = {"jira_project": self.jira.project_key, "tickets": list(tickets.values())}
+        if not tickets:
+            issues = self.jira.project_issues(only_open=False, max_results=30)
+            context["project_tickets"] = [
+                {k: t[k] for k in ("key", "summary", "type", "status", "priority", "assignee")}
+                for t in (simplify(i) for i in issues)]
+            ctx.step(f"Listed {len(issues)} Jira tickets", detail=f"project {self.jira.project_key}")
+        text = " ".join([message] + [f"{t['summary']} {t['description']}" for t in tickets.values()])
+        g = self.graphs.graph()
+        context["knowledge_graph"] = g.context_slice(text)
+        ctx.step(f"Queried knowledge graph: {len(context['knowledge_graph']['matches'])} matches")
+        return context, tickets
+
+    def chat(self, message: str, history: list[dict], last_ticket: str | None, ctx: RunContext) -> dict:
+        context, tickets = self._context(message, last_ticket, ctx)
+        transcript = "\n".join(f"{h['role']}: {h['text'][:1500]}" for h in history[-6:])
+        prompt = (CODEX_INSTRUCTIONS + "\nCONTEXT:\n" + json.dumps(context, default=str)[:60000]
+                  + ("\n\nEARLIER IN THIS CONVERSATION:\n" + transcript if transcript else "")
+                  + "\n\nDEVELOPER'S MESSAGE:\n" + message)
+        ctx.step("Requirement agent thinking on your Codex account", "running")
+        workspace = tempfile.mkdtemp(prefix="req-", dir=self.workspace_root)
+        try:
+            out = self.codex_exec(self.codex_conn, workspace, prompt, lambda line: None, home=self.home,
+                                  sandbox="read-only", output_schema=CODEX_OUTPUT_SCHEMA)
+        finally:
+            shutil.rmtree(workspace, ignore_errors=True)
+        u = out.get("usage") or {}
+        if u:
+            ticket = next(iter(tickets), None)
+            ctx.add_usage("requirement", "codex (your ChatGPT sign-in)", u.get("input_tokens", 0),
+                          u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, ticket)
+        if out.get("exit_code") not in (0, None) and not out.get("final_message"):
+            raise RuntimeError("Codex did not answer: " + (out.get("log_tail") or "no output")[-400:])
+        try:
+            answer = json.loads(out.get("final_message") or "{}")
+        except json.JSONDecodeError:
+            answer = {"reply": out.get("final_message") or "", "spec": None}
+        spec = answer.get("spec")
+        if spec:
+            spec = ground_spec(spec, self.graphs.graph(), tickets)
+            ctx.step(f"Requirement spec ready for {spec.get('ticket_key')}",
+                     detail=f"{len(spec.get('components', []))} components · risk {spec.get('risk')}")
+            ctx.usage_ticket(spec.get("ticket_key"))
+        return {"reply": (answer.get("reply") or "").strip(), "spec": spec}

@@ -34,6 +34,8 @@ keys = {
     "OPENAI_MODEL": os.environ.get("OPENAI_MODEL", ""), "CODEX_MODEL": os.environ.get("CODEX_MODEL", ""),
     "CODEX_SANDBOX": os.environ.get("CODEX_SANDBOX", "workspace-write"),
     "AUTO_DEPLOY": os.environ.get("AUTO_DEPLOY", "false"),
+    # chatgpt: every developer signs in to their own Codex | apikey: one OpenAI key on the gateway
+    "CODEX_AUTH_MODE": os.environ.get("CODEX_AUTH_MODE", "chatgpt"),
 }
 with open(sys.argv[1], "w") as fh:
     for k, v in keys.items():

@@ -1,6 +1,8 @@
 """Agent gateway: the one HTTP surface the Salesforce LWC talks to (via Apex).
 
     POST /v1/codex/connect          connect first; nothing agentic works before it
+    GET  /v1/codex/login            poll a developer's Codex sign-in (ChatGPT mode)
+    POST /v1/codex/logout           sign the developer out of Codex
     GET  /v1/status                 what is connected, graph size
     GET  /v1/jira/tickets           ticket picker
     POST /v1/requirements/chat      Requirement agent turn       -> run id
@@ -14,6 +16,7 @@
 from __future__ import annotations
 
 import hmac
+import os
 import re
 import uuid
 from functools import lru_cache
@@ -24,8 +27,9 @@ from pydantic import BaseModel, Field
 
 from . import config
 from .agents.developer import DeveloperAgent, SalesforceCli
-from .agents.requirement import RequirementAgent
-from .codex import CodexConnection, CodexNotConnectedError
+from .agents.requirement import CodexRequirementAgent, RequirementAgent
+from .codex import CodexConnection, CodexNotConnectedError, run_codex
+from .codex_sessions import CodexSessions, MemoryVault, SecretManagerVault
 from .config import secret
 from .graph.ingest import SalesforceIngest, ingest_jira
 from .graph.model import Graph
@@ -44,9 +48,16 @@ class Services:
     def __init__(self, settings: config.Settings, codex: CodexConnection | None = None,
                  jira: JiraClient | None = None, sf: SalesforceClient | None = None,
                  graphs: GraphService | None = None, runs=None, openai_client_factory=None,
-                 developer: DeveloperAgent | None = None, sync_runs: bool = False):
+                 developer: DeveloperAgent | None = None, sync_runs: bool = False,
+                 sessions: CodexSessions | None = None, codex_exec=None):
         self.settings = settings
         self.codex = codex or CodexConnection(settings)
+        self.chatgpt_mode = settings.codex_auth_mode == "chatgpt"
+        if sessions is None:
+            vault = SecretManagerVault(settings.gcp_project) if settings.gcp_project else MemoryVault()
+            sessions = CodexSessions(settings, vault)
+        self.sessions = sessions
+        self.codex_exec = codex_exec or run_codex
         self.jira = jira if jira is not None else self._jira()
         self.sf = sf if sf is not None else self._sf()
         if graphs is None:
@@ -111,11 +122,25 @@ def require_key(x_gateway_key: str = Header(default="")) -> None:
         raise HTTPException(401, "bad gateway key")
 
 
-def require_codex(svc: Services) -> None:
+def current_user(x_salesforce_user: str = Header(default="")) -> str:
+    """The Salesforce username Apex sends with every call. Trusted because only
+    the org's named credential holds the gateway key."""
+    return x_salesforce_user.strip()[:200]
+
+
+def require_codex(svc: Services, user: str) -> str | None:
+    """None in API-key mode; the developer's own Codex home in ChatGPT mode."""
+    if svc.chatgpt_mode:
+        if not user:
+            raise HTTPException(400, "X-Salesforce-User is required to use a developer's own Codex")
+        if not svc.sessions.connected(user):
+            raise HTTPException(409, "Connect to Codex first")
+        return svc.sessions.home(user)
     try:
         svc.codex.require()
     except CodexNotConnectedError as exc:
         raise HTTPException(409, str(exc)) from exc
+    return None
 
 
 def require_jira(svc: Services) -> JiraClient:
@@ -152,7 +177,7 @@ def healthz() -> dict:
 
 
 @app.get("/v1/status", dependencies=[Depends(require_key)])
-def status(svc: Services = Depends(get_services)) -> dict:
+def status(svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
     graph: dict[str, Any]
     try:
         g = svc.graphs.graph()
@@ -160,7 +185,7 @@ def status(svc: Services = Depends(get_services)) -> dict:
     except Exception as exc:  # noqa: BLE001
         graph = {"error": str(exc)[:300]}
     return {
-        "codex": svc.codex.status(),
+        "codex": svc.sessions.status(user) if svc.chatgpt_mode else {**svc.codex.status(), "mode": "apikey"},
         "jira": {"configured": svc.jira is not None, "project": svc.settings.jira_project_key,
                  "site": svc.settings.jira_base_url},
         "salesforce": {"configured": svc.sf is not None,
@@ -171,8 +196,26 @@ def status(svc: Services = Depends(get_services)) -> dict:
 
 
 @app.post("/v1/codex/connect", dependencies=[Depends(require_key)])
-def connect(body: ConnectBody, svc: Services = Depends(get_services)) -> dict:
-    return svc.codex.connect(body.apiKey)
+def connect(body: ConnectBody, svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
+    if svc.chatgpt_mode:
+        if not user:
+            raise HTTPException(400, "X-Salesforce-User is required to connect a developer's own Codex")
+        return svc.sessions.connect(user)
+    return {**svc.codex.connect(body.apiKey), "mode": "apikey"}
+
+
+@app.get("/v1/codex/login", dependencies=[Depends(require_key)])
+def codex_login(svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
+    if not svc.chatgpt_mode:
+        return {**svc.codex.status(), "mode": "apikey"}
+    return svc.sessions.status(user)
+
+
+@app.post("/v1/codex/logout", dependencies=[Depends(require_key)])
+def codex_logout(svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
+    if not svc.chatgpt_mode or not user:
+        raise HTTPException(400, "sign-out applies to a developer's own Codex session")
+    return svc.sessions.logout(user)
 
 
 @app.get("/v1/jira/tickets", dependencies=[Depends(require_key)])
@@ -185,11 +228,28 @@ def tickets(only_open: bool = True, svc: Services = Depends(get_services)) -> di
 
 
 @app.post("/v1/requirements/chat", dependencies=[Depends(require_key)])
-def chat(body: ChatBody, svc: Services = Depends(get_services)) -> dict:
-    require_codex(svc)
+def chat(body: ChatBody, svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
+    home = require_codex(svc, user)
     jira = require_jira(svc)
     conversation_id = body.conversationId or uuid.uuid4().hex[:16]
-    run = svc.runs.create("requirement", {"message": body.message, "conversationId": conversation_id})
+    run = svc.runs.create("requirement", {"message": body.message, "conversationId": conversation_id,
+                                          "user": user})
+
+    def work_codex(ctx: RunContext) -> dict:
+        agent = CodexRequirementAgent(svc.codex_exec, svc.codex, home, jira, svc.graphs,
+                                      svc.settings.workspace_root)
+        convo = svc.runs.get_conversation(conversation_id)
+        history = convo.get("history", [])
+        try:
+            out = agent.chat(body.message, history, convo.get("last_spec_ticket"), ctx)
+        finally:
+            svc.sessions.save(user)
+        history = (history + [{"role": "developer", "text": body.message},
+                              {"role": "agent", "text": out["reply"]}])[-12:]
+        svc.runs.set_conversation(conversation_id, {
+            "history": history,
+            "last_spec_ticket": (out["spec"] or {}).get("ticket_key") or convo.get("last_spec_ticket")})
+        return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
 
     def work(ctx: RunContext) -> dict:
         agent = RequirementAgent(svc.openai_client_factory(), svc.codex.model, jira, svc.graphs)
@@ -199,13 +259,14 @@ def chat(body: ChatBody, svc: Services = Depends(get_services)) -> dict:
                                                     "last_spec_ticket": (out["spec"] or {}).get("ticket_key")})
         return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
 
-    svc.submit(run, work)
+    os.makedirs(svc.settings.workspace_root, exist_ok=True)
+    svc.submit(run, work_codex if svc.chatgpt_mode else work)
     return {"runId": run["id"], "conversationId": conversation_id}
 
 
 @app.post("/v1/developer/runs", dependencies=[Depends(require_key)])
-def develop(body: DevelopBody, svc: Services = Depends(get_services)) -> dict:
-    require_codex(svc)
+def develop(body: DevelopBody, svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
+    home = require_codex(svc, user)
     spec = dict(body.spec)
     key = body.ticketKey.strip().upper()
     if (spec.get("ticket_key") or key).upper() != key:
@@ -218,8 +279,9 @@ def develop(body: DevelopBody, svc: Services = Depends(get_services)) -> dict:
     if svc.jira and not spec.get("ticket"):
         spec["ticket"] = simplify(svc.jira.get_issue(key), svc.jira.browse_url(key))
         spec["ticket_url"] = spec["ticket"]["url"]
-    run = svc.runs.create("developer", {"ticketKey": key})
-    svc.submit(run, lambda ctx: developer.develop(run["id"], spec, ctx))
+    run = svc.runs.create("developer", {"ticketKey": key, "user": user})
+    after = (lambda: svc.sessions.save(user)) if home else None
+    svc.submit(run, lambda ctx: developer.develop(run["id"], spec, ctx, codex_home=home, after_codex=after))
     return {"runId": run["id"]}
 
 

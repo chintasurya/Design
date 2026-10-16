@@ -1,6 +1,8 @@
 import { LightningElement } from 'lwc';
 import status from '@salesforce/apex/AgentConsoleController.status';
 import connectCodex from '@salesforce/apex/AgentConsoleController.connectCodex';
+import codexLoginStatus from '@salesforce/apex/AgentConsoleController.codexLoginStatus';
+import codexLogout from '@salesforce/apex/AgentConsoleController.codexLogout';
 import listTickets from '@salesforce/apex/AgentConsoleController.listTickets';
 import askRequirementAgent from '@salesforce/apex/AgentConsoleController.askRequirementAgent';
 import startDevelopment from '@salesforce/apex/AgentConsoleController.startDevelopment';
@@ -60,6 +62,7 @@ export default class AgentConsole extends LightningElement {
     apiKey = '';
     connectMessage = '';
     codex;
+    device; // pending Codex device sign-in: verificationUrl, userCode, expiresAt
     gateway;
     gatewayError;
 
@@ -145,23 +148,67 @@ export default class AgentConsole extends LightningElement {
         try {
             const r = JSON.parse(await connectCodex({ apiKey: this.apiKey || null }));
             this.apiKey = '';
-            this.connectMessage = r.message || '';
-            this.needsKey = !r.connected && !!r.needsKey;
-            if (r.connected) {
-                this.codex = r;
-                this.connected = true;
-                this.loadStatus();
-                this.loadTickets();
-                this.pushAgent(
-                    `Connected to Codex (${r.model}). Ask me about any ${this.jiraProject} ticket, ` +
-                        'or pick one on the left and I will turn it into a development-ready spec.'
-                );
-            }
+            this.applyConnect(r);
         } catch (e) {
             this.connectMessage = errorText(e);
         } finally {
             this.connecting = false;
         }
+    }
+
+    // One shape for both modes: the developer's own Codex sign-in (chatgpt) or a gateway key (apikey).
+    applyConnect(r) {
+        this.connectMessage = r.message || '';
+        this.needsKey = r.mode === 'apikey' && !r.connected && !!r.needsKey;
+        this.device = r.mode === 'chatgpt' && r.pending ? r : undefined;
+        clearTimeout(this.timers.login);
+        if (this.device) {
+            // poll until the developer approves the code in their browser
+            // eslint-disable-next-line @lwc/lwc/no-async-operation
+            this.timers.login = setTimeout(() => this.pollLogin(), 3000);
+        }
+        if (r.connected) {
+            this.codex = r;
+            this.connected = true;
+            this.loadStatus();
+            this.loadTickets();
+            this.pushAgent(
+                `${this.codexLabel}. Ask me about any ${this.jiraProject} ticket, ` +
+                    'or pick one on the left and I will turn it into a development-ready spec.'
+            );
+        }
+    }
+
+    async pollLogin() {
+        try {
+            this.applyConnect(JSON.parse(await codexLoginStatus()));
+        } catch (e) {
+            this.device = undefined;
+            this.connectMessage = errorText(e);
+        }
+    }
+
+    async handleSignOut() {
+        try {
+            await codexLogout();
+        } catch (e) {
+            this.pushAgent(errorText(e), true);
+            return;
+        }
+        this.connected = false;
+        this.codex = undefined;
+        this.device = undefined;
+        this.connectMessage = 'Signed out of Codex.';
+    }
+
+    get isChatgptMode() {
+        return !!this.codex && this.codex.mode === 'chatgpt';
+    }
+
+    get deviceExpires() {
+        return this.device && this.device.expiresAt
+            ? new Date(this.device.expiresAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '';
     }
 
     get notConnected() {
@@ -173,11 +220,18 @@ export default class AgentConsole extends LightningElement {
     }
 
     get connectDisabled() {
-        return this.connecting || (this.needsKey && !this.apiKey);
+        return this.connecting || !!this.device || (this.needsKey && !this.apiKey);
     }
 
     get codexLabel() {
-        return this.codex ? `Codex · ${this.codex.model}` : 'Codex';
+        const c = this.codex;
+        if (!c) return 'Codex';
+        if (c.mode === 'chatgpt') {
+            const a = c.account || {};
+            const who = [a.email, a.plan ? a.plan.charAt(0).toUpperCase() + a.plan.slice(1) : ''].filter(Boolean);
+            return who.length ? `Connected to your Codex · ${who.join(' · ')}` : 'Connected to your Codex';
+        }
+        return `Connected to Codex · ${c.model}`;
     }
 
     // ---------------------------------------------------------------- tickets

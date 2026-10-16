@@ -12,6 +12,10 @@
                 <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh tickets"
                     onclick={loadTickets} class="slds-var-m-right_xx-small"></lightning-button-icon>
                 <lightning-button label="New conversation" onclick={handleNewConversation}></lightning-button>
+                <template lwc:if={isChatgptMode}>
+                    <lightning-button label="Sign out of Codex" variant="base" onclick={handleSignOut}
+                        class="slds-var-m-left_x-small"></lightning-button>
+                </template>
             </template>
         </div>
 
@@ -24,9 +28,24 @@
                         class="slds-var-m-bottom_small"></lightning-icon>
                     <h2 class="slds-text-heading_medium">Connect to Codex</h2>
                     <p class="slds-text-color_weak slds-var-m-vertical_small">
-                        Both agents run on Codex. Connect first; nothing reads Jira or touches
-                        the org until you do.
+                        Both agents run on your own Codex account: your plan, your limits.
+                        Connect first; nothing reads Jira or touches the org until you do.
                     </p>
+                    <template lwc:if={device}>
+                        <div class="device">
+                            <p class="device__step"><strong>1.</strong> Open this link and sign in to your Codex
+                                (ChatGPT) account:</p>
+                            <a href={device.verificationUrl} target="_blank" rel="noopener"
+                                class="device__link">{device.verificationUrl}</a>
+                            <p class="device__step"><strong>2.</strong> Enter this one-time code:</p>
+                            <p class="device__code">{device.userCode}</p>
+                            <p class="slds-text-body_small slds-text-color_weak">
+                                Expires at {deviceExpires}. This page connects by itself once you approve.
+                            </p>
+                            <lightning-spinner size="small" variant="brand" class="inline-spinner"
+                                alternative-text="Waiting for sign-in"></lightning-spinner>
+                        </div>
+                    </template>
                     <template lwc:if={needsKey}>
                         <div class="connect__key">
                             <lightning-input type="password" label="OpenAI API key" value={apiKey}

@@ -33,6 +33,17 @@ public with sharing class AgentConsoleController {
         return send('POST', '/v1/codex/connect', body);
     }
 
+    /** Poll a developer's own Codex sign-in after connectCodex started it. */
+    @AuraEnabled
+    public static String codexLoginStatus() {
+        return send('GET', '/v1/codex/login', null);
+    }
+
+    @AuraEnabled
+    public static String codexLogout() {
+        return send('POST', '/v1/codex/logout', new Map<String, Object>());
+    }
+
     @AuraEnabled
     public static String listTickets(Boolean onlyOpen) {
         return send('GET', '/v1/jira/tickets?only_open=' + (onlyOpen == false ? 'false' : 'true'), null);

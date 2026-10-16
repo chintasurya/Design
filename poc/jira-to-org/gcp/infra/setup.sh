@@ -52,7 +52,18 @@ put_secret sf-auth-url "${SF_AUTH_URL:-}"
 put_secret sf-client-id "${SF_CLIENT_ID:-}"
 put_secret sf-client-secret "${SF_CLIENT_SECRET:-}"
 put_secret openai-api-key "${OPENAI_API_KEY:-}"
-# the LWC can submit a new OpenAI key at connect time; the gateway stores it as a new version
+# each developer's own Codex sign-in (ChatGPT mode): one secret holding a map keyed by a
+# hash of the Salesforce username. The gateway adds a version per save and destroys the
+# previous one, so it needs version management on this secret only.
+if ! gcloud secrets describe codex-sessions >/dev/null 2>&1; then
+  gcloud secrets create codex-sessions --replication-policy=automatic >/dev/null
+  printf '{}' | gcloud secrets versions add codex-sessions --data-file=- >/dev/null
+  echo "   created codex-sessions"
+fi
+for role in roles/secretmanager.secretAccessor roles/secretmanager.secretVersionManager; do
+  gcloud secrets add-iam-policy-binding codex-sessions --member "serviceAccount:$SA" --role "$role" >/dev/null
+done
+# the LWC can submit a new OpenAI key at connect time (API-key mode); stored as a new version
 gcloud secrets add-iam-policy-binding openai-api-key --member "serviceAccount:$SA" \
   --role roles/secretmanager.secretVersionAdder >/dev/null
 if ! gcloud secrets describe gateway-api-key >/dev/null 2>&1; then

@@ -253,6 +253,24 @@ export default class AgentDashboard extends LightningElement {
         }));
     }
 
+    get developers() {
+        const rows = (this.data && this.data.by_user) || [];
+        const max = Math.max(1, ...rows.map((r) => r.total));
+        return rows.map((r) => ({
+            ...r,
+            key: r.user,
+            reqLabel: fmt(r.requirement),
+            devLabel: fmt(r.developer),
+            totalLabel: fmt(r.total),
+            reqStyle: `width:${(r.requirement / max) * 100}%;background:${SERIES[0].color}`,
+            devStyle: `width:${(r.developer / max) * 100}%;background:${SERIES[1].color}`
+        }));
+    }
+
+    get hasDevelopers() {
+        return this.developers.length > 0;
+    }
+
     get hasTickets() {
         return this.tickets.length > 0;
     }

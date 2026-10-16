@@ -347,7 +347,10 @@ class DeveloperAgent:
         return ("The Salesforce validation of your change failed. Fix exactly these problems, keep everything "
                 "else as it is, and follow AGENTS.md:\n- " + "\n- ".join(errors))
 
-    def develop(self, run_id: str, spec: dict, ctx: RunContext) -> dict:
+    def develop(self, run_id: str, spec: dict, ctx: RunContext, codex_home: str | None = None,
+                after_codex: Callable[[], None] | None = None) -> dict:
+        """`codex_home` is the developer's own signed-in Codex (ChatGPT sign-in
+        mode); `after_codex` saves its refreshed tokens after each attempt."""
         key = spec.get("ticket_key", "")
         if self.jira and key:
             reached = self.jira.transition(key, self.s.jira_start_transition)
@@ -362,11 +365,15 @@ class DeveloperAgent:
         tests: list[str] = []
         for attempt in range(1, self.s.max_fix_attempts + 2):
             ctx.step(f"Codex attempt {attempt}", "running")
-            out = self.codex_runner(self.codex, ws, self._prompt(spec, errors), lambda line: ctx.step(line))
+            out = self.codex_runner(self.codex, ws, self._prompt(spec, errors), lambda line: ctx.step(line),
+                                    home=codex_home)
+            if after_codex:
+                after_codex()
             summary = out.get("final_message") or summary
             u = out.get("usage") or {}
             if u:
-                ctx.add_usage("developer", self.s.codex_model or "codex-cli default", u.get("input_tokens", 0),
+                model = self.s.codex_model or ("codex (your ChatGPT sign-in)" if codex_home else "codex-cli default")
+                ctx.add_usage("developer", model, u.get("input_tokens", 0),
                               u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, key)
             if out.get("exit_code") not in (0, None):
                 ctx.step("Codex exited with an error", "error", out.get("log_tail", "")[-1500:])
