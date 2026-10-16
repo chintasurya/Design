@@ -8,6 +8,7 @@ questions in the LWC keep their context.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -286,7 +287,16 @@ LISTING = re.compile(r"\b(list|show|open|my|all)\b.*\btickets?\b|\btickets?\b.*\
 SPEC_REQUEST = re.compile(r"\b(analy[sz]\w*|spec|prepare|refine)\b", re.I)
 FORCE = re.compile(r"\b(again|refresh|re-?analy[sz]e|fresh)\b", re.I)
 LINK_WORDS = {"TICKET_MENTIONS": "Mentions", "TICKET_IMPLEMENTED_BY": "Built by the Developer agent",
+              "TICKET_ANALYSED_AS": "Analysed by the Requirement agent",
               "TICKET_PARENT_OF": "Parent of", "TICKET_LINKS_TO": "Linked to"}
+
+
+def requirement_hash(ticket: dict) -> str:
+    """What the requirement says, not when it was touched: a comment, a status
+    change or the Developer agent's own updates do not make an analysis stale."""
+    text = "\n".join([ticket.get("summary") or "", ticket.get("description") or "",
+                      *(ticket.get("acceptance_criteria") or [])])
+    return hashlib.sha256(" ".join(text.split()).encode()).hexdigest()[:16]
 
 
 class CodexRequirementAgent:
@@ -294,22 +304,22 @@ class CodexRequirementAgent:
 
     1. no model: reading a ticket or listing tickets is answered from Jira
        and the knowledge graph directly (0 tokens);
-    2. cache: a ticket analysed before and not changed since gets its spec
-       back (0 tokens);
+    2. stored analysis: a ticket analysed before, whose requirement has not
+       changed, gets its spec back from the knowledge graph (0 tokens);
     3. lean Codex: real analysis runs Codex with these instructions in place
        of its ~13k-token coding-agent prompt, no tools, and a trimmed context.
     """
 
     def __init__(self, codex_exec, codex_conn, home: str, jira: JiraClient, graphs: GraphService,
-                 workspace_root: str, cache_get=None, cache_set=None, plan_usage=None):
+                 workspace_root: str, analysis_get=None, analysis_set=None, plan_usage=None):
         self.codex_exec = codex_exec
         self.codex_conn = codex_conn
         self.home = home
         self.jira = jira
         self.graphs = graphs
         self.workspace_root = workspace_root
-        self.cache_get = cache_get or (lambda key: {})
-        self.cache_set = cache_set or (lambda key, value: None)
+        self.analysis_get = analysis_get or (lambda key: {})
+        self.analysis_set = analysis_set or (lambda key, value: None)
         self.plan_usage = plan_usage or (lambda: None)
 
     # -- lookups ---------------------------------------------------------------
@@ -389,14 +399,18 @@ class CodexRequirementAgent:
         key = next(iter(tickets), None)
 
         if key and spec_request and not FORCE.search(message) and len(tickets) == 1:   # 2. cache
-            cached = self.cache_get(f"spec-{key}")
-            if cached.get("spec") and cached.get("updated") == tickets[key].get("updated"):
-                ctx.step(f"Reused the spec for {key}: the ticket has not changed since it was analysed "
-                         "(no model call)")
+            stored = self.analysis_get(key) or {}
+            if stored.get("spec") and stored.get("requirement_hash") == requirement_hash(tickets[key]):
+                when = (stored.get("at") or "")[:16].replace("T", " ")
+                ctx.step(f"Reused the analysis of {key} stored in the knowledge graph (no model call)",
+                         detail=f"analysed {when} UTC; summary, description and acceptance criteria unchanged")
                 self._no_model(ctx, key)
-                return {"reply": cached.get("reply", "") + f"\n\n(Reused from {cached.get('at', 'earlier')}; "
-                        f"the ticket has not changed. Say \"analyze {key} again\" to refresh.)",
-                        "spec": cached["spec"]}
+                return {"reply": (stored.get("reply") or "").strip()
+                        + f"\n\n(From the knowledge graph: {key} was analysed {when} UTC and its requirement has "
+                          f"not changed, so no model was called. Say \"analyze {key} again\" to redo it.)",
+                        "spec": stored["spec"]}
+            if stored.get("spec"):
+                ctx.step(f"{key} changed since it was analysed; analysing it again")
 
         # 3. lean Codex
         g = self.graphs.graph()
@@ -442,6 +456,7 @@ class CodexRequirementAgent:
             ctx.usage_ticket(spec.get("ticket_key"))
             sk = (spec.get("ticket_key") or key or "").upper()
             if sk in tickets:
-                self.cache_set(f"spec-{sk}", {"spec": spec, "reply": reply, "at": now_iso(),
-                                              "updated": tickets[sk].get("updated")})
+                self.analysis_set(sk, {"spec": spec, "reply": reply, "at": now_iso(),
+                                       "requirement_hash": requirement_hash(tickets[sk])})
+                ctx.step(f"Analysis of {sk} stored in the knowledge graph")
         return {"reply": reply, "spec": spec}

@@ -248,8 +248,21 @@ def test_each_developer_connects_their_own_codex(chatgpt_api):
     calls = len(prompts)
     again = client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7"}, headers=ALICE).json()
     cached = client.get(f"/v1/runs/{again['runId']}", headers=ALICE).json()
-    assert len(prompts) == calls and "Reused" in cached["result"]["reply"]
+    assert len(prompts) == calls and "From the knowledge graph" in cached["result"]["reply"]
     assert cached["usage"]["calls"] == 0 and cached["usage"]["total_tokens"] == 0
+    node = svc.graphs.graph().nodes["spec:kan-7"]  # the analysis lives in the knowledge graph
+    assert node.node_type == "RequirementSpec" and node.properties["spec"]["ticket_key"] == "KAN-7"
+    # a comment or status change does not make it stale; a changed requirement does
+    jira = svc.jira
+    jira.issues["KAN-7"]["fields"]["status"] = {"name": "In Progress"}
+    client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7"}, headers=ALICE)
+    assert len(prompts) == calls
+    jira.issues["KAN-7"]["fields"]["summary"] = "Add Risk Score and Risk Band to Account"
+    changed = client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7"}, headers=ALICE).json()
+    assert len(prompts) == calls + 1, client.get(f"/v1/runs/{changed['runId']}", headers=ALICE).json()["steps"]
+    steps = [s["name"] for s in client.get(f"/v1/runs/{changed['runId']}", headers=ALICE).json()["steps"]]
+    assert "KAN-7 changed since it was analysed; analysing it again" in steps
+    calls = len(prompts)
     client.post("/v1/requirements/chat", json={"message": "Analyze KAN-7 again"}, headers=ALICE)
     assert len(prompts) == calls + 1  # asked to refresh, so it calls Codex
 
@@ -261,7 +274,7 @@ def test_each_developer_connects_their_own_codex(chatgpt_api):
     assert r["usage"]["model"] == "knowledge graph (no model call)" and r["usage"]["total_tokens"] == 0
     listed = client.post("/v1/requirements/chat", json={"message": "list my open tickets"}, headers=ALICE).json()
     r = client.get(f"/v1/runs/{listed['runId']}", headers=ALICE).json()
-    assert len(prompts) == calls and "KAN-7 · Add Risk Score to Account" in r["result"]["reply"]
+    assert len(prompts) == calls and "KAN-7 · Add Risk Score and Risk Band to Account" in r["result"]["reply"]
 
     plan_now = client.get("/v1/codex/plan", headers=ALICE).json()
     assert plan_now["available"] and plan_now["plan"] == "plus" and plan_now["secondary"]["window_minutes"] == 10080
@@ -282,3 +295,17 @@ def test_each_developer_connects_their_own_codex(chatgpt_api):
 
     assert client.post("/v1/codex/logout", json={}, headers=ALICE).json()["connected"] is False
     assert client.post("/v1/requirements/chat", json={"message": "hi"}, headers=ALICE).status_code == 409
+
+
+def test_an_analysis_made_before_storage_existed_is_found_in_its_run(chatgpt_api):
+    client, svc, spawner, prompts, _ = chatgpt_api
+    from app.jira import simplify
+    ticket = simplify(svc.jira.get_issue("KAN-7"), "u")
+    old = svc.runs.create("requirement", {"message": "Analyze KAN-7", "user": "alice@example.com"})
+    svc.runs.update(old["id"], status="succeeded", result={"reply": "Old analysis.", "spec": {**SPEC, "ticket": ticket}})
+    client.post("/v1/codex/connect", json={}, headers=ALICE)
+    approve(spawner, svc.sessions, "alice@example.com")
+    r = client.post("/v1/requirements/chat", json={"message": "analyse KAN-7"}, headers=ALICE).json()
+    run = client.get(f"/v1/runs/{r['runId']}", headers=ALICE).json()
+    assert prompts == [] and run["result"]["reply"].startswith("Old analysis.")
+    assert "spec:kan-7" in svc.graphs.graph().nodes  # written to the graph on first reuse

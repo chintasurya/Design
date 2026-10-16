@@ -146,7 +146,9 @@ class BigQueryStore:
         q = self.client.query
         g = Graph()
         for table in ("nodes", "agent_nodes"):
-            for r in q(f"SELECT id, node_type, name, api_name, source_system, properties FROM `{self.dataset}.{table}`").result():
+            order = " ORDER BY written_at" if table == "agent_nodes" else ""
+            for r in q(f"SELECT id, node_type, name, api_name, source_system, properties "
+                       f"FROM `{self.dataset}.{table}`{order}").result():
                 g.add_node(Node(r.id, r.node_type, r.name or "", r.api_name or "", r.source_system or "",
                                 json.loads(r.properties or "{}")))
         for table in ("edges", "agent_edges"):
@@ -204,4 +206,7 @@ class GraphService:
                 for n in nodes:
                     self._graph.add_node(n)
                 for e in edges:
-                    self._graph.add_edge(e)
+                    # a link to a node this snapshot does not hold yet (a ticket created after the
+                    # last rebuild) stays in BigQuery and reconnects on the next load
+                    if e.from_id in self._graph.nodes and e.to_id in self._graph.nodes:
+                        self._graph.add_edge(e)

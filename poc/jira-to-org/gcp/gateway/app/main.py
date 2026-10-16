@@ -28,12 +28,12 @@ from pydantic import BaseModel, Field
 
 from . import config
 from .agents.developer import DeveloperAgent, SalesforceCli
-from .agents.requirement import CodexRequirementAgent, RequirementAgent
+from .agents.requirement import CodexRequirementAgent, RequirementAgent, requirement_hash
 from .codex import CodexConnection, CodexNotConnectedError, run_codex
 from .codex_sessions import CodexSessions, MemoryVault, SecretManagerVault
 from .config import secret
 from .graph.ingest import SalesforceIngest, ingest_jira
-from .graph.model import Graph
+from .graph.model import Edge, Graph, Node
 from .graph.store import BigQueryStore, GraphService, LocalJsonStore
 from .jira import JiraClient, JiraError, simplify
 from .runs import FirestoreRunStore, MemoryRunStore, RunContext, Runner
@@ -148,6 +148,38 @@ def require_jira(svc: Services) -> JiraClient:
     if not svc.jira:
         raise HTTPException(503, "Jira is not configured on the gateway")
     return svc.jira
+
+
+def store_analysis(svc: "Services", key: str, record: dict) -> None:
+    """A ticket's analysis becomes a node in the knowledge graph, linked from the ticket."""
+    spec = record["spec"]
+    node = Node(f"spec:{key.lower()}", "RequirementSpec", f"{key} spec: {spec.get('title') or ''}".strip(), key,
+                source_system="AGENT",
+                properties={**record, "ticket_key": key, "risk": spec.get("risk"),
+                            "ready": spec.get("ready_for_development"),
+                            "components": len(spec.get("components") or []),
+                            "label": f"{key} requirement spec"})
+    svc.graphs.record([node], [Edge("TICKET_ANALYSED_AS", f"ticket:{key.lower()}", node.id,
+                                    origin="requirement-agent")])
+
+
+def load_analysis(svc: "Services", key: str) -> dict:
+    """The stored analysis of a ticket: from the knowledge graph, or, for tickets
+    analysed before analyses were stored there, from the run that produced it
+    (and then written to the graph, so this is a one-off)."""
+    node = svc.graphs.graph().nodes.get(f"spec:{key.lower()}")
+    if node and node.properties.get("spec"):
+        return node.properties
+    for run in svc.runs.list_recent(500):
+        result = run.get("result") or {}
+        spec = result.get("spec") or {}
+        if (run.get("kind") == "requirement" and run.get("status") == "succeeded"
+                and (spec.get("ticket_key") or "").upper() == key and spec.get("ticket")):
+            record = {"spec": spec, "reply": result.get("reply", ""), "at": run.get("created_at"),
+                      "requirement_hash": requirement_hash(spec["ticket"])}
+            store_analysis(svc, key, record)
+            return record
+    return {}
 
 
 def public_run(run: dict) -> dict:
@@ -266,7 +298,8 @@ def chat(body: ChatBody, svc: Services = Depends(get_services), user: str = Depe
     def work_codex(ctx: RunContext) -> dict:
         agent = CodexRequirementAgent(svc.codex_exec, svc.codex, home, jira, svc.graphs,
                                       svc.settings.workspace_root,
-                                      cache_get=svc.runs.get_conversation, cache_set=svc.runs.set_conversation,
+                                      analysis_get=lambda key: load_analysis(svc, key),
+                                      analysis_set=lambda key, record: store_analysis(svc, key, record),
                                       plan_usage=lambda: svc.sessions.plan_usage(user))
         convo = svc.runs.get_conversation(conversation_id)
         history = convo.get("history", [])

@@ -13,6 +13,7 @@ const KIND = {
     LWC: { color: '#e87ba4', label: 'LWC' },
     ValidationRule: { color: '#008300', label: 'Validation rule' },
     JiraTicket: { color: '#6250d6', label: 'Jira ticket' },
+    RequirementSpec: { color: '#e34948', label: 'Requirement spec' },
     Field: { color: '#a3a29b', label: 'Field' },
     RecordType: { color: '#c3c2b7', label: 'Record type' }
 };
@@ -42,6 +43,7 @@ const VERB = {
     DEPENDS_ON: 'depends on',
     TICKET_MENTIONS: 'mentions',
     TICKET_IMPLEMENTED_BY: 'implemented by',
+    TICKET_ANALYSED_AS: 'analysed as',
     TICKET_PARENT_OF: 'parent of',
     TICKET_LINKS_TO: 'links to'
 };

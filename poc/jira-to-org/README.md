@@ -128,7 +128,7 @@ sent on every call. So the agents now take the cheapest path first:
 | Ask | Path | Model tokens |
 |---|---|---|
 | "Read KAN-6", "KAN-6", "status of KAN-8", "list my open tickets" | answered from Jira and the knowledge graph | **0** |
-| "Analyze KAN-6" for a ticket analysed before and unchanged | stored spec reused | **0** |
+| "Analyze KAN-6" for a ticket analysed before whose summary, description and acceptance criteria are unchanged | its analysis, stored in the knowledge graph as a `RequirementSpec` node (`ticket --analysed as--> spec`), is returned; comments and status changes do not make it stale | **0** |
 | "Analyze KAN-6" (new or changed), "what could break if…" | lean Codex: own short instructions (`model_instructions_file`), no tools, no environment block, low reasoning, trimmed graph context | target 2–4k |
 | Developer agent | lean Codex coding run: short brief + workspace rules instead of Codex's prompt; no web search, apps, plugins or sub-agents | multi-turn; measured on the dashboard |
 

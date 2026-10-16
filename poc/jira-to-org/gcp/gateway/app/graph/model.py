@@ -24,7 +24,7 @@ BEHAVIOUR_EDGES = (
     "FLOW_UPDATES_SOBJECT", "FLOW_CALLS_SUBFLOW", "FLOW_CALLS_APEX",
     "TRIGGER_CALLS_APEX", "APEX_CALLS_APEX", "LWC_CALLS_APEX", "VALIDATES_SOBJECT",
     "APEX_REFERENCES_SOBJECT", "APEX_REFERENCES_FIELD", "DEPENDS_ON",
-    "TICKET_IMPLEMENTED_BY", "TICKET_MENTIONS",
+    "TICKET_IMPLEMENTED_BY", "TICKET_MENTIONS", "TICKET_ANALYSED_AS",
 )
 STRUCTURE_EDGES = (
     "SOBJECT_HAS_FIELD", "SOBJECT_HAS_RECORDTYPE", "FIELD_REFERENCES_SOBJECT",
@@ -101,6 +101,8 @@ class Graph:
         existing = self.nodes.get(node.id)
         if existing:
             existing.properties.update(node.properties)
+            if node.name:
+                existing.name = node.name
             return existing
         self.nodes[node.id] = node
         self._index_dirty = True
