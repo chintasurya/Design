@@ -15,6 +15,10 @@ anything: a fix with no failure attached reads as a preference and gets undone.
 - **Deployable artifact:** `poc/salesforce/AI_Change_Console_POC.zip`
 - **Last commit at handoff:** `87296f2`
 
+> **Separate POC, 2026-10:** `poc/jira-to-org/` is the two-agent Jira → Codex →
+> Salesforce build for the personal Developer Edition org, with its knowledge
+> graph on GCP (BigQuery). Its README is its handoff. Nothing below applies to it.
+
 ---
 
 ## 1. The goal

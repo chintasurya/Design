@@ -1,0 +1,321 @@
+<template>
+    <lightning-card icon-name="standard:bot">
+        <h1 slot="title" class="slds-text-heading_small">
+            Jira to Org
+            <span class="slds-text-body_small slds-text-color_weak slds-var-m-left_x-small">
+                Requirement agent · Developer agent
+            </span>
+        </h1>
+        <div slot="actions">
+            <template lwc:if={connected}>
+                <span class="tag tag_exists slds-var-m-right_x-small">{codexLabel}</span>
+                <lightning-button-icon icon-name="utility:refresh" alternative-text="Refresh tickets"
+                    onclick={loadTickets} class="slds-var-m-right_xx-small"></lightning-button-icon>
+                <lightning-button label="New conversation" onclick={handleNewConversation}></lightning-button>
+            </template>
+        </div>
+
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+            <!-- ============ step 1: connect to Codex (always first) ============ -->
+            <template lwc:if={notConnected}>
+                <div class="connect">
+                    <lightning-icon icon-name="utility:connected_apps" size="large"
+                        class="slds-var-m-bottom_small"></lightning-icon>
+                    <h2 class="slds-text-heading_medium">Connect to Codex</h2>
+                    <p class="slds-text-color_weak slds-var-m-vertical_small">
+                        Both agents run on Codex. Connect first; nothing reads Jira or touches
+                        the org until you do.
+                    </p>
+                    <template lwc:if={needsKey}>
+                        <div class="connect__key">
+                            <lightning-input type="password" label="OpenAI API key" value={apiKey}
+                                onchange={handleApiKey} placeholder="sk-..."></lightning-input>
+                            <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">
+                                Verified with OpenAI, then stored in GCP Secret Manager. Never saved in Salesforce.
+                            </p>
+                        </div>
+                    </template>
+                    <lightning-button variant="brand" label={connectLabel} onclick={handleConnect}
+                        disabled={connectDisabled} class="slds-var-m-top_small"></lightning-button>
+                    <template lwc:if={connectMessage}>
+                        <p class="connect__message">{connectMessage}</p>
+                    </template>
+
+                    <ul class="statuslist">
+                        <template for:each={statusRows} for:item="row">
+                            <li key={row.key}>
+                                <lightning-icon icon-name={row.iconName} variant={row.iconVariant}
+                                    size="xx-small"></lightning-icon>
+                                <strong>{row.label}</strong>
+                                <span class="slds-text-color_weak">{row.value}</span>
+                            </li>
+                        </template>
+                    </ul>
+                    <template lwc:if={gatewayError}>
+                        <p class="connect__message msg_error">{gatewayError}</p>
+                    </template>
+                </div>
+            </template>
+
+            <!-- ============ step 2: the two agents ============ -->
+            <template lwc:if={connected}>
+                <lightning-layout multiple-rows pull-to-boundary="small">
+
+                    <!-- Requirement agent -->
+                    <lightning-layout-item size="12" large-device-size="5" padding="horizontal-small">
+                        <section class="panel">
+                            <h2 class="panel__title">
+                                <lightning-icon icon-name="utility:knowledge_base" size="x-small"></lightning-icon>
+                                Requirement agent
+                            </h2>
+
+                            <div class="tickets">
+                                <p class="label">Open tickets in {jiraProject}</p>
+                                <template lwc:if={ticketsLoading}>
+                                    <lightning-spinner size="small" alternative-text="Loading tickets"></lightning-spinner>
+                                </template>
+                                <template lwc:if={hasTickets}>
+                                    <ul>
+                                        <template for:each={tickets} for:item="t">
+                                            <li key={t.key}>
+                                                <button class="ticket" data-key={t.key}
+                                                    onclick={handleAnalyzeTicket} disabled={chatBusy}
+                                                    title="Analyze this ticket">
+                                                    <span class="ticket__key">{t.key}</span>
+                                                    <span class="ticket__summary">{t.summary}</span>
+                                                    <span class="ticket__status">{t.status}</span>
+                                                </button>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </template>
+                            </div>
+
+                            <div class="chat">
+                                <template for:each={messageItems} for:item="m">
+                                    <div key={m.id} class={m.cssClass}>
+                                        <p class="msg__author">{m.author}</p>
+                                        <p class="msg__text">{m.text}</p>
+                                    </div>
+                                </template>
+                                <template lwc:if={chatBusy}>
+                                    <div class="msg msg_agent">
+                                        <p class="msg__author">Requirement agent</p>
+                                        <ul class="steps">
+                                            <template for:each={chatSteps} for:item="s">
+                                                <li key={s.key} class={s.cssClass}>
+                                                    <lightning-icon icon-name={s.iconName} variant={s.iconVariant}
+                                                        size="xx-small"></lightning-icon>
+                                                    <span>{s.name}</span>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                        <lightning-spinner size="small" variant="brand" class="inline-spinner"
+                                            alternative-text="Thinking"></lightning-spinner>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="suggestions">
+                                <template for:each={suggestions} for:item="s">
+                                    <button key={s.key} class="chip" data-text={s.text}
+                                        onclick={handleSuggestion} disabled={chatBusy}>{s.text}</button>
+                                </template>
+                            </div>
+                            <lightning-textarea label="Ask about a Jira ticket" variant="label-hidden"
+                                placeholder="e.g. Analyze KAN-3, or: what is blocking KAN-5?"
+                                value={draft} onchange={handleDraft} onkeydown={handleDraftKey}
+                                disabled={chatBusy}></lightning-textarea>
+                            <div class="slds-var-m-top_x-small slds-text-align_right">
+                                <lightning-button variant="brand" label="Send" icon-name="utility:send"
+                                    onclick={handleSend} disabled={sendDisabled}></lightning-button>
+                            </div>
+                        </section>
+                    </lightning-layout-item>
+
+                    <!-- Spec + Developer agent -->
+                    <lightning-layout-item size="12" large-device-size="7" padding="horizontal-small">
+                        <section class="panel">
+                            <h2 class="panel__title">
+                                <lightning-icon icon-name="utility:description" size="x-small"></lightning-icon>
+                                Requirement spec
+                            </h2>
+                            <template lwc:if={hasSpec}>
+                                <div class="spec">
+                                    <div class="spec__head">
+                                        <template lwc:if={specUrl}>
+                                            <a href={specUrl} target="_blank" class="spec__title">{specTitle}</a>
+                                        </template>
+                                        <template lwc:else>
+                                            <span class="spec__title">{specTitle}</span>
+                                        </template>
+                                        <span class={readyClass}>{readyLabel}</span>
+                                        <span class="tag">{riskLabel}</span>
+                                    </div>
+                                    <p class="slds-var-m-vertical_x-small">{spec.summary}</p>
+
+                                    <p class="label">Acceptance criteria</p>
+                                    <ul class="bullets">
+                                        <template for:each={specCriteria} for:item="c">
+                                            <li key={c.key}>{c.text}</li>
+                                        </template>
+                                    </ul>
+
+                                    <p class="label">Components</p>
+                                    <table class="components">
+                                        <thead><tr><th>Action</th><th>Type</th><th>API name</th><th>In org</th><th>Why</th></tr></thead>
+                                        <tbody>
+                                            <template for:each={specComponents} for:item="c">
+                                                <tr key={c.key}>
+                                                    <td>{c.actionLabel}</td>
+                                                    <td>{c.type}</td>
+                                                    <td class="mono">{c.api_name}</td>
+                                                    <td><span class={c.existsClass}>{c.existsLabel}</span></td>
+                                                    <td>{c.description}<br/><span class="slds-text-color_weak">{c.evidence}</span></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+
+                                    <template lwc:if={hasReuse}>
+                                        <p class="label">Reused from the org</p>
+                                        <ul class="bullets">
+                                            <template for:each={specReuse} for:item="c"><li key={c.key}>{c.text}</li></template>
+                                        </ul>
+                                    </template>
+                                    <template lwc:if={hasImpact}>
+                                        <p class="label">Could be affected</p>
+                                        <ul class="bullets">
+                                            <template for:each={specImpact} for:item="c"><li key={c.key}>{c.text}</li></template>
+                                        </ul>
+                                    </template>
+                                    <p class="label">Test plan</p>
+                                    <ul class="bullets">
+                                        <template for:each={specTests} for:item="c"><li key={c.key}>{c.text}</li></template>
+                                    </ul>
+                                    <template lwc:if={hasQuestions}>
+                                        <p class="label">Open questions</p>
+                                        <ul class="bullets bullets_warn">
+                                            <template for:each={specQuestions} for:item="c"><li key={c.key}>{c.text}</li></template>
+                                        </ul>
+                                    </template>
+
+                                    <div class="spec__actions">
+                                        <template lwc:if={specNotReady}>
+                                            <lightning-input type="checkbox" label="Develop anyway"
+                                                checked={developAnyway} onchange={handleDevelopAnyway}></lightning-input>
+                                        </template>
+                                        <lightning-button variant="brand" label="Send to Developer agent"
+                                            icon-name="utility:builder" onclick={handleDevelop}
+                                            disabled={developDisabled}></lightning-button>
+                                    </div>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <p class="empty">
+                                    Ask the Requirement agent to analyze a ticket. Its spec, checked against
+                                    the knowledge graph, appears here.
+                                </p>
+                            </template>
+                        </section>
+
+                        <template lwc:if={devRun}>
+                            <section class="panel slds-var-m-top_small">
+                                <h2 class="panel__title">
+                                    <lightning-icon icon-name="utility:apex" size="x-small"></lightning-icon>
+                                    Developer agent
+                                    <span class={devStatusClass}>{devStatusLabel}</span>
+                                </h2>
+                                <ul class="steps steps_timeline">
+                                    <template for:each={devSteps} for:item="s">
+                                        <li key={s.key} class={s.cssClass}>
+                                            <lightning-icon icon-name={s.iconName} variant={s.iconVariant}
+                                                size="xx-small"></lightning-icon>
+                                            <span>{s.name}</span>
+                                            <template lwc:if={s.detail}>
+                                                <pre class="step__detail">{s.detail}</pre>
+                                            </template>
+                                        </li>
+                                    </template>
+                                </ul>
+                                <template lwc:if={devActive}>
+                                    <lightning-spinner size="small" variant="brand" class="inline-spinner"
+                                        alternative-text="Working"></lightning-spinner>
+                                </template>
+                                <template lwc:if={devRun.error}>
+                                    <p class="msg_error slds-var-m-top_x-small">{devRun.error}</p>
+                                </template>
+
+                                <template lwc:if={hasDevFiles}>
+                                    <p class="label">Files changed</p>
+                                    <ul class="files">
+                                        <template for:each={devFiles} for:item="f">
+                                            <li key={f.key}>
+                                                <button class="file" data-path={f.path} onclick={handleToggleFile}>
+                                                    <span class="mono">{f.name}</span>
+                                                    <span class="tag">{f.status}</span>
+                                                </button>
+                                                <template lwc:if={f.isOpen}>
+                                                    <pre class="code">{f.content}</pre>
+                                                </template>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                    <template lwc:if={validationText}>
+                                        <p class="ok">{validationText}</p>
+                                    </template>
+                                </template>
+
+                                <template lwc:if={devWaiting}>
+                                    <div class="gate">
+                                        <p>
+                                            Validated against the org with a check-only deploy. Review the files,
+                                            then deploy. Nothing has been changed in the org yet.
+                                        </p>
+                                        <lightning-button variant="brand" label="Deploy to org"
+                                            icon-name="utility:upload" onclick={handleDeploy}
+                                            disabled={devBusy}></lightning-button>
+                                        <lightning-button label="Reject" class="slds-var-m-left_x-small"
+                                            onclick={handleReject} disabled={devBusy}></lightning-button>
+                                    </div>
+                                </template>
+                                <template lwc:if={devDeployed}>
+                                    <p class="ok">{deploymentText}. The Jira ticket was commented and moved on,
+                                        and the knowledge graph now links the ticket to what was built.</p>
+                                </template>
+                                <template lwc:if={devFailed}>
+                                    <ul class="bullets bullets_warn">
+                                        <template for:each={deployErrors} for:item="c"><li key={c.key}>{c.text}</li></template>
+                                    </ul>
+                                </template>
+                            </section>
+                        </template>
+                    </lightning-layout-item>
+                </lightning-layout>
+            </template>
+
+            <!-- ============ knowledge graph (GCP) ============ -->
+            <div class="graphbar">
+                <lightning-icon icon-name="utility:hierarchy" size="xx-small"></lightning-icon>
+                <span>Knowledge graph (GCP BigQuery): {graphLabel}</span>
+                <lightning-button variant="base" label={rebuildLabel} onclick={handleRebuild}
+                    disabled={graphBusy} class="slds-var-m-left_small"></lightning-button>
+            </div>
+            <template lwc:if={graphRun}>
+                <ul class="steps">
+                    <template for:each={graphSteps} for:item="s">
+                        <li key={s.key} class={s.cssClass}>
+                            <lightning-icon icon-name={s.iconName} variant={s.iconVariant}
+                                size="xx-small"></lightning-icon>
+                            <span>{s.name}</span>
+                        </li>
+                    </template>
+                </ul>
+                <template lwc:if={graphRun.error}>
+                    <p class="msg_error">{graphRun.error}</p>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>
