@@ -26,6 +26,28 @@ into the graph.
                                             └──────────────────────────────────────────────┘
 ```
 
+## Rules of engagement (from the owner, 2026-10-16)
+
+The Jira site, the Salesforce Developer Edition org and the GCP project
+`jira-to-org-poc-2610` are **new instances created for this POC**. The owner
+has authorized Claude to log in to all three and make any change needed to
+build, deploy and test the POC, within these limits:
+
+1. **No personal information.** Do not read, export or change personal
+   details in Jira, Salesforce or GCP (user profiles, contact details,
+   account settings).
+2. **No billing, banking or payment details.** Never open, read or change
+   GCP Billing, Salesforce billing or Atlassian billing. Anything that
+   touches billing or personal settings needs the owner's approval first;
+   ask and wait.
+3. **Credentials come from the environment settings only**
+   (`GCP_SA_KEY_JSON`, `GCP_PROJECT`, `GCP_REGION`, `JIRA_*`,
+   `SF_AUTH_URL`, `SF_CLIENT_ID`, `SF_CLIENT_SECRET`), never from chat. A
+   credential that shows up in chat or a screenshot is treated as exposed:
+   do not use it, and ask the owner to rotate it.
+4. **Stay in this POC.** Jira project `KAN`, the org
+   `orgfarm-0054ddc238-dev-ed`, the GCP project `jira-to-org-poc-2610`.
+
 ## What each piece does
 
 | Piece | Where | Job |
