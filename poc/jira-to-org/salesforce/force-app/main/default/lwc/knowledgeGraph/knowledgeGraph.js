@@ -290,6 +290,9 @@ export default class KnowledgeGraph extends LightningElement {
             fill: kind(t).color,
             label: kind(t).label,
             sub: fmt(count[t]),
+            labelX: pos[t].x,
+            labelClass: 'node__label',
+            subClass: 'node__sub',
             labelY: pos[t].y + pos[t].r + 16,
             subY: pos[t].y + pos[t].r + 30,
             title: `${kind(t).label} · ${fmt(count[t])}`,
@@ -324,10 +327,16 @@ export default class KnowledgeGraph extends LightningElement {
             const a = pos[g.centre];
             const b = pos[p.other];
             const [from, to] = p.out ? [a, b] : [b, a];
+            // start and stop at the circle edges, not the centres
+            const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+            const ux = (to.x - from.x) / len;
+            const uy = (to.y - from.y) / len;
+            const sx = from.x + ux * from.r;
+            const sy = from.y + uy * from.r;
             return {
                 key: `e${i}`,
                 index: i,
-                d: `M ${from.x} ${from.y} L ${to.x} ${to.y}`,
+                d: `M ${sx} ${sy} L ${to.x - ux * (to.r + 2)} ${to.y - uy * (to.r + 2)}`,
                 width: 1.5,
                 title: p.lines[0],
                 lines: p.lines,
@@ -352,8 +361,13 @@ export default class KnowledgeGraph extends LightningElement {
                 fill: kind(n.type).color,
                 label: n.label.length > 34 ? `${n.label.slice(0, 33)}…` : n.label,
                 sub: kind(n.type).label,
-                labelY: p.y + p.r + 15,
-                subY: p.y + p.r + 28,
+                // labels sit on the side away from the centre, so no line crosses them;
+                // the centre's own label goes beside it, clear of every line
+                labelX: n.id === g.centre ? p.x + p.r + 8 : p.x,
+                labelY: n.id === g.centre ? p.y - 2 : p.y < CY - 1 ? p.y - p.r - 19 : p.y + p.r + 15,
+                subY: n.id === g.centre ? p.y + 12 : p.y < CY - 1 ? p.y - p.r - 6 : p.y + p.r + 28,
+                labelClass: n.id === g.centre ? 'node__label node__label_side' : 'node__label',
+                subClass: n.id === g.centre ? 'node__sub node__label_side' : 'node__sub',
                 title: `${kind(n.type).label}: ${n.label}`,
                 lines: [`${n.degree} connections in the graph`, ...props, n.id === g.centre ? '' : 'Click to centre on it'].filter(Boolean)
             };

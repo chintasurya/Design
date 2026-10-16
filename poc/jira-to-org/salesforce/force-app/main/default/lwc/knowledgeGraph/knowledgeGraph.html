@@ -51,8 +51,8 @@
                             <g key={n.key} class="node" data-index={n.index} data-type={n.type}
                                 onmouseenter={handleNodeEnter} onmouseleave={handleLeave} onclick={handleNodeClick}>
                                 <circle cx={n.x} cy={n.y} r={n.r} fill={n.fill} class="node__dot"></circle>
-                                <text x={n.x} y={n.labelY} class="node__label">{n.label}</text>
-                                <text x={n.x} y={n.subY} class="node__sub">{n.sub}</text>
+                                <text x={n.labelX} y={n.labelY} class={n.labelClass}>{n.label}</text>
+                                <text x={n.labelX} y={n.subY} class={n.subClass}>{n.sub}</text>
                             </g>
                         </template>
                     </svg>
@@ -74,8 +74,8 @@
                             <g key={n.key} class="node node_click" data-index={n.index} data-id={n.id}
                                 onmouseenter={handleNodeEnter} onmouseleave={handleLeave} onclick={handleNodeClick}>
                                 <circle cx={n.x} cy={n.y} r={n.r} fill={n.fill} class="node__dot"></circle>
-                                <text x={n.x} y={n.labelY} class="node__label">{n.label}</text>
-                                <text x={n.x} y={n.subY} class="node__sub">{n.sub}</text>
+                                <text x={n.labelX} y={n.labelY} class={n.labelClass}>{n.label}</text>
+                                <text x={n.labelX} y={n.subY} class={n.subClass}>{n.sub}</text>
                             </g>
                         </template>
                     </svg>

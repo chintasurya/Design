@@ -49,6 +49,50 @@ build, deploy and test the POC, within these limits:
 4. **Stay in this POC.** Jira project `KAN`, the org
    `orgfarm-0054ddc238-dev-ed`, the GCP project `jira-to-org-poc-2610`.
 
+## Live POC (deployed 2026-10-16)
+
+| | |
+|---|---|
+| Salesforce app | **Jira to Org** (App Launcher), org `orgfarm-0054ddc238-dev-ed` |
+| Gateway | Cloud Run `agent-gateway`, `https://agent-gateway-6y7zlyimaa-uc.a.run.app`, project `jira-to-org-poc-2610`, `us-central1` |
+| Knowledge graph | BigQuery `jira-to-org-poc-2610.agent_kg`; first snapshot `8314ed7b9897`, 828 nodes · 991 edges |
+| Runs, conversations, token usage | Firestore `agent_runs`, `agent_conversations` |
+| Jira | `chintasuryateja.atlassian.net`, project `KAN` |
+
+### The app's three tabs
+
+1. **Agent Console.** Connect to Codex (paste an OpenAI API key the first
+   time; it is verified, then stored in Secret Manager), then chat with the
+   Requirement agent, send its spec to the Developer agent, review the
+   files, and approve the deploy.
+2. **Knowledge Graph.** A read-only reference. The opening view is the
+   graph by kind: one circle per kind of component (size = how many), one
+   arrow per kind of relationship (number = how many). Search for any
+   object, field, class, flow, LWC or ticket to see its direct connections;
+   click a neighbour to move to it. Hover shows the detail; a table view and
+   the snapshot's coverage notes sit below.
+3. **Agent Dashboard.** Model tokens per agent: totals, input/output and
+   cached input, tokens per day (stacked: Requirement, Developer), tokens
+   per Jira ticket, and the latest runs with their status. The Requirement
+   agent's count is every Responses API call in a turn; the Developer
+   agent's is every `codex exec` attempt, retries included.
+
+### For testers
+
+- An admin assigns the **Agent Console User** permission set to each
+  tester (Setup → Users → the user → Permission Set Assignments). It grants
+  the app, the three tabs, the Apex controller and the gateway credential.
+- Open **Jira to Org** → **Agent Console** → **Connect to Codex**.
+- Try: *"List my open tickets"*, *"Analyze KAN-1"*, or create a new story in
+  `KAN` (e.g. *"Add a Next Step Date field on Opportunity"*), then
+  *"Analyze KAN-6"* → **Send to Developer agent** → review → **Deploy to org**.
+- Every run shows up on the Agent Dashboard within a refresh.
+- Known in this org: Opportunity `Priority__c`, `Region__c` and
+  `RenewalDate__c` (KAN-2..4) exist but nobody has field-level security on
+  them, so no user can see them. The graph knows they exist and the
+  Requirement agent will propose granting access rather than creating them
+  again.
+
 ## What each piece does
 
 | Piece | Where | Job |

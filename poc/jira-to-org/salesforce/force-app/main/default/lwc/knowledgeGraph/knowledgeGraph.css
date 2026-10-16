@@ -132,6 +132,10 @@
     stroke-width: 4px;
 }
 
+.node__label_side {
+    text-anchor: start;
+}
+
 .tooltip {
     position: absolute;
     top: 0.75rem;
