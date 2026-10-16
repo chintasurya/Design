@@ -17,12 +17,28 @@ SERVICE="${SERVICE:-agent-gateway}"
 SA="agent-gateway@${GCP_PROJECT}.iam.gserviceaccount.com"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-ENV_VARS="GCP_PROJECT=${GCP_PROJECT},BQ_DATASET=${BQ_DATASET:-agent_kg},GRAPH_STORE=bigquery,RUN_STORE=firestore"
-ENV_VARS+=",JIRA_BASE_URL=${JIRA_BASE_URL},JIRA_EMAIL=${JIRA_EMAIL},JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY:-KAN}"
-ENV_VARS+=",JIRA_START_TRANSITION=${JIRA_START_TRANSITION:-In Progress},JIRA_DONE_TRANSITION=${JIRA_DONE_TRANSITION:-Done}"
-ENV_VARS+=",SF_LOGIN_URL=${SF_LOGIN_URL},SF_API_VERSION=${SF_API_VERSION:-62.0}"
-ENV_VARS+=",OPENAI_MODEL=${OPENAI_MODEL:-},CODEX_MODEL=${CODEX_MODEL:-},CODEX_SANDBOX=${CODEX_SANDBOX:-workspace-write}"
-ENV_VARS+=",AUTO_DEPLOY=${AUTO_DEPLOY:-false}"
+# Env vars go through a YAML file: values such as the Jira email contain
+# characters that break gcloud's inline KEY=VALUE list syntax.
+ENV_FILE="$(mktemp --suffix .yaml)"
+trap 'rm -f "$ENV_FILE"' EXIT
+python3 - "$ENV_FILE" <<'PY'
+import json, os, sys
+keys = {
+    "GCP_PROJECT": os.environ["GCP_PROJECT"], "BQ_DATASET": os.environ.get("BQ_DATASET", "agent_kg"),
+    "GRAPH_STORE": "bigquery", "RUN_STORE": "firestore",
+    "JIRA_BASE_URL": os.environ["JIRA_BASE_URL"], "JIRA_EMAIL": os.environ["JIRA_EMAIL"],
+    "JIRA_PROJECT_KEY": os.environ.get("JIRA_PROJECT_KEY", "KAN"),
+    "JIRA_START_TRANSITION": os.environ.get("JIRA_START_TRANSITION", "In Progress"),
+    "JIRA_DONE_TRANSITION": os.environ.get("JIRA_DONE_TRANSITION", "Done"),
+    "SF_LOGIN_URL": os.environ["SF_LOGIN_URL"], "SF_API_VERSION": os.environ.get("SF_API_VERSION", "62.0"),
+    "OPENAI_MODEL": os.environ.get("OPENAI_MODEL", ""), "CODEX_MODEL": os.environ.get("CODEX_MODEL", ""),
+    "CODEX_SANDBOX": os.environ.get("CODEX_SANDBOX", "workspace-write"),
+    "AUTO_DEPLOY": os.environ.get("AUTO_DEPLOY", "false"),
+}
+with open(sys.argv[1], "w") as fh:
+    for k, v in keys.items():
+        fh.write(f"{k}: {json.dumps(v)}\n")  # JSON strings are valid YAML scalars
+PY
 
 SECRETS="OPENAI_API_KEY=openai-api-key:latest,JIRA_API_TOKEN=jira-api-token:latest"
 SECRETS+=",SF_AUTH_URL=sf-auth-url:latest,SF_CLIENT_ID=sf-client-id:latest,SF_CLIENT_SECRET=sf-client-secret:latest"
@@ -40,7 +56,7 @@ gcloud run deploy "$SERVICE" \
   --execution-environment gen2 \
   --no-cpu-throttling --min-instances 0 --max-instances 1 --concurrency 20 \
   --cpu 2 --memory 4Gi --timeout 3600 \
-  --set-env-vars "^@^${ENV_VARS//,/@}" \
+  --env-vars-file "$ENV_FILE" \
   --set-secrets "$SECRETS"
 
 URL="$(gcloud run services describe "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" --format 'value(status.url)')"
