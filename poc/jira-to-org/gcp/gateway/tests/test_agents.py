@@ -108,10 +108,14 @@ def codex_writes(files_per_attempt):
 
 
 CLS = "force-app/main/default/classes/"
-GOOD = {CLS + "AccountRisk.cls": "public with sharing class AccountRisk { public static Integer score() { return 1; } }",
+GOOD = {CLS + "AccountRisk.cls": "/** Account risk score. */\npublic with sharing class AccountRisk {\n"
+                                  "\t/** Score from 0 to 100. */\n\tpublic static Integer score() { return 1; }\n}\n",
         CLS + "AccountRisk.cls-meta.xml": "<ApexClass/>",
-        CLS + "AccountRiskTest.cls": "@isTest private class AccountRiskTest { @isTest static void t() {} }",
+        CLS + "AccountRiskTest.cls": "@isTest\nprivate class AccountRiskTest {\n\t@isTest\n\tstatic void scores() "
+                                      "{ System.assertEquals(1, AccountRisk.score()); }\n}\n",
         CLS + "AccountRiskTest.cls-meta.xml": "<ApexClass/>"}
+NO_ASSERT = {**GOOD, CLS + "AccountRiskTest.cls": "@isTest\nprivate class AccountRiskTest {\n\t@isTest\n"
+                                                   "\tstatic void scores() { AccountRisk.score(); }\n}\n"}
 
 
 def developer(tmp_path, runner, deploys, **over):
@@ -202,3 +206,26 @@ def test_helpers():
     out = deploy_outcome(FAILURE)
     assert not out["success"] and out["errors"] == ["ApexClass AccountRisk: Variable does not exist: scor (line 7)"]
     assert deploy_outcome(SUCCESS)["success"]
+
+
+def test_guardrail_findings_go_back_to_codex_and_land_on_the_scorecard(tmp_path):
+    runner = codex_writes([NO_ASSERT, GOOD])
+    agent, _, _ = developer(tmp_path, runner, [SUCCESS])
+    c, store, rid = ctx()
+    result = agent.develop(rid, SPEC, c)
+    assert "[TST-02 Meaningful tests]" in runner.attempts[1] and "no assertions" in runner.attempts[1]
+    # the standards the change touches are in the instructions, and only those
+    assert "[TRG-02]" not in agent._instructions({"components": [{"type": "Flow"}]})
+    assert "[APX-03]" in agent._instructions(SPEC) and "[TST-01]" in agent._instructions(SPEC)
+    card = result["guardrails"]
+    assert card["blocked"] == [] and "APX-03" in card["passed"] and card["pack"].startswith("Ascension")
+
+
+def test_coverage_under_ninety_percent_goes_back_to_codex(tmp_path):
+    low = {"status": 0, "result": {**SUCCESS["result"], "details": {"runTestResult": {
+        "numTestsRun": 1, "codeCoverage": [{"name": "AccountRisk", "numLocations": 10, "numLocationsNotCovered": 3}]}}}}
+    runner = codex_writes([GOOD, GOOD])
+    agent, _, _ = developer(tmp_path, runner, [low, SUCCESS])
+    c, store, rid = ctx()
+    agent.develop(rid, SPEC, c)
+    assert "AccountRisk is at 70% coverage; it needs 90%" in runner.attempts[1]

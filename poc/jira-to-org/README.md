@@ -137,6 +137,34 @@ plan itself: % of the 5-hour and weekly limits used and the credits balance
 (read from the same endpoint Codex's `/status` uses), plus per run how many
 limit points and credits it used, and how many answers needed no model.
 
+### Guardrails: the standards every agent builds to
+
+The Ascension Salesforce development standards are a **guardrails pack in
+GCP**, not in Salesforce (so they cannot be changed from the org): Firestore
+`guardrail_rules`, one document per rule (`area`, `title`, `rule`,
+`severity`: block / warn / off, `check`), plus `guardrail_packs/active`. The
+source file is `gcp/gateway/app/guardrails/ascension-guardrails.json`;
+`gcp/infra/load_guardrails.py` publishes it. Edits in the Firestore console
+reach the agents within a minute; if Firestore cannot be read the agents fall
+back to the bundled file rather than run without standards.
+
+| Agent | How it follows them |
+|---|---|
+| Requirement agent | Plans by the decision rules (GEN-01 declarative first, FLW-04, TRG-01/02, GEN-04, TST-01). Every spec has an `approach`: Flow or Configuration first; Trigger or Apex only with `why_not_flow`, which is otherwise reported as not ready; existing automation on the object is named so it is extended, not duplicated |
+| Developer agent | Gets only the rules for the components it is building (≈400 tokens for a Flow and field, ≈640 for a trigger and handler, not all 30) |
+| Gate | 22 rules are checked by code before anything reaches the org: hardcoded IDs, profiles, object/field/permission set/validation rule/flow naming, flow descriptions and fault paths, Apex naming and suffixes, `with sharing`, SOQL and DML in loops, `Trigger.new[0]`, DML outside try, line length and JavaDoc, one trigger per object (with the graph), logic-free trigger + `<Object>TriggerHandler extends TriggerHandler`, test classes with asserts and no SeeAllData, and **90% coverage** from the org's own validation run. A blocking finding goes back to Codex to fix; the scorecard is shown before Deploy |
+
+The org has the baseline framework the trigger rules rely on:
+`TriggerHandler` (event dispatch, bypass by handler name, recursion guard),
+100% covered by `TriggerHandlerTest`.
+
+Test stories that exercise the standards: **KAN-11** renewal on Closed Won
+(record-triggered Flow), **KAN-12** Customer Tier (before-save Flow and a
+new field), **KAN-13** log a visit (Screen Flow), **KAN-14** Open Pipeline
+Amount (trigger + handler, because a Flow cannot handle delete, undelete and
+reparenting; Opportunity already has a trigger), **KAN-15** stale
+opportunities (Batch + Scheduler).
+
 ### For testers
 
 - An admin assigns the **Agent Console User** permission set to each

@@ -1,0 +1,247 @@
+{
+  "name": "Ascension Salesforce Development Standards",
+  "version": 1,
+  "summary": "Declarative first; Flow before trigger; triggers via TriggerHandler; bulk-safe, tested Apex.",
+  "rules": [
+    {
+      "id": "GEN-01",
+      "area": "General",
+      "title": "Declarative first",
+      "rule": "Build with a Flow (or configuration) first. Use Apex or a trigger only when the Flow is too complex or cannot do it, and say why in the spec.",
+      "severity": "block",
+      "check": "approach_declared"
+    },
+    {
+      "id": "GEN-02",
+      "area": "General",
+      "title": "No hardcoded IDs",
+      "rule": "Never hardcode Salesforce record IDs; they change between environments. Limit hardcoded values: use Custom Metadata, Custom Labels, Custom Settings or constants.",
+      "severity": "block",
+      "check": "no_hardcoded_ids"
+    },
+    {
+      "id": "GEN-03",
+      "area": "General",
+      "title": "Keep it simple",
+      "rule": "Remove unnecessary logic; reuse code through single methods that return a value.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "GEN-04",
+      "area": "General",
+      "title": "Permission sets, not profiles",
+      "rule": "Grant access with permission sets; never change profiles.",
+      "severity": "block",
+      "check": "no_profiles"
+    },
+    {
+      "id": "NAM-01",
+      "area": "Object",
+      "title": "Custom object naming",
+      "rule": "Descriptive names, each word capitalised, no acronyms (unless well known), no work-stream prefix, no underscores in the name. Always give the object a description.",
+      "severity": "block",
+      "check": "object_naming"
+    },
+    {
+      "id": "NAM-02",
+      "area": "Field",
+      "title": "Custom field naming",
+      "rule": "Descriptive, short, each word capitalised, no acronyms, no underscores in the name (API name like NextStepDate__c). Always a description, and help text for the end user.",
+      "severity": "block",
+      "check": "field_naming"
+    },
+    {
+      "id": "NAM-03",
+      "area": "Field",
+      "title": "Child relationship naming",
+      "rule": "Relationship names describe the relationship, each word capitalised (e.g. Contact Sales).",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "NAM-04",
+      "area": "Layout",
+      "title": "Layouts, apps and pages",
+      "rule": "Descriptive, short, each word capitalised, no 'Layout' suffix.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "NAM-05",
+      "area": "PermissionSet",
+      "title": "Custom permissions and permission sets",
+      "rule": "Descriptive, each word capitalised, no underscores in the label, always a description.",
+      "severity": "block",
+      "check": "permission_set_naming"
+    },
+    {
+      "id": "NAM-06",
+      "area": "ValidationRule",
+      "title": "Validation rule naming",
+      "rule": "Single field: [Field Label] [rule applied] (Contact First Name Cannot Be Null). Multiple fields: [grouping] [rule applied]. Cross object: [Object] [Field Label] [rule applied]. Always a description and a clear error message on the field.",
+      "severity": "block",
+      "check": "validation_rule_naming"
+    },
+    {
+      "id": "NAM-07",
+      "area": "RecordType",
+      "title": "Record type naming",
+      "rule": "Descriptive, short, each word capitalised, no underscores, always a description of what differentiates it.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "NAM-08",
+      "area": "StaticResource",
+      "title": "Static resource naming",
+      "rule": "All upper case (e.g. JQUERY); minified libraries; zipped in CSS/JS/Images folders with a ReadMe.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "FLW-01",
+      "area": "Flow",
+      "title": "Flow naming and description",
+      "rule": "Descriptive label, each word capitalised, no 'Flow' suffix, no underscores in the label, always a description of what the flow does. Variables in camelCase (firstName).",
+      "severity": "block",
+      "check": "flow_naming"
+    },
+    {
+      "id": "FLW-02",
+      "area": "Flow",
+      "title": "Fault paths",
+      "rule": "Every element that creates, updates, deletes or looks up records has a fault path to an error handler.",
+      "severity": "block",
+      "check": "flow_fault_paths"
+    },
+    {
+      "id": "FLW-03",
+      "area": "Flow",
+      "title": "DML at the end",
+      "rule": "Place record changes at the end of the flow; keep records processed per batch low.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "FLW-04",
+      "area": "Flow",
+      "title": "One automation entry per object",
+      "rule": "Before adding a flow or trigger, check what already runs on the object and extend it rather than adding a competing one where possible.",
+      "severity": "warn",
+      "check": "one_automation_per_object"
+    },
+    {
+      "id": "APX-01",
+      "area": "Apex",
+      "title": "Apex naming",
+      "rule": "UpperCamelCase nouns for classes, lowerCamelCase for methods and variables, whole words, no one-letter variables, constants in UPPER_CASE. Suffixes: Controller, Ext, Batch, Scheduler, Queueable, Test, TriggerHandler, Helper (avoid), Constant, WebService, Selector, Domain, Service (plural object: AccountsService); interfaces start with Interface.",
+      "severity": "block",
+      "check": "apex_naming"
+    },
+    {
+      "id": "APX-02",
+      "area": "Apex",
+      "title": "Sharing",
+      "rule": "Classes declare with sharing (or inherited sharing with a reason).",
+      "severity": "block",
+      "check": "apex_sharing"
+    },
+    {
+      "id": "APX-03",
+      "area": "Apex",
+      "title": "No SOQL or SOSL in loops",
+      "rule": "Query before the loop (or use a SOQL for-loop over the query) and pass Sets or Lists.",
+      "severity": "block",
+      "check": "no_soql_in_loops"
+    },
+    {
+      "id": "APX-04",
+      "area": "Apex",
+      "title": "No DML in loops",
+      "rule": "Collect records and do one DML on the collection.",
+      "severity": "block",
+      "check": "no_dml_in_loops"
+    },
+    {
+      "id": "APX-05",
+      "area": "Apex",
+      "title": "Bulkified",
+      "rule": "All Apex, triggers included, handles 200 records; never use only Trigger.new[0].",
+      "severity": "block",
+      "check": "no_single_record_trigger"
+    },
+    {
+      "id": "APX-06",
+      "area": "Apex",
+      "title": "Exception handling",
+      "rule": "Wrap DML in try/catch (finally where needed), use Database methods for partial success, savepoints to roll back, and throw meaningful exceptions.",
+      "severity": "warn",
+      "check": "dml_in_try"
+    },
+    {
+      "id": "APX-07",
+      "area": "Apex",
+      "title": "Separation of concerns",
+      "rule": "Use Selector (queries), Domain and Service layers for enterprise logic; keep queries selective and filtered.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "APX-08",
+      "area": "Apex",
+      "title": "Asynchronous processing",
+      "rule": "Use Queueable, Batch (over 50k records) and Scheduled Apex for long-running or large-volume work.",
+      "severity": "warn",
+      "check": null
+    },
+    {
+      "id": "APX-09",
+      "area": "Apex",
+      "title": "Formatting and comments",
+      "rule": "Lines at most 120 characters; JavaDoc comments on classes and methods; // comments only where code is unclear.",
+      "severity": "warn",
+      "check": "apex_formatting"
+    },
+    {
+      "id": "TRG-01",
+      "area": "Trigger",
+      "title": "One trigger per object, named after the object",
+      "rule": "Only one trigger per object, named exactly after the object (trigger Account on Account).",
+      "severity": "block",
+      "check": "trigger_per_object"
+    },
+    {
+      "id": "TRG-02",
+      "area": "Trigger",
+      "title": "Logic-free trigger with a handler",
+      "rule": "The trigger holds no logic: it only runs <ObjectName>TriggerHandler, which extends the org's TriggerHandler framework (bypass and recursion control).",
+      "severity": "block",
+      "check": "trigger_handler"
+    },
+    {
+      "id": "TST-01",
+      "area": "Test",
+      "title": "Coverage",
+      "rule": "At least 90% coverage per class; aim for 100%.",
+      "severity": "block",
+      "check": "coverage_90"
+    },
+    {
+      "id": "TST-02",
+      "area": "Test",
+      "title": "Meaningful tests",
+      "rule": "Every test class is <ClassName>Test, asserts behaviour, covers positive and negative cases and bulk (200 records); create data in @TestSetup or a factory; never SeeAllData=true.",
+      "severity": "block",
+      "check": "test_quality"
+    },
+    {
+      "id": "LWC-01",
+      "area": "LWC",
+      "title": "LWC practice",
+      "rule": "Reusable, modular components named in camelCase; no business logic in the template; @wire over imperative calls; Lightning Data Service or lightning-record-form for CRUD; return primitives from Apex; inline error messages rather than toasts; base lightning components over custom HTML.",
+      "severity": "warn",
+      "check": "lwc_practice"
+    }
+  ]
+}

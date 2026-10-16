@@ -78,10 +78,25 @@ SPEC_SCHEMA: dict[str, Any] = {
                    "description": "Existing automation or components the change could affect"},
         "test_plan": {"type": "array", "items": {"type": "string"}},
         "open_questions": {"type": "array", "items": {"type": "string"}},
+        "approach": {
+            "type": "object",
+            "description": "Declarative first: Flow or configuration unless it cannot do the job",
+            "properties": {
+                "build_with": {"type": "string", "enum": ["Configuration", "Flow", "Trigger", "Apex", "LWC", "Mixed"]},
+                "why_not_flow": {"type": "string",
+                                 "description": "Required when build_with is Trigger, Apex or Mixed: why a Flow "
+                                                "cannot do it. Empty for Flow or Configuration."},
+                "existing_automation": {"type": "string",
+                                        "description": "Triggers or record-triggered flows already on the object, "
+                                                       "and how this change extends rather than duplicates them"},
+            },
+            "required": ["build_with", "why_not_flow", "existing_automation"],
+            "additionalProperties": False,
+        },
         "risk": {"type": "string", "enum": ["low", "medium", "high"]},
         "ready_for_development": {"type": "boolean"},
     },
-    "required": ["ticket_key", "title", "summary", "acceptance_criteria", "components", "reuse", "impact",
+    "required": ["ticket_key", "title", "summary", "acceptance_criteria", "approach", "components", "reuse", "impact",
                  "test_plan", "open_questions", "risk", "ready_for_development"],
     "additionalProperties": False,
 }
@@ -133,6 +148,12 @@ def ground_spec(spec: dict, g: Any, tickets_seen: dict[str, dict]) -> dict:
                     spec.setdefault("open_questions", []).append(
                         f"{res.get('field')} already exists; the plan was changed from create to modify. "
                         "Confirm it should be changed rather than reused as is.")
+    # GEN-01: declarative first. A code approach without a reason is not ready.
+    approach = spec.get("approach") or {}
+    if approach.get("build_with") in ("Trigger", "Apex", "Mixed") and not (approach.get("why_not_flow") or "").strip():
+        spec["ready_for_development"] = False
+        spec.setdefault("open_questions", []).append(
+            "[GEN-01] The plan uses code but does not say why a Flow cannot do it. Explain, or plan a Flow.")
     key = spec.get("ticket_key", "").upper()
     if key in tickets_seen:
         spec["ticket_url"] = tickets_seen[key].get("url")
@@ -299,6 +320,22 @@ def requirement_hash(ticket: dict) -> str:
     return hashlib.sha256(" ".join(text.split()).encode()).hexdigest()[:16]
 
 
+PLANNING_RULES = ("GEN-01", "GEN-04", "FLW-04", "TRG-01", "TRG-02", "TST-01")
+
+
+def planning_instructions(guardrails) -> str:
+    """The standards that decide *how* to build, appended to the agent's
+    instructions. Only these few are sent; the Developer agent gets the rest."""
+    if guardrails is None:
+        return CODEX_INSTRUCTIONS
+    rules = guardrails.by_id()
+    lines = [f"- [{r}] {rules[r]['title']}: {rules[r]['rule']}" for r in PLANNING_RULES if r in rules
+             and rules[r].get("severity") != "off"]
+    return (CODEX_INSTRUCTIONS + "\nDevelopment standards to plan by (" + guardrails.pack().get("name", "")
+            + "). Fill `approach` from them: Flow or configuration first; Trigger or Apex only with `why_not_flow`; "
+              "check the graph for automation already on the object.\n" + "\n".join(lines) + "\n")
+
+
 class CodexRequirementAgent:
     """Cheapest answer first:
 
@@ -311,7 +348,7 @@ class CodexRequirementAgent:
     """
 
     def __init__(self, codex_exec, codex_conn, home: str, jira: JiraClient, graphs: GraphService,
-                 workspace_root: str, analysis_get=None, analysis_set=None, plan_usage=None):
+                 workspace_root: str, analysis_get=None, analysis_set=None, plan_usage=None, guardrails=None):
         self.codex_exec = codex_exec
         self.codex_conn = codex_conn
         self.home = home
@@ -321,6 +358,7 @@ class CodexRequirementAgent:
         self.analysis_get = analysis_get or (lambda key: {})
         self.analysis_set = analysis_set or (lambda key, value: None)
         self.plan_usage = plan_usage or (lambda: None)
+        self.guardrails = guardrails
 
     # -- lookups ---------------------------------------------------------------
     def _tickets(self, keys: list[str], ctx: RunContext) -> dict[str, dict]:
@@ -433,7 +471,7 @@ class CodexRequirementAgent:
         try:
             out = self.codex_exec(self.codex_conn, workspace, prompt, lambda line: None, home=self.home,
                                   sandbox="read-only", output_schema=CODEX_OUTPUT_SCHEMA,
-                                  instructions=CODEX_INSTRUCTIONS, extra_args=LEAN_NO_TOOLS)
+                                  instructions=planning_instructions(self.guardrails), extra_args=LEAN_NO_TOOLS)
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
         ctx.plan_usage(before, self.plan_usage())

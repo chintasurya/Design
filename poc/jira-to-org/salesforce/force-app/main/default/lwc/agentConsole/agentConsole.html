@@ -201,6 +201,18 @@
                                         </template>
                                     </ul>
 
+                                    <template lwc:if={approach}>
+                                        <p class="label">Approach (declarative first)</p>
+                                        <p><span class={approachClass}>{approachLabel}</span></p>
+                                        <template lwc:if={hasWhyNotFlow}>
+                                            <p class="slds-var-m-top_xx-small">Why not a Flow: {approach.why_not_flow}</p>
+                                        </template>
+                                        <template lwc:if={hasExistingAutomation}>
+                                            <p class="slds-text-color_weak slds-var-m-top_xx-small">
+                                                Existing automation: {approach.existing_automation}</p>
+                                        </template>
+                                    </template>
+
                                     <p class="label">Components</p>
                                     <table class="components">
                                         <thead><tr><th>Action</th><th>Type</th><th>API name</th><th>In org</th><th>Why</th></tr></thead>
@@ -303,6 +315,17 @@
                                     </ul>
                                     <template lwc:if={validationText}>
                                         <p class="ok">{validationText}</p>
+                                    </template>
+                                    <template lwc:if={guardrails}>
+                                        <p class="label">Guardrail scorecard</p>
+                                        <p class="ok">{guardrailSummary}</p>
+                                        <template lwc:if={hasGuardrailWarnings}>
+                                            <ul class="bullets bullets_warn">
+                                                <template for:each={guardrailWarnings} for:item="w">
+                                                    <li key={w.key}>{w.text}</li>
+                                                </template>
+                                            </ul>
+                                        </template>
                                     </template>
                                 </template>
 

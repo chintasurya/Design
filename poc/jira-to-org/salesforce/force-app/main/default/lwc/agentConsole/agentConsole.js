@@ -463,6 +463,54 @@ export default class AgentConsole extends LightningElement {
         return this.specReady ? 'tag tag_exists' : 'tag tag_warn';
     }
 
+    get approach() {
+        return (this.spec && this.spec.approach) || null;
+    }
+
+    get approachLabel() {
+        const a = this.approach;
+        return a ? `Build with: ${a.build_with}` : '';
+    }
+
+    get approachClass() {
+        const a = this.approach;
+        return a && ['Flow', 'Configuration'].includes(a.build_with) ? 'tag tag_exists' : 'tag tag_warn';
+    }
+
+    get hasWhyNotFlow() {
+        return !!(this.approach && this.approach.why_not_flow && this.approach.why_not_flow.trim());
+    }
+
+    get hasExistingAutomation() {
+        return !!(this.approach && this.approach.existing_automation && this.approach.existing_automation.trim());
+    }
+
+    // ------------------------------------------------------------ guardrails
+    get guardrails() {
+        return this.devResult.guardrails || null;
+    }
+
+    get guardrailSummary() {
+        const g = this.guardrails;
+        if (!g) return '';
+        const passed = (g.passed || []).length;
+        const checked = (g.checked || []).length;
+        const warn = (g.warnings || []).length;
+        return `${g.pack} (v${g.version}): ${passed} of ${checked} checked rules passed` +
+            (warn ? ` · ${warn} warning${warn === 1 ? '' : 's'}` : ' · no warnings');
+    }
+
+    get guardrailWarnings() {
+        return ((this.guardrails && this.guardrails.warnings) || []).map((w, i) => ({
+            key: String(i),
+            text: `[${w.rule}] ${w.title}: ${w.message} (${(w.file || '').replace('force-app/main/default/', '')})`
+        }));
+    }
+
+    get hasGuardrailWarnings() {
+        return this.guardrailWarnings.length > 0;
+    }
+
     get riskLabel() {
         return this.spec ? `Risk: ${this.spec.risk}` : '';
     }

@@ -24,6 +24,8 @@ from ..codex import LEAN_CODING, CodexConnection, run_codex
 from ..config import Settings
 from ..graph.model import Edge, Node
 from ..graph.store import GraphService
+from ..guardrails import GuardrailService, areas_for_components
+from ..guardrails.checks import run_checks
 from ..jira import JiraClient
 from ..runs import RunContext
 from ..salesforce import SalesforceClient
@@ -55,15 +57,32 @@ org access, so do not run `sf` or make network calls.
   credentials, remote site settings, connected apps or destructive changes.
 - Reuse what the spec says exists. Never create a field or class that the spec
   marks `exists_in_org: true`; modify the retrieved copy instead.
-- Apex: `with sharing`, bulkified, no SOQL or DML inside loops.
-- Every Apex class or trigger you create or change needs a test class named
-  `<Name>Test` with `@isTest`, real assertions, and at least 85% coverage.
-- Custom fields go in `objects/<Object>/fields/<Field>.field-meta.xml` with a
-  description. A new custom object needs `<Object>.object-meta.xml` with
-  `deploymentStatus` Deployed, `sharingModel` and a `nameField`.
+- Build with the approach SPEC.md chose (`approach.build_with`): declarative
+  first.
+- Flow: `flows/<NameInCamelCase>.flow-meta.xml`, status Active, a `start`
+  element with the object and trigger type (RecordBeforeSave for field
+  updates on the same record, RecordAfterSave for related records), a
+  `description`, and a `faultConnector` on every record element leading to an
+  error-handling element. Record changes at the end.
+- Trigger: `triggers/<ObjectName>.trigger` containing only
+  `new <ObjectName>TriggerHandler().run();`, and
+  `classes/<ObjectName>TriggerHandler.cls` that `extends TriggerHandler` and
+  overrides beforeInsert/afterInsert/beforeUpdate/afterUpdate/... The
+  `TriggerHandler` framework already exists in the org: never create it. If
+  the object already has a trigger, call the handler from that trigger
+  instead of adding a second one.
+- Tests: `<ClassName>Test` with `@TestSetup` data, positive, negative and
+  200-record bulk cases, real assertions, at least 90% coverage.
+- Custom fields: `objects/<Object>/fields/<Field>.field-meta.xml` with a
+  `description` and `inlineHelpText`. A new custom object needs
+  `<Object>.object-meta.xml` with a description, `deploymentStatus` Deployed,
+  `sharingModel` and a `nameField`.
 - LWC bundles need `.js`, `.html` and `.js-meta.xml` (`isExposed`, `targets`).
-- Grant field-level security for new fields in a permission set, never a
-  profile: `permissionsets/Jira_Agent_Access.permissionset-meta.xml`.
+- Field access goes in a permission set, never a profile:
+  `permissionsets/HarnessAgentAccess.permissionset-meta.xml` (label Harness
+  Agent Access, with a description).
+- The gateway checks the standards below automatically before anything
+  reaches the org; a broken blocking rule comes back to you to fix.
 - Keep the change as small as the acceptance criteria allow.
 - When you finish, reply with a short summary: files changed and why.
 """
@@ -174,10 +193,16 @@ def deploy_outcome(out: dict) -> dict:
     success = bool(result.get("success")) and out.get("status", 0) == 0 and not errors
     if not success and not errors:
         errors.append(str(out.get("message") or result.get("errorMessage") or "deploy failed without detail")[:1000])
+    coverage = {}
+    entries = tests.get("codeCoverage") or []
+    for c in [entries] if isinstance(entries, dict) else entries:
+        total = int(c.get("numLocations") or 0)
+        if c.get("name") and total:
+            coverage[c["name"]] = round(100.0 * (total - int(c.get("numLocationsNotCovered") or 0)) / total, 1)
     return {"success": success, "id": result.get("id"), "status": result.get("status"),
             "components_deployed": result.get("numberComponentsDeployed"),
             "tests_run": tests.get("numTestsRun") or result.get("numberTestsCompleted"),
-            "errors": errors[:40]}
+            "coverage": coverage, "errors": errors[:40]}
 
 
 def component_root(path: str) -> str:
@@ -227,13 +252,14 @@ def node_for_path(path: str) -> tuple[Node, Edge | None] | None:
 class DeveloperAgent:
     def __init__(self, settings: Settings, codex: CodexConnection, cli: SalesforceCli,
                  jira: JiraClient | None, graphs: GraphService,
-                 codex_runner: Callable[..., dict] = run_codex):
+                 codex_runner: Callable[..., dict] = run_codex, guardrails: GuardrailService | None = None):
         self.s = settings
         self.codex = codex
         self.cli = cli
         self.jira = jira
         self.graphs = graphs
         self.codex_runner = codex_runner
+        self.guardrails = guardrails or GuardrailService()
 
     # -- workspace -------------------------------------------------------------
     def workspace(self, run_id: str) -> str:
@@ -352,6 +378,35 @@ class DeveloperAgent:
         return files, diff[:150_000]
 
     # -- the run -----------------------------------------------------------------
+    def _instructions(self, spec: dict) -> str:
+        """Brief + workspace rules + only the standards this change touches."""
+        areas = areas_for_components(spec.get("components") or [])
+        if any(c.get("type") in ("ApexClass", "ApexTrigger") for c in spec.get("components") or []):
+            areas = sorted(set(areas) | {"Test"})
+        pack = self.guardrails.pack()
+        return (DEVELOPER_INSTRUCTIONS + AGENTS_MD.format(api=self.s.sf_api_version)
+                + f"\n# Development standards: {pack.get('name')} (apply to this change)\n\n"
+                + self.guardrails.brief(areas) + "\n")
+
+    def _files(self, ws: str, kept: list[dict]) -> list[dict]:
+        out = []
+        for c in kept:
+            with open(os.path.join(ws, c["path"]), encoding="utf-8", errors="replace") as fh:
+                out.append({"path": c["path"], "content": fh.read(),
+                            "status": "added" if c["status"].startswith("A") else "modified"})
+        return out
+
+    def scorecard(self, ws: str, kept: list[dict], coverage: dict | None = None) -> dict:
+        pack = self.guardrails.pack()
+        card = run_checks(self.guardrails.rules(), self._files(ws, kept), graph=self.graphs.graph(),
+                          coverage=coverage)
+        return {**card, "pack": pack.get("name"), "version": pack.get("version")}
+
+    @staticmethod
+    def as_errors(card: dict) -> list[str]:
+        return [f"[{f['rule']} {f['title']}] {f['file'].replace(SOURCE_ROOT + '/', '')}: {f['message']}"
+                for f in card["blocked"]]
+
     def _prompt(self, spec: dict, errors: list[str] | None) -> str:
         if not errors:
             return (f"Implement Jira ticket {spec.get('ticket_key')} as described in SPEC.md, following AGENTS.md. "
@@ -381,7 +436,7 @@ class DeveloperAgent:
             before = plan_usage() if plan_usage else None
             out = self.codex_runner(self.codex, ws, self._prompt(spec, errors), lambda line: ctx.step(line),
                                     home=codex_home,
-                                    instructions=DEVELOPER_INSTRUCTIONS + AGENTS_MD.format(api=self.s.sf_api_version),
+                                    instructions=self._instructions(spec),
                                     extra_args=LEAN_CODING)
             if plan_usage:
                 ctx.plan_usage(before, plan_usage())
@@ -400,6 +455,14 @@ class DeveloperAgent:
                 ctx.step("Change set refused by the guard", "error", "\n".join(problems))
                 errors = problems
                 continue
+            card = self.scorecard(ws, kept)
+            if card["blocked"]:
+                ctx.step(f"Guardrails: {len(card['blocked'])} blocking findings", "error",
+                         "\n".join(self.as_errors(card)))
+                errors = self.as_errors(card)
+                continue
+            ctx.step(f"Guardrails passed: {len(card['passed'])} rules checked",
+                     detail=f"{len(card['warnings'])} warnings · {card['pack']} v{card['version']}")
             tests = self.test_classes(ws, kept)
             targets = sorted({component_root(c["path"]) for c in kept})
             ctx.step("Validating in Salesforce (check-only deploy)", "running",
@@ -407,6 +470,11 @@ class DeveloperAgent:
             validation = deploy_outcome(self.cli.deploy(ws, targets, tests, dry_run=True))
             if validation["success"]:
                 ctx.step("Validation passed", detail=f"tests run: {validation.get('tests_run') or 0}")
+                card = self.scorecard(ws, kept, coverage=validation.get("coverage") or {})
+                if card["blocked"]:  # TST-01: coverage is only known once the org has run the tests
+                    ctx.step("Guardrails: coverage below the standard", "error", "\n".join(self.as_errors(card)))
+                    errors = self.as_errors(card)
+                    continue
                 break
             ctx.step("Validation failed", "error", "\n".join(validation["errors"]))
             errors = validation["errors"]
@@ -417,7 +485,7 @@ class DeveloperAgent:
         files, diff = self.snapshot_files(ws, kept)
         result = {"ticket_key": key, "ticket_url": spec.get("ticket_url"), "files": files, "diff": diff,
                   "deploy_targets": sorted({component_root(c["path"]) for c in kept}), "tests": tests,
-                  "validation": validation, "codex_summary": summary[:4000]}
+                  "validation": validation, "codex_summary": summary[:4000], "guardrails": card}
         if self.s.auto_deploy:
             ctx.status("running", result=result)
             return self.deploy(run_id, result, ctx)

@@ -35,6 +35,7 @@ from .config import secret
 from .graph.ingest import SalesforceIngest, ingest_jira
 from .graph.model import Edge, Graph, Node
 from .graph.store import BigQueryStore, GraphService, LocalJsonStore
+from .guardrails import FirestoreGuardrails, GuardrailService
 from .jira import JiraClient, JiraError, simplify
 from .runs import FirestoreRunStore, MemoryRunStore, RunContext, Runner
 from .salesforce import SalesforceClient
@@ -50,7 +51,8 @@ class Services:
                  jira: JiraClient | None = None, sf: SalesforceClient | None = None,
                  graphs: GraphService | None = None, runs=None, openai_client_factory=None,
                  developer: DeveloperAgent | None = None, sync_runs: bool = False,
-                 sessions: CodexSessions | None = None, codex_exec=None):
+                 sessions: CodexSessions | None = None, codex_exec=None,
+                 guardrails: GuardrailService | None = None):
         self.settings = settings
         self.codex = codex or CodexConnection(settings)
         self.chatgpt_mode = settings.codex_auth_mode == "chatgpt"
@@ -59,6 +61,10 @@ class Services:
             sessions = CodexSessions(settings, vault)
         self.sessions = sessions
         self.codex_exec = codex_exec or run_codex
+        if guardrails is None:
+            on_gcp = settings.run_store == "firestore" and settings.gcp_project
+            guardrails = GuardrailService(FirestoreGuardrails(settings.gcp_project) if on_gcp else None)
+        self.guardrails = guardrails
         self.jira = jira if jira is not None else self._jira()
         self.sf = sf if sf is not None else self._sf()
         if graphs is None:
@@ -93,7 +99,7 @@ class Services:
             if not self.sf:
                 raise HTTPException(503, "Salesforce is not configured on the gateway")
             self._developer = DeveloperAgent(self.settings, self.codex, SalesforceCli(self.settings, self.sf),
-                                             self.jira, self.graphs)
+                                             self.jira, self.graphs, guardrails=self.guardrails)
         return self._developer
 
     def submit(self, run: dict, fn) -> dict:
@@ -261,6 +267,16 @@ def codex_login_complete(body: CompleteLoginBody, svc: Services = Depends(get_se
         raise HTTPException(502, f"Codex sign-in failed: {exc}") from exc
 
 
+@app.get("/v1/guardrails", dependencies=[Depends(require_key)])
+def guardrails(svc: Services = Depends(get_services)) -> dict:
+    """The standards the agents build to (read-only; edited in GCP, not Salesforce)."""
+    pack = svc.guardrails.pack()
+    return {"name": pack.get("name"), "summary": pack.get("summary"), "version": pack.get("version"),
+            "source": "bundled file (Firestore unavailable)" if pack.get("fallback") else
+                      ("Firestore guardrail_rules" if svc.guardrails.source is not None else "bundled file"),
+            "rules": pack.get("rules", [])}
+
+
 @app.get("/v1/codex/plan", dependencies=[Depends(require_key)])
 def codex_plan(svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
     """The developer's Codex plan right now: limits used and credits."""
@@ -300,7 +316,8 @@ def chat(body: ChatBody, svc: Services = Depends(get_services), user: str = Depe
                                       svc.settings.workspace_root,
                                       analysis_get=lambda key: load_analysis(svc, key),
                                       analysis_set=lambda key, record: store_analysis(svc, key, record),
-                                      plan_usage=lambda: svc.sessions.plan_usage(user))
+                                      plan_usage=lambda: svc.sessions.plan_usage(user),
+                                      guardrails=svc.guardrails)
         convo = svc.runs.get_conversation(conversation_id)
         history = convo.get("history", [])
         try:
