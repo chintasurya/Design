@@ -71,6 +71,15 @@ def test_salesforce_ingest_builds_typed_edges():
     assert g.nodes["apex:invoiceservicetest"].properties["is_test"] is True
     assert all("_body" not in n.properties for n in g.nodes.values())
     assert any(n.startswith("objects in scope: Account, Contact, Invoice__c") for n in g.notes)
+    # a field with no FLS is invisible to describe but exists: the Tooling API says so
+    assert g.nodes["field:account.region__c"].properties["fls_hidden"] is True
+    assert g.field_exists("Account", "Region__c")["exists"]
+    assert "field-level security" in g.field_exists("Account", "Region")["note"]
+    assert not g.nodes["field:account.risk_score__c"].properties.get("fls_hidden")
+    # installed packages are left out, and say so
+    assert "sobj:pkg__audit__c" not in g.nodes and "flow:pkg_flow" not in g.nodes
+    assert any("1 managed-package objects left out" in n for n in g.notes)
+    assert any("1 managed-package flows left out" in n for n in g.notes)
 
 
 def test_a_refused_section_becomes_a_note_not_a_failed_build():

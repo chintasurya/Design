@@ -11,6 +11,7 @@ set -euo pipefail
 : "${JIRA_BASE_URL:?set JIRA_BASE_URL}"
 : "${JIRA_EMAIL:?set JIRA_EMAIL}"
 : "${SF_LOGIN_URL:?set SF_LOGIN_URL (the org My Domain, not login.salesforce.com)}"
+# Salesforce login: secret sf-auth-url (SFDX auth URL) if set, else sf-client-id/secret
 GCP_REGION="${GCP_REGION:-us-central1}"
 SERVICE="${SERVICE:-agent-gateway}"
 SA="agent-gateway@${GCP_PROJECT}.iam.gserviceaccount.com"
@@ -24,7 +25,7 @@ ENV_VARS+=",OPENAI_MODEL=${OPENAI_MODEL:-},CODEX_MODEL=${CODEX_MODEL:-},CODEX_SA
 ENV_VARS+=",AUTO_DEPLOY=${AUTO_DEPLOY:-false}"
 
 SECRETS="OPENAI_API_KEY=openai-api-key:latest,JIRA_API_TOKEN=jira-api-token:latest"
-SECRETS+=",SF_CLIENT_ID=sf-client-id:latest,SF_CLIENT_SECRET=sf-client-secret:latest"
+SECRETS+=",SF_AUTH_URL=sf-auth-url:latest,SF_CLIENT_ID=sf-client-id:latest,SF_CLIENT_SECRET=sf-client-secret:latest"
 SECRETS+=",GATEWAY_API_KEY=gateway-api-key:latest"
 
 # --no-cpu-throttling + one instance: agent runs are background threads that

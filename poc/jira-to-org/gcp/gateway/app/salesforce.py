@@ -1,12 +1,18 @@
-"""Salesforce REST/Tooling client using the OAuth client credentials flow.
+"""Salesforce REST/Tooling client.
 
-The External Client App runs as one integration user ("Run As"), so the
-gateway never holds a password or a refresh token. The token endpoint must be
-the org's My Domain: the generic login hosts reject this flow with
-`request not supported on this domain`.
+Two ways in, both against the org's My Domain:
+
+* **SFDX auth URL** (`SF_AUTH_URL`, `force://<client id>:<secret>:<refresh token>@<host>`):
+  the refresh-token grant on the login a person approved in the browser.
+  This is how the POC runs: no app to create in Setup.
+* **Client credentials** (`SF_CLIENT_ID` + `SF_CLIENT_SECRET`): an External
+  Client App with a Run As user, so the gateway holds no refresh token. The
+  token endpoint must be My Domain: the generic login hosts reject this flow
+  with `request not supported on this domain`.
 """
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 from urllib.parse import quote
@@ -21,27 +27,44 @@ class SalesforceError(RuntimeError):
 class SalesforceClient:
     TOKEN_TTL_S = 25 * 60
 
-    def __init__(self, login_url: str, client_id: str, client_secret: str,
-                 api_version: str = "62.0", transport: httpx.BaseTransport | None = None):
-        if not (login_url and client_id and client_secret):
-            raise SalesforceError("Salesforce is not configured (SF_LOGIN_URL, SF_CLIENT_ID, SF_CLIENT_SECRET)")
+    def __init__(self, login_url: str, client_id: str, client_secret: str = "",
+                 api_version: str = "62.0", transport: httpx.BaseTransport | None = None,
+                 refresh_token: str = ""):
+        if not (login_url and client_id and (client_secret or refresh_token)):
+            raise SalesforceError("Salesforce is not configured (SF_AUTH_URL, or SF_LOGIN_URL + "
+                                  "SF_CLIENT_ID + SF_CLIENT_SECRET)")
         self.login_url = login_url.rstrip("/")
         self.client_id = client_id
         self.client_secret = client_secret
+        self.refresh_token = refresh_token
         self.api_version = api_version
         self.transport = transport
         self._token: str | None = None
         self._instance_url: str | None = None
         self._token_at = 0.0
 
+    @classmethod
+    def from_auth_url(cls, auth_url: str, api_version: str = "62.0",
+                      transport: httpx.BaseTransport | None = None) -> "SalesforceClient":
+        match = re.match(r"^force://([^:]+):([^:]*):([^@]+)@(.+)$", auth_url.strip())
+        if not match:
+            raise SalesforceError("SF_AUTH_URL is not an SFDX auth URL (force://id:secret:token@host)")
+        client_id, secret, token, host = match.groups()
+        host = host if host.startswith("http") else f"https://{host}"
+        return cls(host, client_id, secret, api_version, transport, refresh_token=token)
+
     # -- auth ---------------------------------------------------------------
     def _authenticate(self) -> None:
+        if self.refresh_token:
+            data = {"grant_type": "refresh_token", "client_id": self.client_id,
+                    "refresh_token": self.refresh_token}
+            if self.client_secret:
+                data["client_secret"] = self.client_secret
+        else:
+            data = {"grant_type": "client_credentials",
+                    "client_id": self.client_id, "client_secret": self.client_secret}
         with httpx.Client(timeout=30, transport=self.transport) as http:
-            res = http.post(
-                f"{self.login_url}/services/oauth2/token",
-                data={"grant_type": "client_credentials",
-                      "client_id": self.client_id, "client_secret": self.client_secret},
-            )
+            res = http.post(f"{self.login_url}/services/oauth2/token", data=data)
         if res.status_code != 200:
             raise SalesforceError(f"Salesforce token request failed ({res.status_code}): {res.text[:300]}")
         body = res.json()

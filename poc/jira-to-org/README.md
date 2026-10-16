@@ -99,10 +99,17 @@ The token was pasted into a chat, so treat it as exposed. Create a new one at
 one, and use the new one in step 2. It goes into Secret Manager and nowhere
 else.
 
-### 1. Salesforce: an External Client App for the gateway (≈10 min)
+### 1. Salesforce: how the gateway logs in
 
-The gateway reads metadata and deploys with the OAuth **client credentials**
-flow, so it holds no password and no refresh token.
+**What the POC uses: the org login (`SF_AUTH_URL`).** The owner approved a
+Salesforce CLI login in the browser; its SFDX auth URL
+(`force://PlatformCLI::<refresh token>@<my domain>`) goes into Secret Manager
+as `sf-auth-url`, and the gateway refreshes its own access tokens from it.
+Nothing to create in Setup. Revoke it any time under Setup → Connected Apps
+OAuth Usage → Salesforce CLI.
+
+**Alternative: an External Client App with client credentials**, so the
+gateway holds no refresh token. Only needed if you prefer it:
 
 1. Setup → **External Client App Manager** → **New External Client App**.
    Name `Agent Gateway`, distribution **Local**.
@@ -128,7 +135,7 @@ SF_LOGIN_URL=https://orgfarm-0054ddc238-dev-ed.develop.my.salesforce.com
 cd poc/jira-to-org/gcp/infra
 export GCP_PROJECT=<your-project-id> GCP_REGION=us-central1
 export JIRA_API_TOKEN=<the new token>
-export SF_CLIENT_ID=<consumer key> SF_CLIENT_SECRET=<consumer secret>
+export SF_AUTH_URL=<force://... org login>   # or SF_CLIENT_ID + SF_CLIENT_SECRET
 export OPENAI_API_KEY=<optional; you can paste it in the LWC instead>
 ./setup.sh
 ```

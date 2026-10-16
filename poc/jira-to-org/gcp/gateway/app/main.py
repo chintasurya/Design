@@ -71,6 +71,8 @@ class Services:
         s = self.settings
         if not s.salesforce_configured:
             return None
+        if secret("SF_AUTH_URL"):
+            return SalesforceClient.from_auth_url(secret("SF_AUTH_URL"), s.sf_api_version)
         return SalesforceClient(s.sf_login_url, secret("SF_CLIENT_ID"), secret("SF_CLIENT_SECRET"), s.sf_api_version)
 
     def developer(self) -> DeveloperAgent:
@@ -160,7 +162,8 @@ def status(svc: Services = Depends(get_services)) -> dict:
         "codex": svc.codex.status(),
         "jira": {"configured": svc.jira is not None, "project": svc.settings.jira_project_key,
                  "site": svc.settings.jira_base_url},
-        "salesforce": {"configured": svc.sf is not None, "loginUrl": svc.settings.sf_login_url},
+        "salesforce": {"configured": svc.sf is not None,
+                       "loginUrl": svc.sf.login_url if svc.sf else svc.settings.sf_login_url},
         "graph": graph,
         "autoDeploy": svc.settings.auto_deploy,
     }

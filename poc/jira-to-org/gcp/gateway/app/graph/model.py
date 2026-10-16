@@ -166,9 +166,12 @@ class Graph:
             names = {slug(re.sub(r"__c$", "", f.api_name.split(".")[-1], flags=re.I)).replace("_", ""),
                      slug(f.properties.get("label", "")).replace("_", "")}
             if want in names:
-                return {"object_found": True, "object": obj.api_name, "exists": True,
-                        "field": f.api_name, "label": f.properties.get("label"),
-                        "data_type": f.properties.get("type")}
+                found = {"object_found": True, "object": obj.api_name, "exists": True,
+                         "field": f.api_name, "label": f.properties.get("label"),
+                         "data_type": f.properties.get("type")}
+                if f.properties.get("fls_hidden"):
+                    found["note"] = "exists but no field-level security grants access; reuse it and grant FLS"
+                return found
         return {"object_found": True, "object": obj.api_name, "exists": False}
 
     def search(self, text: str, limit: int = 12, types: Iterable[str] | None = None) -> list[tuple[Node, float]]:
@@ -281,6 +284,6 @@ class Graph:
 
 
 def _short_props(n: Node) -> dict:
-    keep = ("label", "type", "status", "summary", "process_type", "trigger_object",
+    keep = ("label", "type", "status", "summary", "process_type", "trigger_object", "fls_hidden",
             "events", "custom", "reference_to", "active", "error_message", "description")
     return {k: v for k, v in n.properties.items() if k in keep and v not in (None, "", [])}

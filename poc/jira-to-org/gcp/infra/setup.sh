@@ -6,7 +6,8 @@
 #
 #   export GCP_PROJECT=my-project GCP_REGION=us-central1
 #   export JIRA_API_TOKEN=...            # required
-#   export SF_CLIENT_ID=... SF_CLIENT_SECRET=...   # from the External Client App
+#   export SF_AUTH_URL=force://...       # the org login (sfdxAuthUrl); or, instead:
+#   export SF_CLIENT_ID=... SF_CLIENT_SECRET=...   # an External Client App with Run As
 #   export OPENAI_API_KEY=...            # optional: or paste it in the LWC on first connect
 #   ./setup.sh
 set -euo pipefail
@@ -47,6 +48,7 @@ put_secret() {
 
 echo "== secrets"
 put_secret jira-api-token "${JIRA_API_TOKEN:-}"
+put_secret sf-auth-url "${SF_AUTH_URL:-}"
 put_secret sf-client-id "${SF_CLIENT_ID:-}"
 put_secret sf-client-secret "${SF_CLIENT_SECRET:-}"
 put_secret openai-api-key "${OPENAI_API_KEY:-}"

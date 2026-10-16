@@ -69,7 +69,8 @@ class Settings:
 
     @property
     def salesforce_configured(self) -> bool:
-        return bool(self.sf_login_url and secret("SF_CLIENT_ID") and secret("SF_CLIENT_SECRET"))
+        return bool(secret("SF_AUTH_URL")
+                    or (self.sf_login_url and secret("SF_CLIENT_ID") and secret("SF_CLIENT_SECRET")))
 
 
 def load() -> Settings:

@@ -60,3 +60,22 @@ def test_simplify_flattens_links_and_comments():
     t = simplify(raw, "u")
     assert t["links"] == [{"key": "KAN-4", "relation": "blocks", "summary": "T"}]
     assert t["recent_comments"] == ["looks good"]
+
+
+def test_salesforce_auth_url_uses_the_refresh_token_grant():
+    from app.salesforce import SalesforceClient
+
+    seen = {}
+
+    def handler(req: httpx.Request):
+        if req.url.path == "/services/oauth2/token":
+            seen.update(dict(httpx.QueryParams(req.content.decode())))
+            return httpx.Response(200, json={"access_token": "00D!x", "instance_url": "https://org.my.salesforce.com"})
+        assert req.headers["Authorization"] == "Bearer 00D!x"
+        return httpx.Response(200, json={"sub": "x"})
+
+    sf = SalesforceClient.from_auth_url("force://PlatformCLI::5Aep861rt@org.my.salesforce.com",
+                                        transport=httpx.MockTransport(handler))
+    assert sf.login_url == "https://org.my.salesforce.com"
+    sf.userinfo()
+    assert seen == {"grant_type": "refresh_token", "client_id": "PlatformCLI", "refresh_token": "5Aep861rt"}

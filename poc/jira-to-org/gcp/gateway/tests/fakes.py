@@ -50,6 +50,8 @@ def sample_graph() -> Graph:
 class FakeSalesforce:
     """Duck-types SalesforceClient."""
 
+    login_url = "https://example.my.salesforce.com"
+
     def __init__(self) -> None:
         self.tooling_calls: list[str] = []
 
@@ -59,7 +61,8 @@ class FakeSalesforce:
     def describe_global(self):
         return [{"name": "Account", "label": "Account", "labelPlural": "Accounts", "custom": False},
                 {"name": "Contact", "label": "Contact", "labelPlural": "Contacts", "custom": False},
-                {"name": "Invoice__c", "label": "Invoice", "labelPlural": "Invoices", "custom": True}]
+                {"name": "Invoice__c", "label": "Invoice", "labelPlural": "Invoices", "custom": True},
+                {"name": "pkg__Audit__c", "label": "Audit", "labelPlural": "Audits", "custom": True}]
 
     def describe(self, name):
         fields = {
@@ -91,7 +94,10 @@ class FakeSalesforce:
         if "FROM FlowDefinitionView" in soql:
             return [{"ApiName": "Invoice_On_Create", "Label": "Invoice On Create", "ProcessType": "AutoLaunchedFlow",
                      "TriggerType": "RecordAfterSave", "TriggerObjectOrEventLabel": "Invoice", "IsActive": True,
-                     "ActiveVersionId": "301000000000001"}]
+                     "ActiveVersionId": "301000000000001"},
+                    {"ApiName": "Pkg_Flow", "Label": "Pkg Flow", "TriggerType": "RecordAfterSave",
+                     "TriggerObjectOrEventLabel": "Account", "IsActive": True, "ActiveVersionId": "301000000000009",
+                     "NamespacePrefix": "pkg"}]
         raise AssertionError(soql)
 
     def tooling_query(self, soql):
@@ -99,7 +105,8 @@ class FakeSalesforce:
         if "FROM CustomObject" in soql:
             return [{"Id": "01I000000000001AAA", "DeveloperName": "Invoice", "NamespacePrefix": None}]
         if "FROM CustomField" in soql:
-            return [{"Id": "00N000000000001AAA", "DeveloperName": "Risk_Score", "TableEnumOrId": "Account"}]
+            return [{"Id": "00N000000000001AAA", "DeveloperName": "Risk_Score", "TableEnumOrId": "Account"},
+                    {"Id": "00N000000000002AAA", "DeveloperName": "Region", "TableEnumOrId": "Account"}]
         if "FROM Flow WHERE" in soql:
             return [{"Metadata": {"recordUpdates": [{"inputReference": "$Record",
                                                      "inputAssignments": [{"field": "Status__c"}]}],

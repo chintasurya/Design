@@ -17,6 +17,11 @@ SF_ID = re.compile(r"^[a-zA-Z0-9]{15}([a-zA-Z0-9]{3})?$")
 MAX_OBJECTS = 150
 
 
+def is_managed(api: str) -> bool:
+    """`ns__Thing__c` belongs to an installed package: not ours to change."""
+    return api.count("__") >= 2
+
+
 def sobj_id(api: str) -> str:
     return f"sobj:{api.lower()}"
 
@@ -63,6 +68,7 @@ class SalesforceIngest:
         _safely(g, "describeGlobal", self._global)
         _safely(g, "custom object ids", self._custom_ids)
         _safely(g, "objects", self._objects)
+        _safely(g, "fields hidden from describe", self._hidden_fields)
         _safely(g, "apex classes", self._classes)
         _safely(g, "apex triggers", self._triggers)
         _safely(g, "flows", self._flows)
@@ -84,7 +90,10 @@ class SalesforceIngest:
             self.api_names[o["name"].lower()] = o["name"]
             self.label_to_api[o["label"].lower()] = o["name"]
             self.label_to_api.setdefault(o.get("labelPlural", "").lower(), o["name"])
-        custom = sorted(a for a in self.api_names.values() if a.endswith("__c"))
+        custom = sorted(a for a in self.api_names.values() if a.endswith("__c") and not is_managed(a))
+        managed = sum(1 for a in self.api_names.values() if a.endswith("__c") and is_managed(a))
+        if managed:
+            self.graph.notes.append(f"{managed} managed-package objects left out (installed packages, not editable)")
         standard = [self.api_names[s.lower()] for s in self.standard_objects if s.lower() in self.api_names]
         self.scoped = (standard + custom)[:MAX_OBJECTS]
         if len(standard) + len(custom) > MAX_OBJECTS:
@@ -133,6 +142,29 @@ class SalesforceIngest:
                                 properties={"label": rt.get("name"), "active": rt.get("active")}))
                 g.add_edge(Edge("SOBJECT_HAS_RECORDTYPE", oid, rid))
 
+    def _hidden_fields(self) -> None:
+        """Describe only returns fields the running user has field-level
+        security on. A field deployed without FLS exists but is invisible
+        there, and an agent told it is absent would try to create it again.
+        The Tooling API is the authority on existence."""
+        hidden = []
+        for obj, field in self.custom_field_ids.values():
+            oid = sobj_id(obj)
+            if oid not in self.graph.nodes or self.graph.nodes[oid].properties.get("boundary"):
+                continue
+            fid = f"field:{obj.lower()}.{field.lower()}"
+            if fid in self.graph.nodes:
+                continue
+            label = field[:-3].replace("_", " ")
+            self.graph.add_node(Node(fid, "Field", label, f"{obj}.{field}", properties={
+                "label": label, "custom": True, "fls_hidden": True,
+                "note": "exists, but no field-level security grants anyone access"}))
+            self.graph.add_edge(Edge("SOBJECT_HAS_FIELD", oid, fid, origin="tooling-api"))
+            hidden.append(f"{obj}.{field}")
+        if hidden:
+            self.graph.notes.append(f"{len(hidden)} fields exist with no field-level security (invisible to users): "
+                                    + ", ".join(sorted(hidden)[:20]))
+
     def _classes(self) -> None:
         rows = self.sf.query("SELECT Id, Name, ApiVersion, Status, Body FROM ApexClass "
                              "WHERE NamespacePrefix = null ORDER BY Name LIMIT 2000")
@@ -163,9 +195,13 @@ class SalesforceIngest:
         g = self.graph
         rows = self.sf.query(
             "SELECT Id, ApiName, Label, ProcessType, TriggerType, TriggerObjectOrEventLabel, IsActive, "
-            "ActiveVersionId, Description FROM FlowDefinitionView LIMIT 200")
+            "ActiveVersionId, Description, NamespacePrefix FROM FlowDefinitionView LIMIT 200")
         if len(rows) == 200:
             g.notes.append("FlowDefinitionView returned 200 rows, its single-batch maximum; some flows may be missing")
+        managed = [r for r in rows if r.get("NamespacePrefix")]
+        rows = [r for r in rows if not r.get("NamespacePrefix")]
+        if managed:
+            g.notes.append(f"{len(managed)} managed-package flows left out (their internals are hidden by Salesforce)")
         active: list[tuple[str, str, str | None]] = []
         for r in rows:
             fid = f"flow:{r['ApiName'].lower()}"
@@ -178,14 +214,17 @@ class SalesforceIngest:
                 g.add_edge(Edge("FLOW_TRIGGERS_ON_SOBJECT", fid, self.ensure_sobject(obj)))
             if r.get("IsActive") and r.get("ActiveVersionId"):
                 active.append((fid, r["ActiveVersionId"], obj))
+        unreadable: list[str] = []
         for fid, version_id, trigger_obj in active[: self.flow_metadata_max]:
             try:
                 rec = self.sf.tooling_query(f"SELECT Id, Metadata FROM Flow WHERE Id = '{version_id}'")
-            except Exception as exc:  # noqa: BLE001
-                g.notes.append(f"flow metadata unreadable ({str(exc)[:100]}); flow internals not in graph")
-                return
+            except Exception as exc:  # noqa: BLE001 - one unreadable flow must not hide the rest
+                unreadable.append(f"{fid} ({str(exc)[-120:]})")
+                continue
             if rec:
                 self._flow_internals(fid, rec[0].get("Metadata") or {}, trigger_obj)
+        if unreadable:
+            g.notes.append(f"internals unreadable for {len(unreadable)} flows: {'; '.join(unreadable[:3])}")
         if len(active) > self.flow_metadata_max:
             g.notes.append(f"flow internals read for {self.flow_metadata_max} of {len(active)} active flows")
 
