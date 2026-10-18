@@ -80,16 +80,16 @@ def hld_slide(prs, layout):
     badge(cv, lx + 0.1, 1.98, 1)
     cv.text(lx + 0.33, 1.98, 1.8, 0.19, "gives inputs", size=6.3, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
     card(cv, lx + 0.1, 2.22, lw - 0.2, 1.02, "Salesforce LWC · Agentic Harness console",
-         "Enter the Jira key or the requirement, pick the pod, attach the design. Approve at each gate and "
-         "watch every step, with Ascension SSO.", fill=CYAN_T, line=CYAN_D, lw=1.25)
+         "Connect to Codex, enter the Jira key or the requirement, pick the pod, attach the design. Approve "
+         "at each gate and watch every step.", fill=CYAN_T, line=CYAN_D, lw=1.25)
     cv.arrow(lx + lw / 2, 3.24, lx + lw / 2, 3.5, BLACK, 1.25)
     cv.text(lx + lw / 2 + 0.06, 3.27, 1.05, 0.2, "Apex · Named Credential", size=5.8, color=MUTE,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.rect(lx + 0.1, 3.5, lw - 0.2, 1.12, BLACK, None, shape=R, radius=0.06)
     cv.text(lx + 0.18, 3.56, lw - 0.36, 1.02,
             [[("OpenAI Codex · ADLC skills", {"bold": True, "size": 7.5})],
-             [("Starts the run from the Jira key. The harness-deliver skill runs the ADLC skills: understand, design, "
-               "build, verify, promote, release, close. Developers can also use the Codex CLI or IDE.",
+             [("Each user signs in to their own Codex Enterprise account (SSO). The run starts from the Jira key; "
+               "the ADLC skills take it through understand, design, build, verify, promote, release and close.",
                {"color": "D9D9D9"})]], size=6.3, color=WHITE, after=1)
     cv.rect(lx + 0.1, 4.72, lw - 0.2, 1.13, GREEN_T, GREEN, 0.75, R, 0.06)
     checks = ["No production identity for any agent", "No agent approves its own work",
