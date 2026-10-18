@@ -71,6 +71,14 @@ def gate_step(title, text, agents, systems, strip, gate, nxt, extra_frames=(), e
                 chips=[approved(gate, nxt)], callout=(3.0, 1.38, 6.2), arrow_color=GREEN_OK)
 
 
+# the EVALS tags under the agent steps of the bottom strip (01, 02, 03, 04, 05, 07)
+EVAL_IDX = (0, 2, 4, 5, 7, 10)
+EVAL_TAGS = [(CHIP(i)[0] + (SW - 0.46) / 2, 6.54, 0.46, 0.16) for i in EVAL_IDX]
+EVAL_ROW = (CHIP(0)[0] - 0.05, 6.49, CHIP(10)[0] + SW - CHIP(0)[0] + 0.1, 0.27)
+EVAL_NOTE = (10.5, 6.52, 2.35, "EVERY STEP SCORED · SCORE UPDATED", BLACK)
+EVAL_NOTE_HOLE = (10.46, 6.48, 2.43, 0.28)
+
+
 STEPS = [
     dict(title="Start in Salesforce",
          text="Campaign story VBC-412: the CHF post-discharge SMS nudge. The marketer enters the Jira key, picks "
@@ -104,19 +112,21 @@ STEPS = [
          chips=[], callout=(0.5, 3.15, 4.3)),
     dict(title="Evals on every step: pass",
          text="Every output is scored before it moves on: does the journey match the brief, is every field real, "
-              "are consent and STOP checks in place. A pass goes to the gate with the evidence.",
-         spots=[(2.98, 3.02, 4.95, 1.9)],
-         frames=[(4.97, 4.25, 2.9, 0.62), APPROVAL],
+              "are consent and STOP checks in place. Each step is evaluated and its score updated (the EVALS tags "
+              "below); a pass goes to the gate with the evidence.",
+         spots=[(2.98, 3.02, 4.95, 1.9), EVAL_ROW, EVAL_NOTE_HOLE],
+         frames=[(4.97, 4.25, 2.9, 0.62), APPROVAL] + EVAL_TAGS,
          arrows=[[(6.42, 4.17), (6.42, 4.25)], [(4.97, 4.56), (4.87, 4.56)]],
-         chips=[(4.45, 4.03, 0.95, "PASS → GATE", GREEN_OK)], callout=(8.1, 3.1, 4.7)),
+         chips=[(4.45, 4.03, 0.95, "PASS → GATE", GREEN_OK), EVAL_NOTE], callout=(8.1, 3.1, 4.7)),
     dict(title="Fail: a bounded retry",
          text="A failed check goes back to the agent with the reason, at most five times. Then the step stops, "
               "nothing is released, and a named owner takes over. No infinite loops.",
-         spots=[(2.98, 3.02, 4.95, 1.9)],
-         frames=[(4.97, 4.25, 2.9, 0.62), (4.97, 3.12, 2.9, 1.05)],
+         spots=[(2.98, 3.02, 4.95, 1.9), EVAL_ROW, EVAL_NOTE_HOLE],
+         frames=[(4.97, 4.25, 2.9, 0.62), (4.97, 3.12, 2.9, 1.05)] + EVAL_TAGS,
          arrows=[[(7.87, 4.56), (8.3, 4.56), (8.3, 3.62), (7.87, 3.62)], [(6.42, 4.87), (6.42, 5.05)]],
          chips=[(8.38, 3.95, 1.3, "FAIL · RETRY ≤ 5", RED),
-                (5.35, 5.06, 2.15, "AFTER 5 → NAMED OWNER", RED)],
+                (5.35, 5.06, 2.15, "AFTER 5 → NAMED OWNER", RED),
+                (10.5, 6.52, 2.35, "FAIL SCORED · RETRY RE-SCORED", BLACK)],
          callout=(8.1, 2.15, 4.7), arrow_color=RED),
     gate_step("H1 · requirements approved",
               "The Requirements Agent posts the brief to the Jira story as a comment: audience, consent rules, "
@@ -337,7 +347,7 @@ Advance with Enter, Down arrow, Space or a click. The slide opens on the full de
 
 [CLICK 4  Gateway] Any action on Git, Salesforce, Marketing Cloud or Copado goes through the MCP gateway with the identity allowed for that step. The Change Guardian checks which other pods share the same data extensions, short code and STOP keyword.
 
-[CLICK 5  Evals: pass] Every output is scored before it moves on. A pass goes to the gate, with the evidence.
+[CLICK 5  Evals: pass] Every output is scored before it moves on. Look at the EVALS tags along the bottom: each agent step is evaluated and its score updated, run by run. A pass goes to the gate, with the evidence.
 
 [CLICK 6  Evals: fail] If a check fails, the result goes back for correction, at most five times, then a named owner takes over.
 
