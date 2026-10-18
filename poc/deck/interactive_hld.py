@@ -20,7 +20,8 @@ R = MSO_SHAPE.ROUNDED_RECTANGLE
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 
 # gate chips on the bottom strip (same geometry as review_slides.hld_slide)
-CHIP = lambda i: (1.55 + i * 0.87, 6.07, 0.82, 0.42)
+SX, SW, SG = review_slides.STRIP_X0, review_slides.STRIP_W, review_slides.STRIP_GAP
+CHIP = lambda i: (SX + i * (SW + SG), 6.07, SW, 0.42)
 
 # agent chips inside "Agent workers" and rows in "Systems of record" (geometry from review_slides.hld_slide)
 AG = {"req": (5.05, 3.39, 1.33, 0.22), "arch": (6.46, 3.39, 1.33, 0.22), "dev": (5.05, 3.645, 1.33, 0.22),
@@ -42,13 +43,13 @@ def rows(*keys):
 def chips(*idx):
     """One spotlight hole over consecutive bottom-strip chips."""
     x0, _, _, _ = CHIP(min(idx))
-    x1 = CHIP(max(idx))[0] + 0.82
+    x1 = CHIP(max(idx))[0] + SW
     return (x0 - 0.03, 6.03, x1 - x0 + 0.06, 0.5)
 
 
 def approved(i, t):
     """Green marker over gate chip i: approved, the run moves on."""
-    x = CHIP(i)[0] + 0.41
+    x = CHIP(i)[0] + SW / 2
     return (x - 0.8, 6.53, 1.6, t, GREEN_OK)
 
 
@@ -63,7 +64,7 @@ def gate_step(title, text, agents, systems, strip, gate, nxt, extra_frames=(), e
                  max(b[1] + b[3] for b in ax_) - min(b[1] for b in ax_) + 0.1) if ax_ else None
     spots = ([agent_box] if agent_box else []) + sysbox + [st_, APPROVAL]
     spots += list(extra_spots)
-    gx = CHIP(gate)[0] + 0.41
+    gx = CHIP(gate)[0] + SW / 2
     return dict(title=title, text=text, spots=spots, frames=frames,
                 arrows=[[(APPROVAL[0] + APPROVAL[2] / 2, APPROVAL[1] + APPROVAL[3]),
                          (APPROVAL[0] + APPROVAL[2] / 2, 5.96), (gx, 5.96), (gx, 6.07)]],
@@ -133,21 +134,21 @@ STEPS = [
               "and security approve at H3.",
               ["dev", "rev", "test"], ["git", "sf"], (4, 5, 6), 6, "H3 APPROVED → 05 PROMOTE",
               extra_frames=[(4.97, 4.25, 2.9, 0.62)], extra_spots=[(4.93, 4.21, 2.98, 0.7)]),
-    gate_step("H4 · business UAT signed (step 06)",
+    gate_step("06 UAT, then H4 · business sign-off",
               "The Release Agent promotes the campaign through Copado to SIT and UAT. Marketing and clinical "
               "owners test every message variant and sign off UAT at H4.",
-              ["rel"], ["zephyr", "copado"], (7, 8), 8, "H4 SIGNED → 07 PREPARE"),
+              ["rel"], ["zephyr", "copado"], (7, 8, 9), 9, "H4 SIGNED → 07 PREPARE"),
     gate_step("CAB · release approved",
               "The Release Agent builds the CAB pack from the change passport: evidence, test results, rollback "
               "plan. CAB approves the release, exactly as today.",
-              ["rel"], [], (9, 10), 10, "CAB APPROVED → 08 DEPLOY",
+              ["rel"], [], (10, 11), 11, "CAB APPROVED → 08 DEPLOY",
               extra_frames=[PASSPORT], extra_spots=[(5.5, 5.02, 1.7, 0.9)]),
     dict(title="Production: the owning team deploys",
          text="The owning team activates the journey in production through its own pipeline. No agent holds a "
               "production credential. Step 09 closes the Jira story and resyncs the knowledge graph.",
-         spots=[chips(11, 12), (10.55, 5.3, 2.28, 0.66), SYS["jira"]],
-         frames=[(CHIP(11)[0], 6.07, 1.69, 0.42), SYS["prod"], SYS["jira"]],
-         arrows=[[(1.55 + 11 * 0.87 + 0.41, 6.07), (1.55 + 11 * 0.87 + 0.41, 5.91)]],
+         spots=[chips(12, 13), (10.55, 5.3, 2.28, 0.66), SYS["jira"]],
+         frames=[(CHIP(12)[0], 6.07, 2 * SW + SG, 0.42), SYS["prod"], SYS["jira"]],
+         arrows=[[(CHIP(12)[0] + SW / 2, 6.07), (CHIP(12)[0] + SW / 2, 5.91)]],
          chips=[], callout=(3.0, 1.38, 6.2)),
     dict(title="Evidence on every change",
          text="Every step and every approval lands in the change passport; cycle time, defects, rework and cost "
@@ -348,7 +349,7 @@ Now the most important part: nothing moves without a person.
 
 [CLICK 9  H3] The Developer Agent builds in the Marketing Cloud dev business unit; Review and Test Agents check it and the evals score it. Tech lead and security approve at H3.
 
-[CLICK 10  H4, step 06] The Release Agent promotes through Copado to SIT and UAT. Marketing and clinical owners test every message variant and sign off UAT.
+[CLICK 10  06 UAT, then H4] The Release Agent promotes through Copado to SIT and UAT (step 05). In step 06, marketing and clinical owners test every message variant; they sign off at H4.
 
 [CLICK 11  CAB] The CAB pack comes from the change passport. CAB approves the release, exactly as today.
 

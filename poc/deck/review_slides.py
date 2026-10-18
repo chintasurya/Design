@@ -18,6 +18,7 @@ from story_slides import money
 
 CYAN_D, GOLD, INK = "0097AD", "C9A800", "2B2B2B"
 R = MSO_SHAPE.ROUNDED_RECTANGLE
+STRIP_X0, STRIP_W, STRIP_GAP = 1.55, 0.76, 0.05      # the "each run" step strip along the bottom
 LOGO_DIR = os.path.join(HERE, "assets", "logos")
 
 
@@ -317,9 +318,10 @@ def hld_slide(prs, layout):
     steps = [("01 Understand", "Requirements", "s"), ("H1", "product owner", "g"), ("02 Design", "Architect + CG", "s"),
              ("H2", "architect + pods", "g"), ("03 Build", "Developer", "s"), ("04 Verify", "Review + Test", "s"),
              ("H3", "tech lead + security", "g"), ("05 Promote", "Release · SIT, UAT", "s"),
-             ("06 UAT · H4", "business sign-off", "g"), ("07 Prepare", "Release · CAB pack", "s"), ("CAB", "release owner", "g"),
+             ("06 UAT", "business testers", "s"),
+             ("H4", "business sign-off", "g"), ("07 Prepare", "Release · CAB pack", "s"), ("CAB", "release owner", "g"),
              ("08 Deploy", "owning team", "n"), ("09 Close", "resync, Jira Done", "s")]
-    x0, cwid, gap = 1.55, 0.82, 0.05
+    x0, cwid, gap = STRIP_X0, STRIP_W, STRIP_GAP
     for i, (n, sub, kind) in enumerate(steps):
         x = x0 + i * (cwid + gap)
         fill, line, dash = {"s": (WHITE, CYAN_D, None), "g": (YELLOW, YELLOW, None),
@@ -328,7 +330,7 @@ def hld_slide(prs, layout):
         cv.text(x + 0.03, sy, cwid - 0.06, 0.42, [[(n, {"bold": True, "size": 6.5})], [(sub, {"size": 5.3,
                                                                                              "color": INK})]],
                 size=6, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-        if kind == "s" and n != "09 Close":
+        if kind == "s" and n not in ("06 UAT", "09 Close"):
             eval_tag(cv, x + (cwid - 0.46) / 2, sy + 0.47)
         if i < len(steps) - 1:
             cv.arrow(x + cwid, sy + 0.21, x + cwid + gap, sy + 0.21, MUTE, 0.75)

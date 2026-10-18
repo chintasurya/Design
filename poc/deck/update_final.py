@@ -12,6 +12,7 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from build_mad_ig_deck import HERE, set_notes
+import interactive_hld
 import review_slides
 
 FINAL = os.path.join(HERE, "source", "Ascension Agentic Harness - final.pptx")
@@ -176,7 +177,7 @@ EDITS = {"ASCENSION AGENTIC HARNESS \u00b7 PLATFORM": platform_slide,
 #   INSERT_AFTER: a new slide right after the slide with this eyebrow
 #   REPLACE:      the slide with this eyebrow is swapped for the new one
 #   TO_BACKUP:    the slide moves behind Thank you, after the back-up slides already there
-INSERT_AFTER = {"ASCENSION AGENTIC HARNESS \u00b7 PLATFORM": review_slides.hld_slide}
+INSERT_AFTER = {"ASCENSION AGENTIC HARNESS \u00b7 PLATFORM": interactive_hld.hld_interactive_slide}
 REPLACE = {"ASCENSION AGENTIC HARNESS \u00b7 WHAT IT MEANS FOR ASCENSION": review_slides.roi_slide,
            "ASCENSION AGENTIC HARNESS \u00b7 DELIVERY TEAM": review_slides.team_cost_slide}
 TO_BACKUP = ["ASCENSION AGENTIC HARNESS \u00b7 COMMERCIALS"]   # its content now lives on the team and cost slide
