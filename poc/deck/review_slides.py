@@ -47,6 +47,21 @@ def eval_tag(cv, x, y, w=0.46):
             track=120)
 
 
+PILLARS = ["Context", "Action", "Orchestration", "Control", "Feedback"]
+
+
+def pillar_tag(cv, x, y, n, right=False):
+    """Harness-engineering pillar marker, as on the harness engineering slide: black, cyan number."""
+    name = PILLARS[n - 1].upper()
+    w = 0.27 + 0.052 * len(name)
+    if right:
+        x -= w
+    cv.rect(x, y, w, 0.17, BLACK, CYAN, 0.75, R, 0.5)
+    cv.text(x, y, w, 0.17, [[("%02d  " % n, {"color": CYAN}), (name, {})]], size=5.2, bold=True, color=WHITE,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=60)
+    return w
+
+
 def badge(cv, x, y, n):
     cv.rect(x, y, 0.19, 0.19, BLACK, WHITE, 0.75, MSO_SHAPE.OVAL)
     cv.text(x, y, 0.19, 0.19, str(n), size=6.5, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
@@ -70,6 +85,14 @@ WHERE THE EVALS RUN (the yellow boxes)
 - On every step: each agent's output is scored before it moves on (answer relevancy, groundedness, tool sequence, pass@k). Pass goes to the next gate; a fail retries with the feedback, at most five times, then goes to a named owner.
 - Before any change to the harness: the eval gate in Cloud Build runs the golden set and a held-out set before any prompt, skill or model change; a weekly blind sample is labelled by Ascension's experts.
 - At each gate, approvers see the eval scores with the evidence.
+
+WHERE HARNESS ENGINEERING SHOWS (the black numbered tags, same five pillars as the harness engineering slide)
+- 01 Context: the knowledge graph. Agents get cited facts and a bounded slice, never a raw org dump.
+- 02 Action: the MCP tool gateway. Agents act only through approved tools, with one of three identities.
+- 03 Orchestration: the run loop. Nine durable steps, checkpoints, retries, gates.
+- 04 Control: the Change Guardian, Model Armor and the human gates. Rules the agents cannot break.
+- 05 Feedback: the eval gate, the change passport and the per-pod measures. How the harness gets better.
+Codex is the engine; everything inside the dashed frame is the harness we build around it.
 
 BOTTOM ROW
 The nine steps of every run, with the four human gates and CAB. The yellow EVALS marks show the steps scored before they move."""
@@ -122,10 +145,16 @@ def hld_slide(prs, layout):
     gx, gw = 2.83, 7.53
     cv.rect(gx, top, gw, bot - top, None, NAVY, 1.0, R, 0.02, dash="dash")
     logo(cv, "googlecloud", gx + 0.12, top + 0.03, 0.17)
-    cv.text(gx + 0.34, top + 0.02, 3.0, 0.2, [[("Google Cloud", {"bold": True}), ("  Ascension project",
-                                                                                 {"color": MUTE})]],
+    cv.text(gx + 0.34, top + 0.02, 3.0, 0.2, [[("The Agentic Harness", {"bold": True}),
+                                              ("  on Google Cloud", {"color": MUTE})]],
             size=7, anchor=MSO_ANCHOR.MIDDLE)
     ix, iw = gx + 0.12, gw - 0.24
+    # key: the five harness-engineering pillars, each tagged where it lives
+    kx = gx + gw - 0.12
+    for n in range(5, 0, -1):
+        kx -= pillar_tag(cv, kx, top + 0.035, n, right=True) + 0.03
+    cv.text(kx - 1.75, top + 0.02, 1.7, 0.2, "HARNESS ENGINEERING", size=6, bold=True, track=120,
+            align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
 
     # phase 1: knowledge graph
     p1y, p1h = 1.55, 1.2
@@ -145,6 +174,7 @@ def hld_slide(prs, layout):
          "link before anything is stored.", line=VIOLET)
     cv.arrow(ix + 4.75, by + bh / 2, ix + 4.65, by + bh / 2, VIOLET, 1.25)
     cv.arrow(ix + 2.8, by + bh / 2, ix + 2.7, by + bh / 2, VIOLET, 1.25)
+    pillar_tag(cv, ix + iw - 0.1, p1y - 0.085, 1, right=True)
 
     # phase 2: runtime
     p2y, p2h = 2.92, 2.05
@@ -199,6 +229,9 @@ def hld_slide(prs, layout):
                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(gx2 + 0.08, ry + 1.5, gw2 - 0.16, 0.2, "No production identity for any agent.", size=6, bold=True,
             color=MAGENTA, anchor=MSO_ANCHOR.MIDDLE)
+    pillar_tag(cv, ix + 1.88, ry - 0.125, 3, right=True)
+    pillar_tag(cv, gx2 + gw2 - 0.06, ry - 0.125, 4, right=True)
+    pillar_tag(cv, gx2 + gw2 - 0.06, ry + 0.7 - 0.125, 2, right=True)
     # flow arrows inside phase 2
     cv.arrow(ix + 1.92, ry + 0.5, ax, ry + 0.5, BLACK, 1.25)
     cv.arrow(ax + aw, ry + 1.0, gx2, ry + 1.0, MAGENTA, 1.5)
@@ -218,6 +251,7 @@ def hld_slide(prs, layout):
              [("Golden set + held-out set pass before any prompt, skill or model change. Weekly blind sample "
                "labelled by your experts.", {})]], size=6.1, after=1)
     eval_tag(cv, ix + 2.5 - 0.54, uy + 0.06)
+    pillar_tag(cv, ix + 0.1, uy - 0.125, 5)
     card(cv, ix + 2.6, uy, 1.6, uh, "Change passport · BigQuery", "One hash-chained row per event: "
                                                                   "tamper-evident.")
     card(cv, ix + 4.3, uy, 1.35, uh, "Measured per pod", "Cycle time, rework, defects, cost per change.")
