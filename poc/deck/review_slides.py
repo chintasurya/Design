@@ -317,7 +317,7 @@ def hld_slide(prs, layout):
     steps = [("01 Understand", "Requirements", "s"), ("H1", "product owner", "g"), ("02 Design", "Architect + CG", "s"),
              ("H2", "architect + pods", "g"), ("03 Build", "Developer", "s"), ("04 Verify", "Review + Test", "s"),
              ("H3", "tech lead + security", "g"), ("05 Promote", "Release · SIT, UAT", "s"),
-             ("H4", "business UAT", "g"), ("07 Prepare", "Release · CAB pack", "s"), ("CAB", "release owner", "g"),
+             ("06 UAT · H4", "business sign-off", "g"), ("07 Prepare", "Release · CAB pack", "s"), ("CAB", "release owner", "g"),
              ("08 Deploy", "owning team", "n"), ("09 Close", "resync, Jira Done", "s")]
     x0, cwid, gap = 1.55, 0.82, 0.05
     for i, (n, sub, kind) in enumerate(steps):

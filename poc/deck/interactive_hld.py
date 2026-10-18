@@ -22,40 +22,90 @@ P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 # gate chips on the bottom strip (same geometry as review_slides.hld_slide)
 CHIP = lambda i: (1.55 + i * 0.87, 6.07, 0.82, 0.42)
 
+# agent chips inside "Agent workers" and rows in "Systems of record" (geometry from review_slides.hld_slide)
+AG = {"req": (5.05, 3.39, 1.33, 0.22), "arch": (6.46, 3.39, 1.33, 0.22), "dev": (5.05, 3.645, 1.33, 0.22),
+      "rev": (6.46, 3.645, 1.33, 0.22), "test": (5.05, 3.9, 1.33, 0.22), "rel": (6.46, 3.9, 1.33, 0.22)}
+SYS = {"jira": (10.5, 1.6, 2.38, 0.6), "conf": (10.5, 2.2, 2.38, 0.6), "drive": (10.5, 2.8, 2.38, 0.42),
+       "git": (10.5, 3.2, 2.38, 0.58), "sf": (10.5, 3.77, 2.38, 0.58), "zephyr": (10.5, 4.35, 2.38, 0.42),
+       "copado": (10.5, 4.76, 2.38, 0.58), "prod": (10.6, 5.36, 2.18, 0.55)}
+APPROVAL = (3.05, 4.25, 1.82, 0.62)
+PASSPORT = (5.55, 5.07, 1.6, 0.8)
+
+
+def rows(*keys):
+    """One frame or hole over neighbouring system rows."""
+    bs = [SYS[k_] for k_ in keys]
+    x0, y0 = min(b[0] for b in bs), min(b[1] for b in bs)
+    return (x0, y0, max(b[0] + b[2] for b in bs) - x0, max(b[1] + b[3] for b in bs) - y0)
+
+
+def chips(*idx):
+    """One spotlight hole over consecutive bottom-strip chips."""
+    x0, _, _, _ = CHIP(min(idx))
+    x1 = CHIP(max(idx))[0] + 0.82
+    return (x0 - 0.03, 6.03, x1 - x0 + 0.06, 0.5)
+
+
+def approved(i, t):
+    """Green marker over gate chip i: approved, the run moves on."""
+    x = CHIP(i)[0] + 0.41
+    return (x - 0.8, 6.53, 1.6, t, GREEN_OK)
+
+
+def gate_step(title, text, agents, systems, strip, gate, nxt, extra_frames=(), extra_spots=()):
+    sysbox = [rows(*systems)] if systems else []
+    st_ = chips(*strip)
+    frames = [AG[a_] for a_ in agents] + sysbox + [(st_[0] + 0.07, st_[1] + 0.08, st_[2] - 0.14, 0.38), APPROVAL]
+    frames += list(extra_frames)
+    ax_ = [AG[a_] for a_ in agents]
+    agent_box = (min(b[0] for b in ax_) - 0.05, min(b[1] for b in ax_) - 0.05,
+                 max(b[0] + b[2] for b in ax_) - min(b[0] for b in ax_) + 0.1,
+                 max(b[1] + b[3] for b in ax_) - min(b[1] for b in ax_) + 0.1) if ax_ else None
+    spots = ([agent_box] if agent_box else []) + sysbox + [st_, APPROVAL]
+    spots += list(extra_spots)
+    gx = CHIP(gate)[0] + 0.41
+    return dict(title=title, text=text, spots=spots, frames=frames,
+                arrows=[[(APPROVAL[0] + APPROVAL[2] / 2, APPROVAL[1] + APPROVAL[3]),
+                         (APPROVAL[0] + APPROVAL[2] / 2, 5.96), (gx, 5.96), (gx, 6.07)]],
+                chips=[approved(gate, nxt)], callout=(3.0, 1.38, 6.2), arrow_color=GREEN_OK)
+
+
 STEPS = [
     dict(title="Start in Salesforce",
-         text="Story NS-1234: change an HFN validation rule. The Jira key, pod and design go in the LWC; Apex "
-              "and a Named Credential reach the harness; Codex runs the ADLC skills.",
+         text="Campaign story VBC-412: the CHF post-discharge SMS nudge. The marketer enters the Jira key, picks "
+              "the Marketing Cloud pod and attaches the design; Apex reaches the harness and Codex runs the ADLC skills.",
          spots=[(0.5, 2.15, 2.12, 2.52), (2.6, 3.75, 0.5, 0.3)],
          frames=[(0.55, 2.22, 2.02, 1.02), (0.55, 3.5, 2.02, 1.12)],
          arrows=[[(1.56, 3.24), (1.56, 3.5)], [(2.57, 3.9), (3.05, 3.9)]],
-         chips=[], callout=(3.35, 2.25, 4.1)),
+         chips=[], callout=(3.35, 2.25, 4.3)),
     dict(title="Context first",
-         text="Before any code, agents ask the knowledge graph what exists, what it touches and who owns it. "
-              "Read-only connectors, cited facts, a bounded slice, never an org dump.",
-         spots=[(2.9, 1.42, 7.39, 1.38), (10.5, 1.55, 2.38, 1.6)],
-         frames=[(2.95, 1.47, 7.29, 1.28), (10.5, 1.6, 2.38, 1.55)],
-         arrows=[[(5.47, 3.12), (5.47, 2.65)], [(10.5, 2.2), (10.24, 2.2)]],
-         chips=[], callout=(3.0, 3.4, 4.6)),
+         text="The Requirements Agent checks what already exists before anything is built: data extensions, "
+              "journeys and Data Cloud segments in Salesforce, the Jira history and the Confluence design. "
+              "Read-only, cited, a bounded slice, never an org dump.",
+         spots=[(2.9, 1.42, 7.39, 1.38), (10.5, 1.55, 2.38, 2.82), (5.0, 3.34, 1.43, 0.32)],
+         frames=[(2.95, 1.47, 7.29, 1.28), rows("jira", "conf"), rows("git", "sf"), AG["req"]],
+         arrows=[[(5.47, 3.39), (5.47, 2.65)], [(10.5, 2.2), (10.24, 2.2)]],
+         chips=[], callout=(3.0, 4.3, 4.85)),
     dict(title="Orchestrated, step by step",
-         text="Cloud Workflows coordinates the story. One agent job per step: requirements, design, build, "
-              "review, test, release. Checkpoints mean a failed run resumes where it stopped.",
+         text="Cloud Workflows coordinates the campaign story. One agent job per step: requirements, design, "
+              "build, review, test, release. Checkpoints mean a failed run resumes where it stopped.",
          spots=[(2.98, 3.02, 4.95, 1.2)],
          frames=[(3.05, 3.12, 1.82, 1.05), (4.97, 3.12, 2.9, 1.05)],
          arrows=[[(4.87, 3.62), (4.97, 3.62)]],
          chips=[], callout=(3.0, 4.35, 4.85)),
     dict(title="Act only through the gateway",
-         text="Git, Salesforce and Copado are touched only through the MCP gateway, with the identity allowed "
-              "for that step. The Change Guardian checks cross-pod ownership and impact.",
+         text="Git, Salesforce, Marketing Cloud and Copado are touched only through the MCP gateway, with the "
+              "identity allowed for that step. The Change Guardian checks which other pods use the same data "
+              "extensions, short code and STOP keyword.",
          spots=[(4.92, 3.02, 5.27, 1.9), (10.5, 3.18, 2.38, 2.2)],
-         frames=[(7.97, 3.12, 2.17, 0.62), (7.97, 3.82, 2.17, 1.05), (10.5, 3.2, 2.38, 2.15)],
+         frames=[(7.97, 3.12, 2.17, 0.62), (7.97, 3.82, 2.17, 1.05), rows("git", "sf"), SYS["copado"]],
          arrows=[[(7.87, 4.12), (7.97, 4.12)], [(10.14, 4.32), (10.5, 4.32)]],
          chips=[], callout=(0.5, 3.15, 4.3)),
     dict(title="Evals on every step: pass",
-         text="Every output is scored before it moves on. A pass goes to the gate, where people see the "
-              "evidence and the eval scores, and approve.",
+         text="Every output is scored before it moves on: does the journey match the brief, is every field real, "
+              "are consent and STOP checks in place. A pass goes to the gate with the evidence.",
          spots=[(2.98, 3.02, 4.95, 1.9)],
-         frames=[(4.97, 4.25, 2.9, 0.62), (3.05, 4.25, 1.82, 0.62)],
+         frames=[(4.97, 4.25, 2.9, 0.62), APPROVAL],
          arrows=[[(6.42, 4.17), (6.42, 4.25)], [(4.97, 4.56), (4.87, 4.56)]],
          chips=[(4.45, 4.03, 0.95, "PASS → GATE", GREEN_OK)], callout=(8.1, 3.1, 4.7)),
     dict(title="Fail: a bounded retry",
@@ -67,18 +117,43 @@ STEPS = [
          chips=[(8.38, 3.95, 1.3, "FAIL · RETRY ≤ 5", RED),
                 (5.35, 5.06, 2.15, "AFTER 5 → NAMED OWNER", RED)],
          callout=(8.1, 2.15, 4.7), arrow_color=RED),
-    dict(title="People approve, the owning team deploys",
-         text="People approve requirements, architecture, review and UAT. CAB still controls the release, and "
-              "the owning team, not an agent, deploys to production.",
-         spots=[(1.5, 6.02, 11.38, 0.52), (10.55, 5.3, 2.28, 0.66)],
-         frames=[CHIP(i) for i in (1, 3, 6, 8, 10, 11)] + [(10.6, 5.36, 2.18, 0.55)],
+    gate_step("H1 · requirements approved",
+              "The Requirements Agent posts the brief to the Jira story as a comment: audience, consent rules, "
+              "KPIs, open questions. The product owner approves at H1; only then does design start.",
+              ["req"], ["jira"], (0, 1), 1, "H1 APPROVED → 02 DESIGN"),
+    gate_step("H2 · design approved",
+              "The Architect Agent drafts the design in Confluence: reuse the existing data extensions and "
+              "segment, a new journey. The Change Guardian names the pods affected. Architect and pod owners "
+              "approve at H2.",
+              ["arch"], ["conf"], (2, 3), 3, "H2 APPROVED → 03 BUILD",
+              extra_frames=[(7.97, 3.12, 2.17, 0.62)], extra_spots=[(7.93, 3.08, 2.25, 0.7)]),
+    gate_step("H3 · code and tests approved",
+              "The Developer Agent builds in the Marketing Cloud dev business unit: data extensions, SQL, "
+              "AMPscript, the journey as a draft. Review and Test Agents check it, evals score it. Tech lead "
+              "and security approve at H3.",
+              ["dev", "rev", "test"], ["git", "sf"], (4, 5, 6), 6, "H3 APPROVED → 05 PROMOTE",
+              extra_frames=[(4.97, 4.25, 2.9, 0.62)], extra_spots=[(4.93, 4.21, 2.98, 0.7)]),
+    gate_step("H4 · business UAT signed (step 06)",
+              "The Release Agent promotes the campaign through Copado to SIT and UAT. Marketing and clinical "
+              "owners test every message variant and sign off UAT at H4.",
+              ["rel"], ["zephyr", "copado"], (7, 8), 8, "H4 SIGNED → 07 PREPARE"),
+    gate_step("CAB · release approved",
+              "The Release Agent builds the CAB pack from the change passport: evidence, test results, rollback "
+              "plan. CAB approves the release, exactly as today.",
+              ["rel"], [], (9, 10), 10, "CAB APPROVED → 08 DEPLOY",
+              extra_frames=[PASSPORT], extra_spots=[(5.5, 5.02, 1.7, 0.9)]),
+    dict(title="Production: the owning team deploys",
+         text="The owning team activates the journey in production through its own pipeline. No agent holds a "
+              "production credential. Step 09 closes the Jira story and resyncs the knowledge graph.",
+         spots=[chips(11, 12), (10.55, 5.3, 2.28, 0.66), SYS["jira"]],
+         frames=[(CHIP(11)[0], 6.07, 1.69, 0.42), SYS["prod"], SYS["jira"]],
          arrows=[[(1.55 + 11 * 0.87 + 0.41, 6.07), (1.55 + 11 * 0.87 + 0.41, 5.91)]],
-         chips=[], callout=(2.95, 5.2, 6.9)),
+         chips=[], callout=(3.0, 1.38, 6.2)),
     dict(title="Evidence on every change",
-         text="Every step lands in the change passport, and cycle time, defects, rework and cost per change are "
-              "reported per pod. Not just automation: a controlled, auditable delivery process.",
+         text="Every step and every approval lands in the change passport; cycle time, defects, rework and cost "
+              "per change are reported per pod. Not just automation: a controlled, auditable delivery process.",
          spots=[(5.5, 5.02, 3.15, 0.9)],
-         frames=[(5.55, 5.07, 1.6, 0.8), (7.25, 5.07, 1.35, 0.8)],
+         frames=[PASSPORT, (7.25, 5.07, 1.35, 0.8)],
          arrows=[],
          chips=[], callout=(4.6, 4.3, 5.2)),
 ]
@@ -247,29 +322,41 @@ def _timing(slide, steps):
     anchor.addnext(timing)
 
 
-INTERACTIVE_NOTES = """SLIDE 4  |  Codex to Production: one story through the harness   (about 2 min 45 sec)
-MAIN POINT: the complete governed lifecycle of one change.
-Advance with Enter, Down arrow, Space or a click. The slide opens on the full design; each click spotlights the next part.
+INTERACTIVE_NOTES = """SLIDE 4  |  Codex to Production: one campaign through the harness   (about 3 minutes)
+MAIN POINT: the complete governed lifecycle of one change, and every step waits for a human approval.
+Advance with Enter, Down arrow, Space or a click. The slide opens on the full design; each click spotlights the next part. Backspace or Up arrow goes back.
 
-[OPEN, full diagram] This is the main execution slide. Imagine a Network Services story requiring a change to an HFN validation rule.
+[OPEN, full diagram] This is the main execution slide. Let's follow one Marketing Cloud campaign: the CHF post-discharge SMS nudge, Jira story VBC-412.
 
-[CLICK 1  Start in Salesforce] A team member starts from the Salesforce Agentic Harness console, provides the Jira key, selects the pod and adds the design context. Through Apex and a Named Credential, the request reaches the harness, and Codex uses the delivery skills for the run.
+[CLICK 1  Start in Salesforce] The marketer starts from the Agentic Harness console in Salesforce, gives the Jira key, picks the Marketing Cloud pod and attaches the design. Through Apex and a Named Credential the request reaches the harness, and Codex runs the delivery skills.
 
-[CLICK 2  Context first] Before proposing code, the agents query the knowledge graph to understand existing objects, automations, dependencies and ownership. That graph is populated from read-only connectors, with source references and snapshots. We deliberately provide a bounded context slice rather than a full org dump.
+[CLICK 2  Context first] Before anything is built, the Requirements Agent checks what already exists: the data extensions, journeys and Data Cloud segments in Salesforce, the Jira history and the Confluence design. The graph is filled by read-only connectors, with sources and snapshots, and the agent gets a bounded slice, never a full org dump.
 
-[CLICK 3  Orchestrated] In the center, Cloud Workflows coordinates the story. Agent workers handle requirements, design, development, review, testing and release preparation, with checkpoints and resumable runs.
+[CLICK 3  Orchestrated] Cloud Workflows coordinates the story. Agent workers handle requirements, design, build, review, test and release, with checkpoints and resumable runs.
 
-[CLICK 4  Gateway] Any action against Git, Salesforce or Copado passes through the MCP gateway and the allowed identity for that step. The Change Guardian checks cross-pod ownership and impact.
+[CLICK 4  Gateway] Any action on Git, Salesforce, Marketing Cloud or Copado goes through the MCP gateway with the identity allowed for that step. The Change Guardian checks which other pods share the same data extensions, short code and STOP keyword.
 
-[CLICK 5  Evals: pass] At every step we evaluate the output. A pass goes to the gate, with the evidence.
+[CLICK 5  Evals: pass] Every output is scored before it moves on. A pass goes to the gate, with the evidence.
 
-[CLICK 6  Evals: fail and retry] If a check fails, the harness sends the result back for correction, within a bounded retry limit: five attempts, then a named owner.
+[CLICK 6  Evals: fail] If a check fails, the result goes back for correction, at most five times, then a named owner takes over.
 
-[CLICK 7  People approve] People still approve the requirements, architecture, review and UAT, and CAB still controls the release. The owning team, not an agent, deploys to production.
+Now the most important part: nothing moves without a person.
 
-[CLICK 8  Evidence] We then keep the evidence in a change passport and report cycle time, defects, rework and cost per change.
+[CLICK 7  H1] The Requirements Agent posts the brief to the Jira story as a comment. The product owner approves at H1, and only then does design start.
 
-[CLICK 9  back to the full design] So the end-to-end story is not just automation: it is a controlled, auditable delivery process."""
+[CLICK 8  H2] The Architect Agent drafts the design in Confluence, reusing what exists; the Change Guardian names the affected pods. Architect and pod owners approve at H2.
+
+[CLICK 9  H3] The Developer Agent builds in the Marketing Cloud dev business unit; Review and Test Agents check it and the evals score it. Tech lead and security approve at H3.
+
+[CLICK 10  H4, step 06] The Release Agent promotes through Copado to SIT and UAT. Marketing and clinical owners test every message variant and sign off UAT.
+
+[CLICK 11  CAB] The CAB pack comes from the change passport. CAB approves the release, exactly as today.
+
+[CLICK 12  Production] The owning team activates the journey in production. No agent holds a production credential. Step 09 closes the story and resyncs the graph.
+
+[CLICK 13  Evidence] Every step and every approval is kept in the change passport, and we report cycle time, defects, rework and cost per change.
+
+[CLICK 14  back to the full design] So the whole execution runs on human approval at every step. It is not just automation: it is a controlled, auditable delivery process."""
 
 
 def hld_interactive_slide(prs, layout, only=None):
