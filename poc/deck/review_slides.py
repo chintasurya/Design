@@ -1,25 +1,42 @@
 """Three slides for review before they go into the team's final deck.
 
 hld_slide              the Codex-to-Production high-level design, on white, after the architecture slide
-one_year_value_slide   slide 11 as one year: what Ascension spends today, with the harness, and the saving
+roi_slide              slide 11 as the return on investment: one year, investment, saving, ROI, payback
 team_cost_slide        slides 15 and 16 as one: the team for months 1-18 and the build cost
 """
+import os
+
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.util import Inches
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
 import plan_slides
 from build_mad_ig_deck import (TXT_LIGHT as LIGHT, BLACK, CYAN, CYAN_T, GREEN, GREEN_T, GREY, MAGENTA, MAGENTA_T, MUTE, NAVY, RULE,
                                VIOLET, VIOLET_T, WHITE, YELLOW, YELLOW_T, Canvas, set_notes)
+from build_mad_ig_deck import HERE
 from story_slides import money
 
 CYAN_D, GOLD, INK = "0097AD", "C9A800", "2B2B2B"
 R = MSO_SHAPE.ROUNDED_RECTANGLE
+LOGO_DIR = os.path.join(HERE, "assets", "logos")
+
+
+def logo(cv, name, x, y, size):
+    return cv.s.shapes.add_picture(os.path.join(LOGO_DIR, name + ".png"), Inches(x), Inches(y), Inches(size),
+                                   Inches(size))
+
+
+def text_badge(cv, t, x, y, size, color):
+    cv.rect(x, y, size, size, WHITE, color, 0.75, R, 0.2)
+    cv.text(x, y, size, size, t, size=5.5, bold=True, color=color, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
 def card(cv, x, y, w, h, title, body, fill=WHITE, line=NAVY, lw=0.75, tsize=7.5, bsize=6.3, tcolor=BLACK,
-         bcolor=INK):
+         bcolor=INK, icon=None):
     cv.rect(x, y, w, h, fill, line, lw, R, 0.06)
-    cv.text(x + 0.08, y + 0.06, w - 0.16, h - 0.1,
+    if icon:
+        logo(cv, icon, x + w - 0.28, y + 0.07, 0.2)
+    cv.text(x + 0.08, y + 0.06, w - (0.42 if icon else 0.16), h - 0.1,
             [[(title, {"bold": True, "size": tsize, "color": tcolor})], [(body, {"size": bsize, "color": bcolor})]],
             size=bsize, after=1)
 
@@ -81,12 +98,13 @@ def hld_slide(prs, layout):
     cv.text(lx + 0.33, 1.98, 1.8, 0.19, "gives inputs", size=6.3, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
     card(cv, lx + 0.1, 2.22, lw - 0.2, 1.02, "Salesforce LWC · Agentic Harness console",
          "Connect to Codex, enter the Jira key or the requirement, pick the pod, attach the design. Approve "
-         "at each gate and watch every step.", fill=CYAN_T, line=CYAN_D, lw=1.25)
+         "at each gate and watch every step.", fill=CYAN_T, line=CYAN_D, lw=1.25, icon="salesforce")
     cv.arrow(lx + lw / 2, 3.24, lx + lw / 2, 3.5, BLACK, 1.25)
     cv.text(lx + lw / 2 + 0.06, 3.27, 1.05, 0.2, "Apex · Named Credential", size=5.8, color=MUTE,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.rect(lx + 0.1, 3.5, lw - 0.2, 1.12, BLACK, None, shape=R, radius=0.06)
-    cv.text(lx + 0.18, 3.56, lw - 0.36, 1.02,
+    logo(cv, "openai-white", lx + lw - 0.36, 3.57, 0.2)
+    cv.text(lx + 0.18, 3.56, lw - 0.58, 1.02,
             [[("OpenAI Codex · ADLC skills", {"bold": True, "size": 7.5})],
              [("Each user signs in to their own Codex Enterprise account (SSO). The run starts from the Jira key; "
                "the ADLC skills take it through understand, design, build, verify, promote, release and close.",
@@ -103,7 +121,8 @@ def hld_slide(prs, layout):
     # ---------------------------------------------------------- middle: Google Cloud
     gx, gw = 2.83, 7.53
     cv.rect(gx, top, gw, bot - top, None, NAVY, 1.0, R, 0.02, dash="dash")
-    cv.text(gx + 0.12, top + 0.02, 3.0, 0.2, [[("Google Cloud", {"bold": True}), ("  Ascension project",
+    logo(cv, "googlecloud", gx + 0.12, top + 0.03, 0.17)
+    cv.text(gx + 0.34, top + 0.02, 3.0, 0.2, [[("Google Cloud", {"bold": True}), ("  Ascension project",
                                                                                  {"color": MUTE})]],
             size=7, anchor=MSO_ANCHOR.MIDDLE)
     ix, iw = gx + 0.12, gw - 0.24
@@ -119,7 +138,8 @@ def hld_slide(prs, layout):
          "graph.exists · find_reuse · blast_radius · owners · context_slice. Every answer cites node, source "
          "and SHA-256; agents never write queries.", line=VIOLET)
     card(cv, ix + 2.8, by, 1.85, bh, "Spanner Graph",
-         "Property graph, GQL. History and ownership edges for every component.", line=VIOLET)
+         "Property graph, GQL. History and ownership edges for every component.", line=VIOLET,
+         icon="googlecloudspanner")
     card(cv, ix + 4.75, by, iw - 4.85, bh, "Ingest pipeline · Cloud Run Jobs",
          "Read-only connectors, on a schedule and on webhooks. DLP de-identifies text; parse, validate and "
          "link before anything is stored.", line=VIOLET)
@@ -202,7 +222,7 @@ def hld_slide(prs, layout):
                                                                   "tamper-evident.")
     card(cv, ix + 4.3, uy, 1.35, uh, "Measured per pod", "Cycle time, rework, defects, cost per change.")
     card(cv, ix + 5.75, uy, iw - 5.75, uh, "Codex Enterprise",
-         "Model Armor screens every prompt and response; enterprise data protection signed.")
+         "Model Armor screens every prompt and response; enterprise data protection signed.", icon="openai")
 
     # ---------------------------------------------------------- right: systems of record
     sx, sw = 10.5, 2.38
@@ -211,6 +231,8 @@ def hld_slide(prs, layout):
                                             ("   read · write", {"color": "BFBFBF"})]],
             size=7.5, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
     cv.rect(sx, top + 0.28, sw, bot - top - 0.28, WHITE, RULE, 0.75)
+    marks = {"Jira": "jira", "Confluence": "confluence", "Google Drive": "googledrive", "Git": "git",
+             "Salesforce": "salesforce", "Zephyr Scale": "ZS", "Copado": "Co"}
     systems = [("Jira", "stories, criteria", "brief, status to Done"),
                ("Confluence", "designs, rules", "design draft, as-built"),
                ("Google Drive", "specs, mapping sheets", None),
@@ -221,7 +243,12 @@ def hld_slide(prs, layout):
     yy = top + 0.38
     for n, rd, wr in systems:
         rh = 0.27 + 0.15 * sum(1 for t_ in (rd, wr) if t_)
-        cv.text(sx + 0.1, yy, sw - 0.2, 0.18, n, size=7.5, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        mk = marks[n]
+        if len(mk) == 2:
+            text_badge(cv, mk, sx + 0.1, yy, 0.18, NAVY)
+        else:
+            logo(cv, mk, sx + 0.1, yy, 0.18)
+        cv.text(sx + 0.34, yy, sw - 0.44, 0.18, n, size=7.5, bold=True, anchor=MSO_ANCHOR.MIDDLE)
         ly = yy + 0.19
         for tag, txt, col in (("READ", rd, VIOLET), ("WRITE", wr, MAGENTA)):
             if not txt:
@@ -278,116 +305,110 @@ def hld_slide(prs, layout):
     return s
 
 
-# ================================================================== slide 11: one year
+# ================================================================== slide 11: return on investment
 ONE_YEAR_TODAY = 16.0e6
 ONE_YEAR_HARNESS = 7.0e6
-ONE_YEAR_NOTES = """SLIDE: What it means for Ascension, one year   (about 2 minutes)
+ROI_NOTES = """SLIDE: What it means for Ascension: the return on the investment   (about 2 minutes)
 
 KEY MESSAGE
-Ascension spends about $16M a year across all pods. With agent-first squads on the Agentic Harness, the same work costs about $7M a year: $9M saved every year, against a one-time build fee of $4.79M.
+Ascension invests {inv} once. From go-live it gets {save} back every year: {today} a year today becomes {harness}. That is a {roi} return in the first year, paid back in under {months} months.
 
 WALK IT
-- Top strip: the mechanism. In every pod, a squad of 4-5 developers and a QA becomes 1 developer directing the harness agent, plus 1 QA. Every human gate stays.
-- The three numbers: $16M today, $7M with the harness (agent run costs and the managed service included), $9M saved a year.
-- The black band: the build fee is paid once; the first year's saving pays it back in under seven months.
+- The bars: what Ascension spends today, what it spends with the harness, the yearly saving, and the one-time investment, all on the same scale. The saving bar is bigger than the investment bar: the first year alone pays for the build almost twice.
+- Right: first-year ROI, payback and the return multiple.
+- Beyond the money: the measured and planned delivery results from earlier slides, so the saving has a mechanism behind it.
+- Black band: how each number is built, and the floor we commit to.
 
 HOW THE NUMBERS ARE BUILT (for you, not the slide)
-- $16M a year is Ascension's figure for all pods.
-- $7M is the first full year after go-live, with every pod live; it includes agent run costs and the managed service (about $1.24M a year).
-- The business outcomes slide's 20-25% is the floor we commit to; this is the target, confirmed against each pod's Phase 0 baseline."""
+- Investment = fixed build fee {fee} + Google Cloud and model usage during the build, at cost, about {plat}.
+- Saving = {today} today minus {harness} with the harness, the first full year after go-live with every pod live; the {harness} includes agent run costs and the managed service.
+- First-year ROI = (saving minus investment) / investment.
+- The 20-25% lower run cost per pod on the business outcomes slide is the floor we commit to; this slide is the target, confirmed against each pod's Phase 0 baseline.
+
+BE READY FOR
+- "Is the ROI guaranteed?" The floor and the phase exits are the commitment; these numbers are the target, measured pod by pod.
+- "What about the people?" Ascension chooses: redeploy to backlog, absorb through attrition, or keep the team and deliver more."""
 
 
-def one_year_value_slide(prs, layout):
+def roi_slide(prs, layout):
     s = prs.slides.add_slide(layout)
     cv = Canvas(s)
     save = ONE_YEAR_TODAY - ONE_YEAR_HARNESS
     fee = plan_slides.build_price()[1]
+    plat = sum((plan_slides.PLATFORM_EARLY if p[3] <= 11 else plan_slides.PLATFORM_SCALE) * plan_slides.months(p)
+               for p in plan_slides.PHASES)
+    inv = fee + plat
+    roi = (save - inv) / inv
+    months_back = int(inv / save * 12) + 1
     cv.header("ASCENSION AGENTIC HARNESS · WHAT IT MEANS FOR ASCENSION",
-              "All pods: %s a year today, %s with the Agentic Harness" % (money(ONE_YEAR_TODAY),
-                                                                        money(ONE_YEAR_HARNESS)),
+              "Return on investment: %s back every year on a %s build" % (money(save), "$%.1fM" % (inv / 1e6)),
               "Every squad of 4-5 developers becomes 1 developer directing the harness agent, plus 1 QA. "
-              "The same work, about %s less every year." % money(save))
+              "All pods, first full year after go-live.")
     X0, W = 0.45, 12.43
-    # squad shift (as before)
-    y, h = 1.3, 1.22
-    chip_w, chip_h, gap = 0.62, 0.42, 0.08
 
-    def chip(x, cy, t, fill=WHITE, line=BLACK, color=BLACK, w=chip_w):
-        cv.rect(x, cy, w, chip_h, fill, line, 0.75, R, 0.2)
-        cv.text(x, cy, w, chip_h, t, size=7, bold=True, color=color, align=PP_ALIGN.CENTER,
-                anchor=MSO_ANCHOR.MIDDLE)
-
-    cv.rect(X0, y, 4.15, h, GREY)
-    cv.label(X0 + 0.18, y + 0.12, 3.8, "Today · one squad", color=MUTE)
-    for i in range(4):
-        chip(X0 + 0.18 + i * (chip_w + gap), y + 0.36, "Dev", GREY, "A6A6A6", MUTE)
-    chip(X0 + 0.18 + 4 * (chip_w + gap), y + 0.36, "QA", GREY, "A6A6A6", MUTE)
-    cv.text(X0 + 0.18, y + 0.86, 3.85, 0.26, "4-5 developers and a QA; work moves one hand-off at a time, "
-            "inside office hours.", size=7.5, color=MUTE)
-    cv.arrow(X0 + 4.25, y + h / 2, X0 + 4.75, y + h / 2, BLACK, 2.0)
-    mx = X0 + 4.85
-    cv.rect(mx, y, 4.0, h, WHITE, BLACK, 1.0)
-    cv.label(mx + 0.18, y + 0.12, 3.6, "With the harness · one squad")
-    chip(mx + 0.18, y + 0.36, "Developer", w=0.95)
-    fx, fy, fw, fh = cv.frame(mx + 1.23, y + 0.36, 1.2, chip_h, BLACK, 0.04)
-    cv.text(fx, fy, fw, fh, "Harness agent", size=7.5, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+    # ---- the investment and the return, on one scale
+    bw_max, bx = 5.0, 2.55
+    cv.label(X0, 1.36, 6, "The investment and the return, a year")
+    rows = [("Spend today", "a year, all pods", ONE_YEAR_TODAY, GREY, "A6A6A6", MUTE),
+            ("With the harness", "a year, agents included", ONE_YEAR_HARNESS, BLACK, None, BLACK),
+            ("Saved", "every year from go-live", save, YELLOW, BLACK, BLACK),
+            ("Investment", "once, months 1 to 18", inv, NAVY, None, NAVY)]
+    for i, (lab, sub, v, fill, line, col) in enumerate(rows):
+        y = 1.62 + i * 0.47
+        cv.text(X0, y, bx - X0 - 0.1, 0.38, [[(lab, {"bold": True, "size": 9})], [(sub, {"color": MUTE})]],
+                size=6.5, anchor=MSO_ANCHOR.MIDDLE)
+        w = bw_max * v / ONE_YEAR_TODAY
+        cv.rect(bx, y + 0.03, w, 0.32, fill, line, 1.0 if line else 0.75)
+        cv.text(bx + w + 0.1, y, 1.2, 0.38, "$%.1fM" % (v / 1e6) if v == inv else money(v), size=13,
+                bold=i >= 2, color=col, anchor=MSO_ANCHOR.MIDDLE)
+    # ---- ROI hero
+    hx, hw = 9.0, X0 + W - 9.0
+    fx, fy, fw, fh = cv.frame(hx, 1.3, hw, 2.3, YELLOW_T, 0.06)
+    cv.label(fx + 0.3, fy + 0.22, fw - 0.6, "First-year return on investment")
+    cv.text(fx + 0.3, fy + 0.45, fw - 0.6, 0.95, "%d%%" % round(100 * roi), size=60, bold=True,
             anchor=MSO_ANCHOR.MIDDLE)
-    chip(mx + 2.53, y + 0.36, "QA", w=0.95)
-    cv.text(mx + 0.18, y + 0.86, 3.7, 0.26, "Same scope, two people; the agent works around the clock.",
-            size=7.5, bold=True)
-    rx = mx + 4.15
-    rw = X0 + W - rx
-    roles = [("Harness agent", "drafts code, tests and the Copado package, overnight"),
-             ("Developer", "designs, directs the agent, reviews and approves"),
-             ("QA", "verifies against acceptance criteria and signs off tests")]
-    cv.label(rx, y + 0.12, rw, "Who does what")
-    cv.text(rx, y + 0.34, rw, 0.85, [[(r + "  ", {"bold": True}), (d, {"color": MUTE})] for r, d in roles],
-            size=7.5, after=3)
+    cv.text(fx + 0.3, fy + 1.45, fw - 0.6, 0.65,
+            [[("Paid back in under %d months" % months_back, {"bold": True})],
+             [("%.1fx the investment back in year one" % (save / inv), {"color": MUTE})]], size=10, after=2)
 
-    # one year, three numbers
-    y2, h2 = 2.75, 2.35
-    tw = (W - 2 * 0.5) / 3
-    tiles = [("TODAY", money(ONE_YEAR_TODAY), "a year, across all pods", MUTE),
-             ("WITH THE AGENTIC HARNESS", money(ONE_YEAR_HARNESS), "a year; agents and managed service included",
-              BLACK)]
-    for i, (lab, big, sub, col) in enumerate(tiles):
-        x = X0 + i * (tw + 0.5)
-        cv.rect(x, y2, tw, h2, WHITE, RULE, 0.75)
-        cv.label(x + 0.3, y2 + 0.3, tw - 0.6, lab, color=MUTE)
-        cv.text(x + 0.3, y2 + 0.6, tw - 0.6, 1.0, big, size=60, color=col, anchor=MSO_ANCHOR.MIDDLE,
-                font=LIGHT)
-        cv.text(x + 0.3, y2 + 1.75, tw - 0.6, 0.3, sub, size=9, color=MUTE)
-        if i == 0:
-            cv.arrow(x + tw + 0.06, y2 + h2 / 2, x + tw + 0.44, y2 + h2 / 2, BLACK, 2.5)
-    x = X0 + 2 * (tw + 0.5)
-    cv.arrow(x - 0.44, y2 + h2 / 2, x - 0.06, y2 + h2 / 2, BLACK, 2.5)
-    fx, fy, fw, fh = cv.frame(x, y2, tw, h2, YELLOW_T, 0.06)
-    cv.label(fx + 0.25, fy + 0.25, fw - 0.5, "SAVES EVERY YEAR")
-    cv.text(fx + 0.25, fy + 0.55, fw - 0.5, 1.0, money(save), size=60, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.25, fy + 1.7, fw - 0.5, 0.3, "%d%% of what Ascension spends today" %
-            round(100 * save / ONE_YEAR_TODAY), size=9)
+    # ---- beyond the money
+    cv.label(X0, 3.83, 6, "Beyond the money: what Ascension gets back")
+    tiles = [("90 → 15-20 days", "to launch a campaign", "about 80% faster, recorded averages"),
+             ("2 weeks → 2 days", "for a Health Cloud task", "story to UAT sign-off"),
+             ("75-85%", "faster test-case preparation", "measured with QA agents"),
+             ("2-3x", "campaigns per quarter", "same squad; people still approve")]
+    tw = (W - 3 * 0.2) / 4
+    for i, (big, lab, sub) in enumerate(tiles):
+        x = X0 + i * (tw + 0.2)
+        cv.rect(x, 4.05, tw, 1.12, WHITE, RULE, 0.75)
+        cv.rect(x, 4.05, 0.06, 1.12, CYAN)
+        cv.text(x + 0.2, 4.12, tw - 0.3, 0.45, big, size=20, font=LIGHT, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.2, 4.58, tw - 0.3, 0.22, lab, size=9, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.2, 4.82, tw - 0.3, 0.22, sub, size=7.5, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
 
-    # build fee vs saving
-    by_, bh_ = 5.35, 1.0
+    # ---- how the numbers are built
+    by_, bh_ = 5.38, 1.0
     cv.rect(X0, by_, W, bh_, BLACK)
-    months_back = fee / save * 12
-    cells = [("Build fee, one time", money(fee), "fixed fee over 18 months, paid as each phase exit is signed"),
-             ("Paid back in", "under %d months" % (int(months_back) + 1), "of savings after go-live"),
-             ("Net benefit, first year", money(save - fee), "after paying the whole build fee"),
-             ("Return on the fee", "%.1fx" % (save / fee), "in the first year alone")]
-    cwid = W / 4
+    cells = [("Investment", "$%.1fM" % (inv / 1e6), "build fee %s + cloud and model usage at cost %s" % (
+                 money(fee), "$%.2fM" % (plat / 1e6))),
+             ("Annual saving", money(save), "%s today − %s with the harness; agents and managed service "
+                                             "included" % (money(ONE_YEAR_TODAY), money(ONE_YEAR_HARNESS))),
+             ("Floor we commit to", "20-25%", "lower net run cost per pod, measured against each pod's baseline")]
+    cwid = W / 3
     for i, (lab, big, small) in enumerate(cells):
         cx = X0 + 0.25 + i * cwid
-        cv.text(cx, by_ + 0.12, cwid - 0.3, 0.18, lab, size=8, color="BFBFBF")
-        cv.text(cx, by_ + 0.32, cwid - 0.3, 0.38, big, size=20, bold=i >= 2,
-                color=YELLOW if i == 3 else (CYAN if i == 2 else WHITE), anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(cx, by_ + 0.72, cwid - 0.3, 0.2, small, size=7, color="BFBFBF")
+        cv.text(cx, by_ + 0.1, cwid - 0.4, 0.18, lab, size=8, color="BFBFBF")
+        cv.text(cx, by_ + 0.3, cwid - 0.4, 0.38, big, size=20, bold=True,
+                color=(WHITE, YELLOW, CYAN)[i], anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(cx, by_ + 0.7, cwid - 0.4, 0.25, small, size=7, color="BFBFBF")
     cv.text(X0, 6.5, W, 0.32,
             "Ascension's spend across all pods, about %s a year, as provided. The harness figure is the first full "
-            "year after the 18-month implementation, with every pod live, and includes agent run costs and the "
-            "managed service. Planning estimate, confirmed against each pod's Phase 0 baseline; the business "
-            "outcomes slide's 20-25%% is the floor." % money(ONE_YEAR_TODAY), size=6.5, color=MUTE)
-    set_notes(s, ONE_YEAR_NOTES)
+            "year after the 18-month implementation, with every pod live. First-year ROI = (saving − "
+            "investment) ÷ investment. Planning estimates, confirmed against each pod's Phase 0 baseline."
+            % money(ONE_YEAR_TODAY), size=6.5, color=MUTE)
+    set_notes(s, ROI_NOTES.format(inv="$%.1fM" % (inv / 1e6), save=money(save), today=money(ONE_YEAR_TODAY),
+                                  harness=money(ONE_YEAR_HARNESS), roi="%d%%" % round(100 * roi),
+                                  months=months_back, fee=money(fee), plat="$%.2fM" % (plat / 1e6)))
     return s
 
 
