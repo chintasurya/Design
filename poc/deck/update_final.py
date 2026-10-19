@@ -12,6 +12,8 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from build_mad_ig_deck import HERE, set_notes
+import interactive_hld
+import review_slides
 
 FINAL = os.path.join(HERE, "source", "Ascension Agentic Harness - final.pptx")
 OUT = os.path.join(HERE, "..", "Ascension Agentic Harness.pptx")
@@ -171,11 +173,25 @@ EDITS = {"ASCENSION AGENTIC HARNESS \u00b7 PLATFORM": platform_slide,
          "ASCENSION AGENTIC HARNESS · NETWORK SERVICES POD · HEALTH CLOUD": health_cloud_slide}
 
 
+# New slides from review_slides.py, approved by the user.
+#   INSERT_AFTER: a new slide right after the slide with this eyebrow
+#   REPLACE:      the slide with this eyebrow is swapped for the new one
+#   TO_BACKUP:    the slide moves behind Thank you, after the back-up slides already there
+INSERT_AFTER = {"ASCENSION AGENTIC HARNESS \u00b7 PLATFORM": interactive_hld.hld_interactive_slide}
+REPLACE = {"ASCENSION AGENTIC HARNESS \u00b7 WHAT IT MEANS FOR ASCENSION": review_slides.roi_slide,
+           "ASCENSION AGENTIC HARNESS \u00b7 DELIVERY TEAM": review_slides.team_cost_slide}
+TO_BACKUP = ["ASCENSION AGENTIC HARNESS \u00b7 COMMERCIALS"]   # its content now lives on the team and cost slide
+
+
 def eyebrow(slide):
     for sh in slide.shapes:
         if sh.has_text_frame and sh.text_frame.text.strip():
             return sh.text_frame.text.strip()
     return ""
+
+
+def _sld(prs, slide):
+    return next(e for e in prs.slides._sldIdLst if int(e.get("id")) == slide.slide_id)
 
 
 def main(src=FINAL, out=OUT):
@@ -185,6 +201,31 @@ def main(src=FINAL, out=OUT):
         if edit:
             edit(slide)
             print("updated slide %d: %s" % (i, eyebrow(slide)))
+    lst = prs.slides._sldIdLst
+    light = next(lay for lay in prs.slide_layouts if lay.name == "DEFAULT")
+    built = []
+    for slide in list(prs.slides):               # build every new slide first, so part names stay unique
+        name = eyebrow(slide)
+        if name in INSERT_AFTER or name in REPLACE:
+            built.append((slide, (INSERT_AFTER.get(name) or REPLACE[name])(prs, light), name in REPLACE, name))
+    for slide, new, replace, name in built:
+        el = _sld(prs, new)
+        lst.remove(el)
+        _sld(prs, slide).addnext(el)
+        if replace:
+            old = _sld(prs, slide)
+            prs.part.drop_rel(old.rId)
+            lst.remove(old)
+        print("%s: %s" % ("replaced" if replace else "inserted after", name))
+    closer = next(i for i, sl in enumerate(prs.slides) if sl.slide_layout.name == "Closer_1")
+    anchor = list(lst)[closer]
+    for slide in list(prs.slides):
+        if eyebrow(slide) in TO_BACKUP:
+            el = _sld(prs, slide)
+            lst.remove(el)
+            anchor.addnext(el)
+            anchor = el
+            print("moved behind Thank you: %s" % eyebrow(slide))
     prs.save(out)
     print("wrote", os.path.abspath(out), "-", len(prs.slides), "slides")
 
