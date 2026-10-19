@@ -130,8 +130,25 @@ sent on every call. So the agents now take the cheapest path first:
 |---|---|---|
 | "Read KAN-6", "KAN-6", "status of KAN-8", "list my open tickets" | answered from Jira and the knowledge graph | **0** |
 | "Analyze KAN-6" for a ticket analysed before whose summary, description and acceptance criteria are unchanged | its analysis, stored in the knowledge graph as a `RequirementSpec` node (`ticket --analysed as--> spec`), is returned; comments and status changes do not make it stale | **0** |
-| "Analyze KAN-6" (new or changed), "what could break if…" | lean Codex: own short instructions (`model_instructions_file`), no tools, no environment block, low reasoning, trimmed graph context | target 2–4k |
-| Developer agent | lean Codex coding run: short brief + workspace rules instead of Codex's prompt; no web search, apps, plugins or sub-agents | multi-turn; measured on the dashboard |
+| "Analyze KAN-6" (new or changed), "what could break if…" | one Codex call: own short instructions, no tools, Codex's own additions switched off, compact ticket and graph context, low reasoning, no reasoning summary | ~1.8k fixed + ~1–2k context, measured |
+| Developer agent, ticket that only adds custom fields | the gateway writes the field XML and the `HarnessAgentAccess` field access from the spec (merged into the org's copy) | **0** |
+| Developer agent, code or Flow | one Codex call per attempt, no tools, read-only: the spec and the relevant files are in the message, Codex answers with complete files that the gateway writes | ~3k in per attempt, measured; out is the code itself |
+
+Why the Developer agent used to cost ~45k per attempt: Codex ran as a
+tool-using agent (`cat SPEC.md`, `ls`, apply a patch, run a check), and each
+of those turns re-sent the whole context. KAN-6 (one field) took two such
+attempts, 92k, because the spec named the field `Next_Step_Date__c` and the
+naming guardrail sent it back. The spec now names new fields to the standard
+(`NextStepDate__c`), and a field ticket needs no model at all.
+
+What Codex adds to every request was measured by pointing `codex exec` at a
+local capture server (`codex-cli` 0.163.0). Before: goal, image and user-input
+tools (1.3k tokens) and a bundled-skills list (0.6k). Now: nothing beyond our
+instructions and the answer schema (`LEAN_NO_TOOLS` in `app/codex.py`).
+
+On the dashboard, **New in** is what the agent sent the model, **Cached in**
+is context re-sent and served from the model's cache at a fraction of the
+cost, and **Out** is what the model wrote (answer, spec or code).
 
 The **Agent Dashboard** shows tokens and, for a ChatGPT sign-in, the Codex
 plan itself: % of the 5-hour and weekly limits used and the credits balance
