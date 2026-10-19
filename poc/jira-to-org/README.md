@@ -57,6 +57,7 @@ build, deploy and test the POC, within these limits:
 | Gateway | Cloud Run `agent-gateway`, `https://agent-gateway-6y7zlyimaa-uc.a.run.app`, project `jira-to-org-poc-2610`, `us-central1` |
 | Knowledge graph | BigQuery `jira-to-org-poc-2610.agent_kg`; first snapshot `8314ed7b9897`, 828 nodes · 991 edges |
 | Runs, conversations, token usage | Firestore `agent_runs`, `agent_conversations` |
+| Run execution | Cloud Tasks queue `agent-runs` (`us-central1`, one attempt per run) |
 | Jira | `chintasuryateja.atlassian.net`, project `KAN` |
 
 ### The app's three tabs
@@ -290,10 +291,17 @@ export SF_LOGIN_URL=https://orgfarm-0054ddc238-dev-ed.develop.my.salesforce.com
 
 It prints the service URL. Check it: `curl -s <URL>/healthz` → `{"ok":true}`.
 
-One instance with CPU always allocated (`--no-cpu-throttling --max-instances 1`):
-agent runs are background threads, and the validated workspace waits on that
-instance for your approval. If the instance is recycled the deploy step
-rebuilds the workspace from the change set stored on the run.
+Agent runs execute through the Cloud Tasks queue `agent-runs`. Each run is a
+task that calls the gateway's own `/internal/runs/{id}/execute` (accepted
+only with the `agent-gateway` service account's OIDC token) and does the work
+inside that request. Cloud Run never shuts an instance down under an in-flight
+request. Background threads were tried first: an instance running an analysis
+was replaced and the run spun forever. Everything a run needs is stored on it,
+so any instance can execute it, and the deploy step rebuilds the workspace
+from the change set stored on the run. A running run writes `heartbeat_at`
+every 20 s. If a run goes 3 minutes without progress, polling fails it with
+*Interrupted … Ask again* instead of leaving a spinner. A planning call to
+Codex times out at 240 s (`REQUIREMENT_TIMEOUT_S`).
 
 Optional settings (env vars on `deploy.sh`): `OPENAI_MODEL` (Requirement
 agent; default: the first of `gpt-5.3-codex`, `gpt-5.2-codex`,
@@ -401,6 +409,7 @@ FROM `agent_kg.agent_edges` WHERE edge_type = 'TICKET_IMPLEMENTED_BY' ORDER BY w
 | `We couldn't access the credential(s)` | The user lacks **Agent Console User** (it grants the principal) |
 | Salesforce *token request failed … request not supported on this domain* | `SF_LOGIN_URL` must be the My Domain |
 | *… no client credentials user enabled* | External Client App Policies → Run As not set (step 1.3) |
+| A run fails with *Interrupted: … Ask again* | The instance running it stopped (redeploy, crash). Ask again; check the `agent-runs` queue exists (`setup.sh`) |
 | Connect: *None of the Codex-capable models are available* | Set `OPENAI_MODEL` to a model your key has, then redeploy |
 | Codex steps fail with sandbox / landlock errors on Cloud Run | Redeploy with `CODEX_SANDBOX=danger-full-access`. The container is the boundary, and Codex holds no Salesforce or Jira credential either way |
 | Jira step says *no 'In Progress' transition* | The board's workflow names differ; set `JIRA_START_TRANSITION` / `JIRA_DONE_TRANSITION` |
