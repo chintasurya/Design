@@ -13,6 +13,7 @@
     POST /v1/runs/{id}/reject
     POST /v1/graph/rebuild          re-ingest Salesforce + Jira  -> run id
     GET  /v1/graph/stats | /v1/graph/search?q=
+    POST /internal/runs/{id}/execute  Cloud Tasks only: do the run's work inside this request
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ import uuid
 from functools import lru_cache
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Body, Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from . import config
@@ -37,7 +38,7 @@ from .graph.model import Edge, Graph, Node
 from .graph.store import BigQueryStore, GraphService, LocalJsonStore
 from .guardrails import FirestoreGuardrails, GuardrailService
 from .jira import JiraClient, JiraError, simplify
-from .runs import FirestoreRunStore, MemoryRunStore, RunContext, Runner
+from .runs import FirestoreRunStore, MemoryRunStore, RunContext, Runner, TaskDispatcher, execute, reap_if_stale
 from .salesforce import SalesforceClient
 from .usage import summarize
 
@@ -52,7 +53,7 @@ class Services:
                  graphs: GraphService | None = None, runs=None, openai_client_factory=None,
                  developer: DeveloperAgent | None = None, sync_runs: bool = False,
                  sessions: CodexSessions | None = None, codex_exec=None,
-                 guardrails: GuardrailService | None = None):
+                 guardrails: GuardrailService | None = None, tasks=None, verify_task_token=None):
         self.settings = settings
         self.codex = codex or CodexConnection(settings)
         self.chatgpt_mode = settings.codex_auth_mode == "chatgpt"
@@ -76,6 +77,11 @@ class Services:
                              else MemoryRunStore())
         self.runner = Runner(self.runs)
         self.sync_runs = sync_runs
+        if tasks is None and settings.tasks_queue and settings.self_url:
+            tasks = TaskDispatcher(settings.gcp_project, settings.tasks_location, settings.tasks_queue,
+                                   settings.self_url, settings.tasks_service_account)
+        self.tasks = tasks
+        self.verify_task_token = verify_task_token or self._verify_google_token
         self.openai_client_factory = openai_client_factory or self.codex.openai_client
         self._developer = developer
 
@@ -102,8 +108,26 @@ class Services:
                                              self.jira, self.graphs, guardrails=self.guardrails)
         return self._developer
 
-    def submit(self, run: dict, fn) -> dict:
-        return self.runner.submit(run, fn, sync=self.sync_runs)
+    def dispatch(self, run: dict, job: str) -> dict:
+        """Start a run's work. On Cloud Run it goes through Cloud Tasks, so the
+        work is an in-flight request and its instance is not shut down under it."""
+        if self.tasks is None:
+            return self.runner.submit(run, lambda ctx: execute_job(self, job, self.runs.get(run["id"]), ctx),
+                                      sync=self.sync_runs)
+        try:
+            self.tasks.dispatch(run["id"], job)
+        except Exception as exc:  # noqa: BLE001
+            self.runs.update(run["id"], status="failed", error=f"Could not queue the run: {exc}"[:500])
+            raise HTTPException(503, "Could not queue the agent run; try again") from exc
+        return run
+
+    def _verify_google_token(self, token: str) -> str:
+        """The service account a Cloud Tasks OIDC token was minted for."""
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+
+        claims = id_token.verify_oauth2_token(token, google_requests.Request(), audience=self.settings.self_url)
+        return claims.get("email", "") if claims.get("email_verified") else ""
 
 
 @lru_cache(maxsize=1)
@@ -191,6 +215,83 @@ def load_analysis(svc: "Services", key: str) -> dict:
 def public_run(run: dict) -> dict:
     out = {k: v for k, v in run.items() if k != "payload"}
     return out
+
+
+# -- run jobs ------------------------------------------------------------------
+# Everything a job needs is on its stored run, so any instance can execute it.
+def _codex_home(svc: "Services", user: str) -> str | None:
+    if not svc.chatgpt_mode:
+        svc.codex.require()
+        return None
+    return svc.sessions.require_home(user)
+
+
+def job_requirement(svc: "Services", run: dict, ctx: RunContext) -> dict:
+    p = run["payload"]
+    message, conversation_id, user = p["message"], p["conversationId"], p.get("user", "")
+    jira = require_jira(svc)
+    os.makedirs(svc.settings.workspace_root, exist_ok=True)
+    if not svc.chatgpt_mode:
+        agent = RequirementAgent(svc.openai_client_factory(), svc.codex.model, jira, svc.graphs)
+        prev = svc.runs.get_conversation(conversation_id).get("previous_response_id")
+        out = agent.chat(message, prev, ctx)
+        svc.runs.set_conversation(conversation_id, {"previous_response_id": out["response_id"],
+                                                    "last_spec_ticket": (out["spec"] or {}).get("ticket_key")})
+        return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
+    home = _codex_home(svc, user)
+    agent = CodexRequirementAgent(svc.codex_exec, svc.codex, home, jira, svc.graphs,
+                                  svc.settings.workspace_root,
+                                  analysis_get=lambda key: load_analysis(svc, key),
+                                  analysis_set=lambda key, record: store_analysis(svc, key, record),
+                                  plan_usage=lambda: svc.sessions.plan_usage(user),
+                                  guardrails=svc.guardrails)
+    convo = svc.runs.get_conversation(conversation_id)
+    history = convo.get("history", [])
+    try:
+        out = agent.chat(message, history, convo.get("last_spec_ticket"), ctx)
+    finally:
+        svc.sessions.save(user)
+    history = (history + [{"role": "developer", "text": message},
+                          {"role": "agent", "text": out["reply"]}])[-12:]
+    svc.runs.set_conversation(conversation_id, {
+        "history": history,
+        "last_spec_ticket": (out["spec"] or {}).get("ticket_key") or convo.get("last_spec_ticket")})
+    return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
+
+
+def job_developer(svc: "Services", run: dict, ctx: RunContext) -> dict | None:
+    p = run["payload"]
+    user = p.get("user", "")
+    home = _codex_home(svc, user)
+    after = (lambda: svc.sessions.save(user)) if home else None
+    plan = (lambda: svc.sessions.plan_usage(user)) if home else None
+    return svc.developer().develop(run["id"], p["spec"], ctx, codex_home=home, after_codex=after,
+                                   plan_usage=plan)
+
+
+def job_deploy(svc: "Services", run: dict, ctx: RunContext) -> dict | None:
+    return svc.developer().deploy(run["id"], run["result"], ctx)
+
+
+def job_graph(svc: "Services", run: dict, ctx: RunContext) -> dict:
+    s = svc.settings
+    ctx.step("Reading Salesforce metadata", "running")
+    g: Graph = SalesforceIngest(svc.sf, s.kg_standard_objects, s.kg_flow_metadata_max).run()
+    ctx.step(f"Salesforce: {len(g.nodes)} nodes, {len(g.edges)} edges")
+    if svc.jira:
+        ctx.step("Reading Jira tickets", "running")
+        ingest_jira(svc.jira, g)
+        ctx.step(f"Jira merged: {len(g.nodes)} nodes, {len(g.edges)} edges")
+    snap = svc.graphs.replace(g)
+    ctx.step(f"Snapshot {snap} saved", detail="\n".join(g.notes[-20:]))
+    return {"snapshotId": snap, **g.stats(), "notes": g.notes}
+
+
+JOBS = {"requirement": job_requirement, "developer": job_developer, "deploy": job_deploy, "graph": job_graph}
+
+
+def execute_job(svc: "Services", job: str, run: dict, ctx: RunContext) -> dict | None:
+    return JOBS[job](svc, run, ctx)
 
 
 # -- models -----------------------------------------------------------------
@@ -305,48 +406,18 @@ def tickets(only_open: bool = True, svc: Services = Depends(get_services)) -> di
 
 @app.post("/v1/requirements/chat", dependencies=[Depends(require_key)])
 def chat(body: ChatBody, svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
-    home = require_codex(svc, user)
-    jira = require_jira(svc)
+    require_codex(svc, user)
+    require_jira(svc)
     conversation_id = body.conversationId or uuid.uuid4().hex[:16]
     run = svc.runs.create("requirement", {"message": body.message, "conversationId": conversation_id,
                                           "user": user})
-
-    def work_codex(ctx: RunContext) -> dict:
-        agent = CodexRequirementAgent(svc.codex_exec, svc.codex, home, jira, svc.graphs,
-                                      svc.settings.workspace_root,
-                                      analysis_get=lambda key: load_analysis(svc, key),
-                                      analysis_set=lambda key, record: store_analysis(svc, key, record),
-                                      plan_usage=lambda: svc.sessions.plan_usage(user),
-                                      guardrails=svc.guardrails)
-        convo = svc.runs.get_conversation(conversation_id)
-        history = convo.get("history", [])
-        try:
-            out = agent.chat(body.message, history, convo.get("last_spec_ticket"), ctx)
-        finally:
-            svc.sessions.save(user)
-        history = (history + [{"role": "developer", "text": body.message},
-                              {"role": "agent", "text": out["reply"]}])[-12:]
-        svc.runs.set_conversation(conversation_id, {
-            "history": history,
-            "last_spec_ticket": (out["spec"] or {}).get("ticket_key") or convo.get("last_spec_ticket")})
-        return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
-
-    def work(ctx: RunContext) -> dict:
-        agent = RequirementAgent(svc.openai_client_factory(), svc.codex.model, jira, svc.graphs)
-        prev = svc.runs.get_conversation(conversation_id).get("previous_response_id")
-        out = agent.chat(body.message, prev, ctx)
-        svc.runs.set_conversation(conversation_id, {"previous_response_id": out["response_id"],
-                                                    "last_spec_ticket": (out["spec"] or {}).get("ticket_key")})
-        return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
-
-    os.makedirs(svc.settings.workspace_root, exist_ok=True)
-    svc.submit(run, work_codex if svc.chatgpt_mode else work)
+    svc.dispatch(run, "requirement")
     return {"runId": run["id"], "conversationId": conversation_id}
 
 
 @app.post("/v1/developer/runs", dependencies=[Depends(require_key)])
 def develop(body: DevelopBody, svc: Services = Depends(get_services), user: str = Depends(current_user)) -> dict:
-    home = require_codex(svc, user)
+    require_codex(svc, user)
     spec = dict(body.spec)
     key = body.ticketKey.strip().upper()
     if (spec.get("ticket_key") or key).upper() != key:
@@ -355,15 +426,12 @@ def develop(body: DevelopBody, svc: Services = Depends(get_services), user: str 
     if not spec.get("ready_for_development", False) and not body.override:
         raise HTTPException(409, "The Requirement agent marked this spec not ready; resolve the open questions "
                                  "or develop anyway with override")
-    developer = svc.developer()
+    svc.developer()  # 503 now, not inside the run, if Salesforce is not configured
     if svc.jira and not spec.get("ticket"):
         spec["ticket"] = simplify(svc.jira.get_issue(key), svc.jira.browse_url(key))
         spec["ticket_url"] = spec["ticket"]["url"]
-    run = svc.runs.create("developer", {"ticketKey": key, "user": user})
-    after = (lambda: svc.sessions.save(user)) if home else None
-    plan = (lambda: svc.sessions.plan_usage(user)) if home else None
-    svc.submit(run, lambda ctx: developer.develop(run["id"], spec, ctx, codex_home=home, after_codex=after,
-                                                  plan_usage=plan))
+    run = svc.runs.create("developer", {"ticketKey": key, "user": user, "spec": spec})
+    svc.dispatch(run, "developer")
     return {"runId": run["id"]}
 
 
@@ -374,7 +442,7 @@ def get_run(run_id: str, svc: Services = Depends(get_services)) -> dict:
     run = svc.runs.get(run_id)
     if not run:
         raise HTTPException(404, "no such run")
-    return public_run(run)
+    return public_run(reap_if_stale(svc.runs, run))
 
 
 @app.post("/v1/runs/{run_id}/deploy", dependencies=[Depends(require_key)])
@@ -382,9 +450,9 @@ def approve_deploy(run_id: str, svc: Services = Depends(get_services)) -> dict:
     run = get_run(run_id, svc)
     if run["kind"] != "developer" or run["status"] != "waiting_approval":
         raise HTTPException(409, f"run is {run['status']}, not waiting for approval")
-    developer = svc.developer()
+    svc.developer()
     svc.runs.update(run_id, status="queued")
-    svc.submit(run, lambda ctx: developer.deploy(run_id, run["result"], ctx))
+    svc.dispatch(run, "deploy")
     return {"runId": run_id, "status": "queued"}
 
 
@@ -404,21 +472,7 @@ def rebuild(svc: Services = Depends(get_services)) -> dict:
     if not svc.sf:
         raise HTTPException(503, "Salesforce is not configured on the gateway")
     run = svc.runs.create("graph", {})
-
-    def work(ctx: RunContext) -> dict:
-        s = svc.settings
-        ctx.step("Reading Salesforce metadata", "running")
-        g: Graph = SalesforceIngest(svc.sf, s.kg_standard_objects, s.kg_flow_metadata_max).run()
-        ctx.step(f"Salesforce: {len(g.nodes)} nodes, {len(g.edges)} edges")
-        if svc.jira:
-            ctx.step("Reading Jira tickets", "running")
-            ingest_jira(svc.jira, g)
-            ctx.step(f"Jira merged: {len(g.nodes)} nodes, {len(g.edges)} edges")
-        snap = svc.graphs.replace(g)
-        ctx.step(f"Snapshot {snap} saved", detail="\n".join(g.notes[-20:]))
-        return {"snapshotId": snap, **g.stats(), "notes": g.notes}
-
-    svc.submit(run, work)
+    svc.dispatch(run, "graph")
     return {"runId": run["id"]}
 
 
@@ -453,3 +507,27 @@ def graph_neighbourhood(q: str = "", id: str = "", svc: Services = Depends(get_s
 def usage(days: int = 14, svc: Services = Depends(get_services)) -> dict:
     days = max(1, min(90, days))
     return summarize(svc.runs.list_recent(1000), days)
+
+
+@app.post("/internal/runs/{run_id}/execute")
+def execute_run(run_id: str, job: str = Body(embed=True), svc: Services = Depends(get_services),
+                authorization: str = Header(default="")) -> dict:
+    """Cloud Tasks calls this and waits: the run is done inside the request.
+    Only the queue's service account (OIDC token) may call it."""
+    token = authorization.removeprefix("Bearer ").strip()
+    expected = svc.settings.tasks_service_account
+    try:
+        caller = svc.verify_task_token(token) if token and expected else ""
+    except Exception:  # noqa: BLE001 - any bad token is a 403
+        caller = ""
+    if not caller or caller != expected:
+        raise HTTPException(403, "only the agent-runs queue may execute runs")
+    if not RUN_ID.match(run_id) or job not in JOBS:
+        raise HTTPException(400, "bad run id or job")
+    run = svc.runs.get(run_id)
+    if not run:
+        return {"skipped": "no such run"}
+    if run.get("status") != "queued":
+        return {"skipped": f"run is {run.get('status')}"}  # a redelivered task; the work already ran
+    execute(svc.runs, run_id, lambda ctx: execute_job(svc, job, svc.runs.get(run_id) or run, ctx))
+    return {"runId": run_id, "status": (svc.runs.get(run_id) or {}).get("status")}

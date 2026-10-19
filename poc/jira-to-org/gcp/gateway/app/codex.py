@@ -172,7 +172,7 @@ def summarize_event(event: dict) -> str | None:
 def run_codex(conn: CodexConnection, workspace: str, prompt: str,
               on_line: Callable[[str], None], home: str | None = None, sandbox: str | None = None,
               output_schema: dict | None = None, instructions: str | None = None,
-              extra_args: list[str] | None = None) -> dict:
+              extra_args: list[str] | None = None, timeout_s: int | None = None) -> dict:
     """Run `codex exec` in the workspace. Codex gets no Salesforce or Jira
     credential: its environment is PATH and its own home, nothing else. The
     gateway, not Codex, deploys - and only after validation and approval.
@@ -205,7 +205,7 @@ def run_codex(conn: CodexConnection, workspace: str, prompt: str,
     env = {"PATH": os.environ.get("PATH", ""), "HOME": home, "CODEX_HOME": home, "LANG": "C.UTF-8"}
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, env=env, cwd=workspace)
-    timer = threading.Timer(s.codex_timeout_s, proc.kill)
+    timer = threading.Timer(timeout_s or s.codex_timeout_s, proc.kill)
     timer.start()
     raw_tail: list[str] = []
     usage = {"input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "turns": 0}

@@ -35,6 +35,10 @@ class Settings:
     graph_store: str          # bigquery | local
     local_graph_path: str
     run_store: str            # firestore | memory
+    tasks_queue: str          # Cloud Tasks queue that executes runs; empty = in-process threads
+    tasks_location: str
+    self_url: str             # this service's own URL, which the tasks call back
+    tasks_service_account: str  # identity on the tasks' OIDC token; the only caller /internal accepts
 
     # Jira
     jira_base_url: str
@@ -58,6 +62,7 @@ class Settings:
     codex_home: str
     codex_sandbox: str
     codex_timeout_s: int
+    requirement_timeout_s: int  # one planning call; a hung one should fail, not spin for 15 minutes
 
     # Developer agent
     sf_bin: str
@@ -82,6 +87,10 @@ def load() -> Settings:
         graph_store=env("GRAPH_STORE", "bigquery"),
         local_graph_path=env("LOCAL_GRAPH_PATH", "/tmp/agent-kg.json"),
         run_store=env("RUN_STORE", "firestore"),
+        tasks_queue=env("TASKS_QUEUE"),
+        tasks_location=env("TASKS_LOCATION", env("GCP_REGION", "us-central1")),
+        self_url=env("SELF_URL").rstrip("/"),
+        tasks_service_account=env("TASKS_SERVICE_ACCOUNT"),
         jira_base_url=env("JIRA_BASE_URL").rstrip("/"),
         jira_email=env("JIRA_EMAIL"),
         jira_project_key=env("JIRA_PROJECT_KEY", "KAN"),
@@ -105,6 +114,7 @@ def load() -> Settings:
         codex_home=env("CODEX_HOME_DIR", "/srv/codex-home"),
         codex_sandbox=env("CODEX_SANDBOX", "workspace-write"),
         codex_timeout_s=int(env("CODEX_TIMEOUT_S", "900")),
+        requirement_timeout_s=int(env("REQUIREMENT_TIMEOUT_S", "240")),
         sf_bin=env("SF_BIN", "sf"),
         workspace_root=env("WORKSPACE_ROOT", "/tmp/agent-runs"),
         max_fix_attempts=int(env("MAX_FIX_ATTEMPTS", "2")),

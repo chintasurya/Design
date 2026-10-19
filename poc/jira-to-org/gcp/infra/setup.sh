@@ -23,7 +23,7 @@ gcloud config set project "$GCP_PROJECT" >/dev/null
 
 echo "== enabling APIs"
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
-  secretmanager.googleapis.com bigquery.googleapis.com firestore.googleapis.com
+  secretmanager.googleapis.com bigquery.googleapis.com firestore.googleapis.com cloudtasks.googleapis.com
 
 echo "== service account $SA"
 gcloud iam service-accounts describe "$SA" >/dev/null 2>&1 \
@@ -96,6 +96,17 @@ gcloud firestore databases describe --database="(default)" >/dev/null 2>&1 \
   || gcloud firestore databases create --location="$GCP_REGION" --type=firestore-native
 gcloud projects add-iam-policy-binding "$GCP_PROJECT" --member "serviceAccount:$SA" \
   --role roles/datastore.user --condition=None >/dev/null
+
+echo "== Cloud Tasks queue agent-runs (each agent run is a task that calls the gateway and waits)"
+# One attempt: a run is never repeated behind the developer's back; they ask again.
+gcloud tasks queues describe agent-runs --location "$GCP_REGION" >/dev/null 2>&1 \
+  || gcloud tasks queues create agent-runs --location "$GCP_REGION" \
+       --max-attempts 1 --max-concurrent-dispatches 4 --max-dispatches-per-second 2
+gcloud projects add-iam-policy-binding "$GCP_PROJECT" --member "serviceAccount:$SA" \
+  --role roles/cloudtasks.enqueuer --condition=None >/dev/null
+# the gateway signs each task's OIDC token as itself
+gcloud iam service-accounts add-iam-policy-binding "$SA" --member "serviceAccount:$SA" \
+  --role roles/iam.serviceAccountUser >/dev/null
 
 echo
 echo "Done. Next: ./deploy.sh"

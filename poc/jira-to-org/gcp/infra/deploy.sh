@@ -16,6 +16,11 @@ GCP_REGION="${GCP_REGION:-us-central1}"
 SERVICE="${SERVICE:-agent-gateway}"
 SA="agent-gateway@${GCP_PROJECT}.iam.gserviceaccount.com"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+export SA
+# the URL Cloud Tasks calls back; known once the service exists (set again below on a first deploy)
+SELF_URL="${SELF_URL:-$(gcloud run services describe "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" \
+  --format 'value(status.url)' 2>/dev/null || true)}"
+export SELF_URL
 
 # Env vars go through a YAML file: values such as the Jira email contain
 # characters that break gcloud's inline KEY=VALUE list syntax.
@@ -38,6 +43,11 @@ keys = {
     "CODEX_AUTH_MODE": os.environ.get("CODEX_AUTH_MODE", "chatgpt"),
     # browser: normal Codex sign-in page (SSO), paste back the redirect | device: one-time code
     "CODEX_LOGIN_FLOW": os.environ.get("CODEX_LOGIN_FLOW", "browser"),
+    # agent runs execute as Cloud Tasks requests back to this service (see setup.sh)
+    "TASKS_QUEUE": os.environ.get("TASKS_QUEUE", "agent-runs"),
+    "TASKS_LOCATION": os.environ.get("GCP_REGION", "us-central1"),
+    "TASKS_SERVICE_ACCOUNT": os.environ["SA"],
+    "SELF_URL": os.environ.get("SELF_URL", ""),
 }
 with open(sys.argv[1], "w") as fh:
     for k, v in keys.items():
@@ -48,9 +58,10 @@ SECRETS="OPENAI_API_KEY=openai-api-key:latest,JIRA_API_TOKEN=jira-api-token:late
 SECRETS+=",SF_AUTH_URL=sf-auth-url:latest,SF_CLIENT_ID=sf-client-id:latest,SF_CLIENT_SECRET=sf-client-secret:latest"
 SECRETS+=",GATEWAY_API_KEY=gateway-api-key:latest"
 
-# --no-cpu-throttling + one instance: agent runs are background threads that
-# must keep CPU after the request that started them returns, and the
-# workspace between "validated" and "deploy" lives on that instance.
+# Agent runs are Cloud Tasks requests back to /internal/runs/{id}/execute, so
+# Cloud Run sees them as in-flight and never shuts their instance down
+# (a background thread was not enough: an instance was replaced mid-run).
+# --timeout 3600 lets a request outlive the task's 30-minute dispatch deadline.
 # gen2: the Codex CLI sandbox needs a full Linux kernel surface.
 gcloud run deploy "$SERVICE" \
   --project "$GCP_PROJECT" --region "$GCP_REGION" \
@@ -64,6 +75,10 @@ gcloud run deploy "$SERVICE" \
   --set-secrets "$SECRETS"
 
 URL="$(gcloud run services describe "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" --format 'value(status.url)')"
+if [ "$URL" != "$SELF_URL" ]; then
+  gcloud run services update "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" \
+    --update-env-vars "SELF_URL=$URL"
+fi
 echo
 echo "Gateway URL: $URL"
 echo "Smoke test:  curl -s $URL/healthz"

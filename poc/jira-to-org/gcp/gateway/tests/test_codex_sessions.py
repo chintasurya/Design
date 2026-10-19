@@ -193,7 +193,7 @@ def chatgpt_api(tmp_path, monkeypatch):
     prompts = []
 
     def requirement_exec(conn, ws, prompt, on_line, home=None, sandbox=None, output_schema=None,
-                         instructions=None, extra_args=None):
+                         instructions=None, extra_args=None, **_):
         prompts.append({"prompt": prompt, "home": home, "sandbox": sandbox, "schema": output_schema,
                         "instructions": instructions, "extra_args": extra_args})
         spec = {**SPEC, "components": [{"action": "create", "type": "CustomField", "api_name": "Account.Risk_Score__c",

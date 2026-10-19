@@ -471,7 +471,8 @@ class CodexRequirementAgent:
         try:
             out = self.codex_exec(self.codex_conn, workspace, prompt, lambda line: None, home=self.home,
                                   sandbox="read-only", output_schema=CODEX_OUTPUT_SCHEMA,
-                                  instructions=planning_instructions(self.guardrails), extra_args=LEAN_NO_TOOLS)
+                                  instructions=planning_instructions(self.guardrails), extra_args=LEAN_NO_TOOLS,
+                                  timeout_s=self.codex_conn.settings.requirement_timeout_s)
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
         ctx.plan_usage(before, self.plan_usage())

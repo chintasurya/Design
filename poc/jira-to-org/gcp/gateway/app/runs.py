@@ -7,9 +7,11 @@ polls. Runs live in Firestore on GCP, in memory for local runs and tests.
 from __future__ import annotations
 
 import copy
+import json
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Any, Callable, Protocol
 
 from .graph.store import now_iso
@@ -167,31 +169,110 @@ class RunContext:
         return self.store.get(self.run_id) or {}
 
 
+HEARTBEAT_S = 20      # a running job touches its run this often
+STALE_S = 180         # no sign of life for this long: the instance running it is gone
+QUEUED_STALE_S = 900  # never picked up at all
+
+
+def execute(store: RunStore, run_id: str, fn: Callable[[RunContext], dict | None]) -> None:
+    """Run one job to completion, with a heartbeat on the run so a poller can
+    tell a slow run from one whose instance was shut down."""
+    ctx = RunContext(store, run_id)
+    ctx.status("running", heartbeat_at=now_iso())
+    stop = threading.Event()
+
+    def beat() -> None:
+        while not stop.wait(HEARTBEAT_S):
+            try:
+                store.update(run_id, heartbeat_at=now_iso())
+            except Exception:  # noqa: BLE001 - a missed beat is not fatal
+                pass
+
+    threading.Thread(target=beat, daemon=True, name=f"beat-{run_id}").start()
+    try:
+        result = fn(ctx)
+        current = ctx.get().get("status")
+        if current == "running":
+            ctx.status("succeeded", result=result)
+        elif result is not None:
+            store.update(run_id, result=result)
+    except Exception as exc:  # noqa: BLE001 - surfaced to the user as the run's error
+        ctx.step("failed", "error", f"{type(exc).__name__}: {exc}")
+        ctx.status("failed", error=f"{type(exc).__name__}: {exc}")
+    finally:
+        stop.set()
+
+
+def _age_s(*stamps: str | None) -> float | None:
+    latest = max((s for s in stamps if s), default=None)
+    if not latest:
+        return None
+    return (datetime.now(timezone.utc) - datetime.fromisoformat(latest.replace("Z", "+00:00"))).total_seconds()
+
+
+def reap_if_stale(store: RunStore, run: dict) -> dict:
+    """A run whose instance died stays 'running' forever; fail it so the
+    developer sees why and can ask again, instead of a spinner."""
+    status = run.get("status")
+    if status == "running":
+        age = _age_s(run.get("heartbeat_at"), run.get("updated_at"))
+        limit, why = STALE_S, "the gateway instance running it stopped"
+    elif status == "queued":
+        age = _age_s(run.get("updated_at"), run.get("created_at"))
+        limit, why = QUEUED_STALE_S, "it was never picked up"
+    else:
+        return run
+    if age is None or age < limit:
+        return run
+    error = f"Interrupted: {why} ({int(age)} s without progress). Ask again."
+    steps = (run.get("steps") or []) + [{"at": now_iso(), "name": "Interrupted", "status": "error",
+                                         "detail": error}]
+    return store.update(run["id"], status="failed", error=error, steps=steps)
+
+
 class Runner:
-    """Background execution. Cloud Run is deployed with CPU always allocated
-    and one instance, so a thread outlives the request that started it."""
+    """In-process execution, for local runs and tests. On Cloud Run a
+    background thread does not keep the instance alive (it was shut down
+    mid-run), so there runs go through Cloud Tasks instead (TaskDispatcher)."""
 
     def __init__(self, store: RunStore, workers: int = 2):
         self.store = store
         self.pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="agent")
 
     def submit(self, run: dict, fn: Callable[[RunContext], dict | None], sync: bool = False) -> dict:
-        def job() -> None:
-            ctx = RunContext(self.store, run["id"])
-            ctx.status("running")
-            try:
-                result = fn(ctx)
-                current = ctx.get().get("status")
-                if current == "running":
-                    ctx.status("succeeded", result=result)
-                elif result is not None:
-                    self.store.update(run["id"], result=result)
-            except Exception as exc:  # noqa: BLE001 - surfaced to the user as the run's error
-                ctx.step("failed", "error", f"{type(exc).__name__}: {exc}")
-                ctx.status("failed", error=f"{type(exc).__name__}: {exc}")
-
         if sync:
-            job()
+            execute(self.store, run["id"], fn)
         else:
-            self.pool.submit(job)
+            self.pool.submit(execute, self.store, run["id"], fn)
         return run
+
+
+class TaskDispatcher:
+    """Each run becomes a Cloud Tasks HTTP task that calls the gateway's own
+    /internal/runs/{id}/execute and waits for it. The run then is an in-flight
+    request, which Cloud Run never shuts an instance down under."""
+
+    def __init__(self, project: str, location: str, queue: str, self_url: str, service_account: str,
+                 deadline_s: int = 1800):
+        from google.cloud import tasks_v2
+
+        self.tasks_v2 = tasks_v2
+        self.client = tasks_v2.CloudTasksClient()
+        self.parent = self.client.queue_path(project, location, queue)
+        self.self_url = self_url.rstrip("/")
+        self.service_account = service_account
+        self.deadline_s = min(deadline_s, 1800)  # the Cloud Tasks maximum for HTTP targets
+
+    def dispatch(self, run_id: str, job: str) -> None:
+        from google.protobuf import duration_pb2
+
+        t = self.tasks_v2
+        task = t.Task(
+            http_request=t.HttpRequest(
+                http_method=t.HttpMethod.POST,
+                url=f"{self.self_url}/internal/runs/{run_id}/execute",
+                headers={"Content-Type": "application/json"},
+                body=json.dumps({"job": job}).encode(),
+                oidc_token=t.OidcToken(service_account_email=self.service_account, audience=self.self_url)),
+            dispatch_deadline=duration_pb2.Duration(seconds=self.deadline_s))
+        self.client.create_task(parent=self.parent, task=task)
