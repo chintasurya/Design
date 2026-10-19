@@ -331,7 +331,9 @@ the graph lists as existing must be reused, never created again; if the graph
 says it has no field-level security, plan to grant it. For every CustomField
 to create, fill `field` (type, label, help text, length or precision) so it can
 be built without a model; null for every other component. Custom API names have
-no underscores: NextStepDate__c, not Next_Step_Date__c. Mark
+no underscores: NextStepDate__c, not Next_Step_Date__c. Field access always
+goes in the existing permission set HarnessAgentAccess (component type
+PermissionSet, action modify), never a new permission set or a profile. Mark
 ready_for_development false when the ticket is ambiguous. Otherwise set `spec`
 to null and just answer.
 
