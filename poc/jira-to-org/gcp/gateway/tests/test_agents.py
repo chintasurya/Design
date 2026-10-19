@@ -310,3 +310,25 @@ def test_new_custom_names_follow_the_standard_but_existing_fields_keep_theirs(tm
     out = ground_spec(spec, graphs(tmp_path).graph(), {})
     assert out["components"][0]["api_name"] == "Opportunity.NextStepDate__c"
     assert out["components"][1]["api_name"] == "Account.Risk_Score__c"  # exists in the org: reused as is
+
+
+def test_the_schemas_sent_to_codex_are_valid_strict_schemas():
+    from app.agents.developer import CODE_OUTPUT_SCHEMA
+    from app.agents.requirement import CODEX_OUTPUT_SCHEMA
+
+    def check(node, where="$"):
+        if isinstance(node, dict):
+            if node.get("type") == "object" or "properties" in node:
+                props = node.get("properties", {})
+                assert set(node.get("required", [])) == set(props), f"{where}: required != properties"
+                assert node.get("additionalProperties") is False, where
+            for k, v in node.items():
+                check(v, f"{where}.{k}")
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                check(v, f"{where}[{i}]")
+
+    check(CODEX_OUTPUT_SCHEMA)
+    check(CODE_OUTPUT_SCHEMA)
+    comp = CODEX_OUTPUT_SCHEMA["properties"]["spec"]["anyOf"][0]["properties"]["components"]["items"]
+    assert "description" in comp["properties"]  # the property survives, only annotations go

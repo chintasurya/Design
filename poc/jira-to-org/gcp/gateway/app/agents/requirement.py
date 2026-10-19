@@ -349,7 +349,9 @@ def without_descriptions(schema: Any) -> Any:
     """The answer schema is sent with every call; its guidance lives in the
     instructions instead, once."""
     if isinstance(schema, dict):
-        return {k: without_descriptions(v) for k, v in schema.items() if k != "description"}
+        # a string "description" is an annotation; a dict one is a property named description
+        return {k: without_descriptions(v) for k, v in schema.items()
+                if not (k == "description" and isinstance(v, str))}
     if isinstance(schema, list):
         return [without_descriptions(v) for v in schema]
     return schema

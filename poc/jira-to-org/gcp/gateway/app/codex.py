@@ -239,6 +239,8 @@ def run_codex(conn: CodexConnection, workspace: str, prompt: str,
             summary = summarize_event(event)
             if summary:
                 on_line(summary)
+                if summary.startswith("codex error"):
+                    raw_tail = (raw_tail + [summary])[-20:]  # so a failed call says why
         code = proc.wait()
     finally:
         timer.cancel()
