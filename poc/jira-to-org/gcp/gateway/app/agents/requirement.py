@@ -45,6 +45,26 @@ How you work:
 - Keep replies short and concrete. Use plain text with simple "-" bullets.
 """
 
+FIELD_TYPES = ["Text", "TextArea", "LongTextArea", "Number", "Currency", "Percent", "Checkbox", "Date",
+               "DateTime", "Email", "Phone", "Url", "Picklist"]
+NULLABLE_INT = {"type": ["integer", "null"]}
+FIELD_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "description": "Field definition, so the gateway can write the field without a model call",
+    "properties": {
+        "data_type": {"type": "string", "enum": FIELD_TYPES},
+        "label": {"type": "string"},
+        "help_text": {"type": "string", "description": "inlineHelpText shown to users"},
+        "required": {"type": "boolean"},
+        "length": NULLABLE_INT, "precision": NULLABLE_INT, "scale": NULLABLE_INT,
+        "picklist_values": {"type": "array", "items": {"type": "string"}},
+        "default_value": {"type": ["string", "null"]},
+    },
+    "required": ["data_type", "label", "help_text", "required", "length", "precision", "scale",
+                 "picklist_values", "default_value"],
+    "additionalProperties": False,
+}
+
 SPEC_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -67,8 +87,10 @@ SPEC_SCHEMA: dict[str, Any] = {
                     "description": {"type": "string"},
                     "exists_in_org": {"type": "boolean"},
                     "evidence": {"type": "string", "description": "Graph evidence for the existence claim"},
+                    "field": {"anyOf": [FIELD_SCHEMA, {"type": "null"}],
+                              "description": "For a CustomField to create: its definition. Null otherwise"},
                 },
-                "required": ["action", "type", "api_name", "description", "exists_in_org", "evidence"],
+                "required": ["action", "type", "api_name", "description", "exists_in_org", "evidence", "field"],
                 "additionalProperties": False,
             },
         },
@@ -131,9 +153,29 @@ TOOLS: list[dict[str, Any]] = [
 ]
 
 
+def standard_api_name(api_name: str) -> str:
+    """NAM-01/NAM-02: no underscores in custom names. Next_Step_Date__c ->
+    NextStepDate__c, Opportunity.Next_Step__c -> Opportunity.NextStep__c."""
+    prefix, _, name = api_name.rpartition(".")
+    if not name.endswith("__c"):
+        return api_name
+    base = "".join(part[:1].upper() + part[1:] for part in name[:-3].split("_") if part)
+    return (prefix + "." if prefix else "") + base + "__c"
+
+
 def ground_spec(spec: dict, g: Any, tickets_seen: dict[str, dict]) -> dict:
     """Re-check every CustomField in the plan against the graph. The model's
     claim is not evidence; the graph's lookup is."""
+    for comp in spec.get("components", []):
+        # name new fields and objects to the standard now, not after a build round
+        if comp.get("action") == "create" and comp.get("type") in ("CustomField", "CustomObject"):
+            fixed = standard_api_name(comp.get("api_name", ""))
+            obj, _, fld = comp.get("api_name", "").rpartition(".")
+            taken = comp["type"] == "CustomField" and obj and g.field_exists(obj, fld).get("exists")
+            if fixed != comp.get("api_name") and not taken:  # an existing field keeps its name
+                old = comp["api_name"]
+                comp["api_name"] = fixed
+                comp["evidence"] = (comp.get("evidence", "") + f"; renamed from {old} (naming standard)").lstrip("; ")
     for comp in spec.get("components", []):
         if comp.get("type") == "CustomField" and "." in comp.get("api_name", ""):
             obj, fld = comp["api_name"].split(".", 1)
@@ -286,17 +328,37 @@ completely: what to create or modify, with API names the org actually has
 (from the graph), what already exists and must be reused, what could break,
 a test plan, and open questions. Every Apex class needs a test class. A field
 the graph lists as existing must be reused, never created again; if the graph
-says it has no field-level security, plan to grant it. Mark
+says it has no field-level security, plan to grant it. For every CustomField
+to create, fill `field` (type, label, help text, length or precision) so it can
+be built without a model; null for every other component. Custom API names have
+no underscores: NextStepDate__c, not Next_Step_Date__c. Mark
 ready_for_development false when the ticket is ambiguous. Otherwise set `spec`
 to null and just answer.
 
-`reply` is what the developer reads: short, concrete, plain text with simple
-"-" bullets.
+Spec fields: approach.build_with is how it is built (Flow or Configuration
+unless they cannot do it); why_not_flow is required for Trigger, Apex or Mixed;
+existing_automation names triggers or flows already on the object. Each
+component's evidence is what the graph says about it.
+
+Keep the answer short, it is paid for per token: `reply` at most 6 "-" bullets
+of one line each, plain text; spec strings one sentence each; no repetition
+between `reply` and `spec`.
 """
+
+def without_descriptions(schema: Any) -> Any:
+    """The answer schema is sent with every call; its guidance lives in the
+    instructions instead, once."""
+    if isinstance(schema, dict):
+        return {k: without_descriptions(v) for k, v in schema.items() if k != "description"}
+    if isinstance(schema, list):
+        return [without_descriptions(v) for v in schema]
+    return schema
+
 
 CODEX_OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "properties": {"reply": {"type": "string"}, "spec": {"anyOf": [SPEC_SCHEMA, {"type": "null"}]}},
+    "properties": {"reply": {"type": "string"},
+                   "spec": {"anyOf": [without_descriptions(SPEC_SCHEMA), {"type": "null"}]}},
     "required": ["reply", "spec"],
     "additionalProperties": False,
 }
@@ -318,6 +380,30 @@ def requirement_hash(ticket: dict) -> str:
     text = "\n".join([ticket.get("summary") or "", ticket.get("description") or "",
                       *(ticket.get("acceptance_criteria") or [])])
     return hashlib.sha256(" ".join(text.split()).encode()).hexdigest()[:16]
+
+
+def model_ticket(t: dict) -> dict:
+    """What the model needs from a ticket. The acceptance criteria are already in
+    the description, so they are not sent twice; url, assignee and dates not at all."""
+    out = {k: t.get(k) for k in ("key", "summary", "type", "status")}
+    out["description"] = (t.get("description") or "")[:3000]
+    if t.get("links"):
+        out["links"] = [f"{x.get('relation')} {x.get('key')}: {x.get('summary')}" for x in t["links"]][:5]
+    if t.get("recent_comments"):
+        out["comments"] = [c[:300] for c in t["recent_comments"][-3:]]
+    return out
+
+
+def model_graph(slice_: dict) -> dict:
+    """The graph slice as short lines instead of JSON objects with ids and scores."""
+    def line(m: dict) -> str:
+        p = m.get("properties") or {}
+        bits = [p.get("label"), p.get("type") or p.get("data_type"), "custom" if p.get("custom") else None,
+                "required" if p.get("required") else None, p.get("note"),
+                f"on {p['trigger_object']}" if p.get("trigger_object") else None, p.get("status")]
+        extra = ", ".join(str(b) for b in bits if b)
+        return f"{m.get('type')} {m.get('api_name')}" + (f" ({extra})" if extra else "")
+    return {"matches": [line(m) for m in slice_.get("matches", [])], "related": slice_.get("related", [])}
 
 
 PLANNING_RULES = ("GEN-01", "GEN-04", "FLW-04", "TRG-01", "TRG-02", "TST-01")
@@ -453,16 +539,17 @@ class CodexRequirementAgent:
         # 3. lean Codex
         g = self.graphs.graph()
         text = " ".join([message] + [f"{t['summary']} {t['description']}" for t in tickets.values()])
-        context: dict[str, Any] = {"jira_project": self.jira.project_key, "tickets": list(tickets.values()),
-                                   "knowledge_graph": g.context_slice(text, max_related=40, max_matches=10)}
-        context["knowledge_graph"].pop("graph_size", None)
+        context: dict[str, Any] = {"jira_project": self.jira.project_key,
+                                   "tickets": [model_ticket(t) for t in tickets.values()],
+                                   "knowledge_graph": model_graph(g.context_slice(text, max_related=25,
+                                                                                  max_matches=8))}
         if not tickets:
             context["project_tickets"] = [
                 {k: t[k] for k in ("key", "summary", "status")}
                 for t in (simplify(i) for i in self.jira.project_issues(only_open=False, max_results=30))]
         ctx.step(f"Queried knowledge graph: {len(context['knowledge_graph']['matches'])} matches")
         transcript = "\n".join(f"{h['role']}: {h['text'][:600]}" for h in history[-4:])
-        prompt = ("CONTEXT:\n" + json.dumps(context, default=str, separators=(",", ":"))[:24000]
+        prompt = ("CONTEXT:\n" + json.dumps(context, default=str, separators=(",", ":"))[:12000]
                   + ("\n\nEARLIER IN THIS CONVERSATION:\n" + transcript if transcript else "")
                   + "\n\nDEVELOPER'S MESSAGE:\n" + message)
         ctx.step("Requirement agent thinking on your Codex account (lean call)", "running")

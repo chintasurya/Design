@@ -36,11 +36,20 @@ MODEL_PREFERENCE = ("gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-max", "gpt-
 LEAN_COMMON = ["--disable", "apps", "--disable", "plugins", "--disable", "multi_agent",
                "-c", 'web_search="disabled"', "-c", "include_environment_context=false",
                "-c", "project_doc_max_bytes=0"]
-# Requirement agent: it reads the context it is given and answers; no tools at all.
+# Both agents: everything is in the message, so no tools at all (each tool turn
+# re-sends the whole context).
+# Measured against a capture server (codex-cli 0.163.0): these cut what Codex adds
+# to every request from ~1.9k tokens to 0: goals/image/user-input tools, the bundled
+# skills list, and the permissions/apps/collaboration-mode text.
 LEAN_NO_TOOLS = LEAN_COMMON + ["--disable", "shell_tool", "--disable", "unified_exec",
-                               "--disable", "apply_patch_freeform", "-c", 'model_reasoning_effort="low"']
-# Developer agent: keeps the shell and patch tools it edits files with.
-LEAN_CODING = LEAN_COMMON + ["--disable", "unified_exec"]
+                               "--disable", "apply_patch_freeform", "--disable", "goals", "--disable", "view_image",
+                               "--disable", "default_mode_request_user_input",
+                               "-c", "tools.experimental_request_user_input.enabled=false",
+                               "-c", "skills.bundled.enabled=false",
+                               "-c", "include_skill_instructions=false", "-c", "include_permissions_instructions=false",
+                               "-c", "include_apps_instructions=false",
+                               "-c", "include_collaboration_mode_instructions=false",
+                               "-c", 'model_reasoning_effort="low"', "-c", 'model_reasoning_summary="none"']
 
 
 class CodexNotConnectedError(RuntimeError):

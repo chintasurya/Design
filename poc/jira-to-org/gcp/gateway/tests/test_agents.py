@@ -1,3 +1,4 @@
+import json
 import os
 
 import pytest
@@ -10,7 +11,7 @@ from app.graph.store import GraphService, LocalJsonStore
 from app.runs import MemoryRunStore, RunContext
 
 from .fakes import (FAILURE, SUCCESS, FakeCliRunner, FakeJira, FakeOpenAI, FakeSalesforce, call, issue,
-                    sample_graph, settings, write)
+                    sample_graph, settings)
 
 SPEC = {
     "ticket_key": "KAN-7", "title": "Account risk score", "summary": "Compute a risk score on Account.",
@@ -93,17 +94,19 @@ def connected(s):
 def codex_writes(files_per_attempt):
     attempts = []
 
-    def runner(conn, ws, prompt, on_line, home=None, **_):
+    def runner(conn, ws, prompt, on_line, home=None, **kw):
         attempts.append(prompt)
         runner.homes.append(home)
-        for rel, content in files_per_attempt[len(attempts) - 1].items():
-            write(ws, rel, content)
-        on_line("edited files")
-        return {"exit_code": 0, "final_message": f"attempt {len(attempts)} done",
+        runner.calls.append(kw)
+        files = [{"path": rel, "content": content} for rel, content in files_per_attempt[len(attempts) - 1].items()]
+        on_line("turn completed")
+        answer = {"summary": f"attempt {len(attempts)} done", "files": files}
+        return {"exit_code": 0, "final_message": json.dumps(answer),
                 "usage": {"input_tokens": 5000, "cached_input_tokens": 3000, "output_tokens": 700, "turns": 1}}
 
     runner.attempts = attempts
     runner.homes = []
+    runner.calls = []
     return runner
 
 
@@ -229,3 +232,81 @@ def test_coverage_under_ninety_percent_goes_back_to_codex(tmp_path):
     c, store, rid = ctx()
     agent.develop(rid, SPEC, c)
     assert "AccountRisk is at 70% coverage; it needs 90%" in runner.attempts[1]
+
+
+FIELD_SPEC = {
+    **SPEC, "ticket_key": "KAN-6", "title": "Next step date on Opportunity",
+    "approach": {"build_with": "Configuration", "why_not_flow": "", "existing_automation": ""},
+    "components": [
+        {"action": "create", "type": "CustomField", "api_name": "Opportunity.NextStepDate__c",
+         "description": "When the next step is due.", "exists_in_org": False, "evidence": "not in graph",
+         "field": {"data_type": "Date", "label": "Next Step Date", "help_text": "Date the next step is due",
+                   "required": False, "length": None, "precision": None, "scale": None,
+                   "picklist_values": [], "default_value": None}},
+        {"action": "modify", "type": "PermissionSet", "api_name": "HarnessAgentAccess", "description": "FLS",
+         "exists_in_org": True, "evidence": "deployed by the agent", "field": None}],
+}
+
+
+def test_a_field_ticket_is_built_by_the_gateway_with_no_model_call(tmp_path):
+    runner = codex_writes([])
+    agent, cli, _ = developer(tmp_path, runner, [SUCCESS])
+    c, store, rid = ctx()
+    result = agent.develop(rid, FIELD_SPEC, c)
+    assert runner.attempts == []  # Codex never ran
+    run = store.get(rid)
+    assert run["status"] == "waiting_approval" and run["usage"]["total_tokens"] == 0
+    assert run["usage"]["model"] == "gateway builder (no model call)"
+    paths = [f["path"] for f in result["files"]]
+    assert paths == ["force-app/main/default/objects/Opportunity/fields/NextStepDate__c.field-meta.xml",
+                     "force-app/main/default/permissionsets/HarnessAgentAccess.permissionset-meta.xml"]
+    field = result["files"][0]["content"]
+    assert "<type>Date</type>" in field and "<inlineHelpText>Date the next step is due</inlineHelpText>" in field
+    assert "<field>Opportunity.NextStepDate__c</field>" in result["files"][1]["content"]
+    assert result["guardrails"]["blocked"] == []
+    retrieve = next(cmd for cmd in cli.commands if cmd[1:3] == ["project", "retrieve"])
+    assert "PermissionSet:HarnessAgentAccess" in retrieve  # merged into the org's copy
+
+
+def test_new_field_access_is_merged_into_the_existing_permission_set():
+    from app.agents.builder import permission_set_xml
+    existing = ('<?xml version="1.0" encoding="UTF-8"?>\n<PermissionSet xmlns="x">\n    <fieldPermissions>'
+                "<field>Account.Old__c</field></fieldPermissions>\n</PermissionSet>\n")
+    merged = permission_set_xml(existing, ["Account.Old__c", "Account.New__c"])
+    assert merged.count("<field>Account.Old__c</field>") == 1 and "<field>Account.New__c</field>" in merged
+
+
+def test_code_is_one_codex_call_per_attempt_with_no_tools_and_the_files_in_the_message(tmp_path):
+    from app.codex import LEAN_NO_TOOLS
+    runner = codex_writes([NO_ASSERT, GOOD])
+    agent, _, _ = developer(tmp_path, runner, [SUCCESS])
+    c, store, rid = ctx()
+    agent.develop(rid, SPEC, c)
+    first, fix = runner.calls
+    assert first["sandbox"] == "read-only" and first["extra_args"] == LEAN_NO_TOOLS and first["output_schema"]
+    assert "public class AccountService {}" in runner.attempts[0]  # the retrieved file is in the message
+    assert "AccountRiskTest.cls ===" in runner.attempts[1]  # the fix sees its own earlier files
+    assert store.get(rid)["usage"]["calls"] == 2
+
+
+def test_codex_cannot_write_outside_the_source_tree(tmp_path):
+    escape = {"../../etc/passwd": "x", **GOOD}
+    runner = codex_writes([escape, GOOD])
+    agent, _, _ = developer(tmp_path, runner, [SUCCESS])
+    c, _, rid = ctx()
+    agent.develop(rid, SPEC, c)
+    assert "files must be under force-app/main/default/" in runner.attempts[1]
+    assert not os.path.exists(os.path.join(tmp_path, "etc", "passwd"))
+
+
+def test_new_custom_names_follow_the_standard_but_existing_fields_keep_theirs(tmp_path):
+    from app.agents.requirement import ground_spec, standard_api_name
+    assert standard_api_name("Opportunity.Next_Step_Date__c") == "Opportunity.NextStepDate__c"
+    assert standard_api_name("Sales_campaign__c") == "SalesCampaign__c"
+    assert standard_api_name("AccountService") == "AccountService"
+    spec = {"components": [
+        {"action": "create", "type": "CustomField", "api_name": "Opportunity.Next_Step_Date__c", "evidence": ""},
+        {"action": "create", "type": "CustomField", "api_name": "Account.Risk_Score__c", "evidence": ""}]}
+    out = ground_spec(spec, graphs(tmp_path).graph(), {})
+    assert out["components"][0]["api_name"] == "Opportunity.NextStepDate__c"
+    assert out["components"][1]["api_name"] == "Account.Risk_Score__c"  # exists in the org: reused as is

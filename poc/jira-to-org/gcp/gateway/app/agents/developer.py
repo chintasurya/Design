@@ -1,6 +1,9 @@
 """Developer agent: turns an approved requirement spec into deployed metadata.
 
-    prepare SFDX workspace -> retrieve what the spec modifies -> Codex writes code
+    prepare SFDX workspace -> retrieve what the spec modifies
+    -> new fields only: the gateway writes them from the spec (no model call)
+    -> otherwise one Codex call per attempt, no tools: it gets the spec and the
+       files, and answers with complete files that the gateway writes
     -> guard the change set -> validate (check-only deploy + tests)
     -> on failure, hand the errors back to Codex (bounded) -> wait for approval
     -> deploy -> comment + transition the Jira ticket -> write facts to the graph
@@ -20,7 +23,7 @@ import subprocess
 import tempfile
 from typing import Callable, Iterator
 
-from ..codex import LEAN_CODING, CodexConnection, run_codex
+from ..codex import LEAN_NO_TOOLS, CodexConnection, run_codex
 from ..config import Settings
 from ..graph.model import Edge, Node
 from ..graph.store import GraphService
@@ -29,6 +32,7 @@ from ..guardrails.checks import run_checks
 from ..jira import JiraClient
 from ..runs import RunContext
 from ..salesforce import SalesforceClient
+from . import builder
 
 SOURCE_ROOT = "force-app/main/default"
 MAX_FILES = 60
@@ -47,9 +51,9 @@ RETRIEVE_TYPES = {
 AGENTS_MD = """\
 # Rules for this workspace
 
-You are implementing one Jira ticket in a Salesforce DX project. The spec is in
-SPEC.md. The gateway that runs you validates and deploys your work; you have no
-org access, so do not run `sf` or make network calls.
+You are implementing one Jira ticket in a Salesforce DX project. The spec and
+the existing files are in the message. The gateway validates and deploys your
+work; you have no org access.
 
 - Write Salesforce source format under `force-app/main/default/` only.
 - Use API version {api} in every `-meta.xml`.
@@ -57,7 +61,7 @@ org access, so do not run `sf` or make network calls.
   credentials, remote site settings, connected apps or destructive changes.
 - Reuse what the spec says exists. Never create a field or class that the spec
   marks `exists_in_org: true`; modify the retrieved copy instead.
-- Build with the approach SPEC.md chose (`approach.build_with`): declarative
+- Build with the approach the spec chose (`approach.build_with`): declarative
   first.
 - Flow: `flows/<NameInCamelCase>.flow-meta.xml`, status Active, a `start`
   element with the object and trigger type (RecordBeforeSave for field
@@ -84,20 +88,38 @@ org access, so do not run `sf` or make network calls.
 - The gateway checks the standards below automatically before anything
   reaches the org; a broken blocking rule comes back to you to fix.
 - Keep the change as small as the acceptance criteria allow.
-- When you finish, reply with a short summary: files changed and why.
 """
 
 
-# Replaces Codex's long built-in coding prompt (see codex.LEAN_CODING): a short
-# brief plus the workspace rules, so each turn re-sends far less.
+# Replaces Codex's long built-in coding prompt. One call, no tools: everything
+# Codex needs is in the message, so there are no read-the-file turns that each
+# re-send the whole context (that cost ~45k tokens per attempt).
 DEVELOPER_INSTRUCTIONS = """\
-You are a Salesforce developer agent. The current directory is a Salesforce DX
-project. SPEC.md says what to build; the rules below say how. Work efficiently:
-read only the files you need (SPEC.md first, then any retrieved file you must
-change), make the edits with apply_patch, and do not explore the repository
-broadly or re-read files. Do not use the network and do not run `sf`.
+You are a Salesforce developer agent. The message holds the requirement spec,
+the knowledge graph context and the current content of every relevant file.
+Do not run commands or open files: you have no tools. Answer with JSON only:
+`files` lists every file you create or change, each with its path under
+force-app/main/default/ and its COMPLETE new content (never a diff, never a
+partial file; files you leave unchanged are not listed); `summary` is at most
+3 one-line bullets. Include the -meta.xml file for every new Apex class or
+trigger. Output is paid for per token: no comments beyond what the standards
+require, no unused code.
 
 """
+
+CODE_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "files": {"type": "array", "items": {
+            "type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
+            "required": ["path", "content"], "additionalProperties": False}},
+    },
+    "required": ["summary", "files"],
+    "additionalProperties": False,
+}
+PROMPT_FILE_CHARS = 20_000   # one file in the message
+PROMPT_FILES_CHARS = 60_000  # all files in the message
 
 
 class DeveloperError(RuntimeError):
@@ -280,7 +302,7 @@ class DeveloperAgent:
             json.dump({"packageDirectories": [{"path": "force-app", "default": True}], "namespace": "",
                        "sourceApiVersion": self.s.sf_api_version}, fh, indent=2)
         with open(os.path.join(ws, ".gitignore"), "w", encoding="utf-8") as fh:
-            fh.write(".sf/\n.sfdx/\n.codex-last-message.txt\n")
+            fh.write(".sf/\n.sfdx/\n.codex-last-message.txt\n.codex-output-schema.json\n")
 
     def prepare(self, run_id: str, spec: dict, ctx: RunContext) -> str:
         ws = self.workspace(run_id)
@@ -309,6 +331,11 @@ class DeveloperAgent:
                 if kind in {"ApexClass", "ApexTrigger", "LightningComponentBundle", "Flow", "PermissionSet"}:
                     name = name.split(".")[-1]
                 metadata.append(f"{kind}:{name}")
+        grants_fields = any(c.get("type") == "CustomField" and c.get("action") == "create"
+                            for c in spec.get("components", []))
+        perm = f"PermissionSet:{builder.PERMISSION_SET}"
+        if grants_fields and perm not in metadata:
+            metadata.append(perm)  # new field access is merged into the org's copy, never replaces it
         if metadata:
             out = self.cli.retrieve(ws, metadata)
             files = (out.get("result") or {}).get("files") or []
@@ -407,12 +434,56 @@ class DeveloperAgent:
         return [f"[{f['rule']} {f['title']}] {f['file'].replace(SOURCE_ROOT + '/', '')}: {f['message']}"
                 for f in card["blocked"]]
 
-    def _prompt(self, spec: dict, errors: list[str] | None) -> str:
-        if not errors:
-            return (f"Implement Jira ticket {spec.get('ticket_key')} as described in SPEC.md, following AGENTS.md. "
-                    "Meet every acceptance criterion. Reply with a short summary when done.")
-        return ("The Salesforce validation of your change failed. Fix exactly these problems, keep everything "
-                "else as it is, and follow AGENTS.md:\n- " + "\n- ".join(errors))
+    def _workspace_files(self, ws: str) -> str:
+        """Every source file in the workspace (retrieved from the org, or written
+        by an earlier attempt), for the message."""
+        parts, total = [], 0
+        root = os.path.join(ws, SOURCE_ROOT)
+        for dirpath, _, names in sorted(os.walk(root)):
+            for name in sorted(names):
+                full = os.path.join(dirpath, name)
+                with open(full, encoding="utf-8", errors="replace") as fh:
+                    content = fh.read()[:PROMPT_FILE_CHARS]
+                if total + len(content) > PROMPT_FILES_CHARS:
+                    parts.append(f"=== {os.path.relpath(full, ws)} === (omitted: message size limit)")
+                    continue
+                total += len(content)
+                parts.append(f"=== {os.path.relpath(full, ws)} ===\n{content}")
+        return "\n\n".join(parts) or "(none: everything is new)"
+
+    def _prompt(self, ws: str, spec: dict, errors: list[str] | None) -> str:
+        # what the build needs; the Requirement agent's notes on reuse and impact are already in components
+        brief = {k: v for k, v in spec.items() if k in ("ticket_key", "title", "summary", "acceptance_criteria",
+                                                         "approach", "components", "test_plan")}
+        context = self.graphs.graph().context_slice(
+            " ".join([spec.get("title", ""), spec.get("summary", "")]
+                     + [c.get("api_name", "") for c in spec.get("components", [])]))
+        description = ((spec.get("ticket") or {}).get("description") or "")[:4000]
+        task = (f"Implement Jira ticket {spec.get('ticket_key')}. Meet every acceptance criterion."
+                if not errors else
+                "Your previous change (the files above) failed these checks. Fix exactly these problems and "
+                "return every file you change, complete:\n- " + "\n- ".join(errors))
+        return ("SPEC:\n" + json.dumps(brief, separators=(",", ":"))
+                + ("\n\nJIRA DESCRIPTION:\n" + description if description else "")
+                + "\n\nKNOWLEDGE GRAPH:\n" + ("\n".join(f"- {line}" for line in context["related"][:25]) or "- none")
+                + "\n\nFILES:\n" + self._workspace_files(ws)
+                + "\n\nTASK:\n" + task)
+
+    @staticmethod
+    def _write_answer(ws: str, answer: dict) -> list[str]:
+        """Write the files Codex answered with. Paths outside the source tree
+        are refused here; the guard checks the rest."""
+        problems = []
+        for f in answer.get("files") or []:
+            rel = os.path.normpath((f.get("path") or "").strip().lstrip("/"))
+            if not rel.startswith(SOURCE_ROOT + "/") or ".." in rel.split(os.sep):
+                problems.append(f"{f.get('path')}: files must be under {SOURCE_ROOT}/")
+                continue
+            full = os.path.join(ws, rel)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w", encoding="utf-8") as fh:
+                fh.write(f.get("content") or "")
+        return problems
 
     def develop(self, run_id: str, spec: dict, ctx: RunContext, codex_home: str | None = None,
                 after_codex: Callable[[], None] | None = None,
@@ -431,26 +502,40 @@ class DeveloperAgent:
         validation: dict = {}
         kept: list[dict] = []
         tests: list[str] = []
+        use_builder = builder.buildable(spec)
         for attempt in range(1, self.s.max_fix_attempts + 2):
-            ctx.step(f"Codex attempt {attempt}", "running")
-            before = plan_usage() if plan_usage else None
-            out = self.codex_runner(self.codex, ws, self._prompt(spec, errors), lambda line: ctx.step(line),
-                                    home=codex_home,
-                                    instructions=self._instructions(spec),
-                                    extra_args=LEAN_CODING)
-            if plan_usage:
-                ctx.plan_usage(before, plan_usage())
-            if after_codex:
-                after_codex()
-            summary = out.get("final_message") or summary
-            u = out.get("usage") or {}
-            if u:
-                model = self.s.codex_model or ("codex (your ChatGPT sign-in)" if codex_home else "codex-cli default")
-                ctx.add_usage("developer", model, u.get("input_tokens", 0),
-                              u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, key)
-            if out.get("exit_code") not in (0, None):
-                ctx.step("Codex exited with an error", "error", out.get("log_tail", "")[-1500:])
+            write_problems: list[str] = []
+            if attempt == 1 and use_builder:
+                written = builder.build(ws, spec)
+                summary = "Built by the gateway from the requirement spec (no model call):\n" + \
+                          "\n".join(f"- {p.replace(SOURCE_ROOT + '/', '')}" for p in written)
+                ctx.add_usage("developer", "gateway builder (no model call)", 0, 0, 0, 0, key, calls=0)
+                ctx.step("Built from the spec by the gateway (no model call)", detail=summary)
+            else:
+                ctx.step(f"Codex attempt {attempt} (one call, no tools)", "running")
+                before = plan_usage() if plan_usage else None
+                out = self.codex_runner(self.codex, ws, self._prompt(ws, spec, errors), lambda line: ctx.step(line),
+                                        home=codex_home, sandbox="read-only", output_schema=CODE_OUTPUT_SCHEMA,
+                                        instructions=self._instructions(spec), extra_args=LEAN_NO_TOOLS)
+                if plan_usage:
+                    ctx.plan_usage(before, plan_usage())
+                if after_codex:
+                    after_codex()
+                u = out.get("usage") or {}
+                if u:
+                    model = self.s.codex_model or ("codex (your ChatGPT sign-in)" if codex_home else "codex-cli default")
+                    ctx.add_usage("developer", model, u.get("input_tokens", 0),
+                                  u.get("output_tokens", 0), u.get("cached_input_tokens", 0), 0, key)
+                if out.get("exit_code") not in (0, None):
+                    ctx.step("Codex exited with an error", "error", out.get("log_tail", "")[-1500:])
+                try:
+                    answer = json.loads(out.get("final_message") or "{}")
+                except json.JSONDecodeError:
+                    answer = {}
+                summary = answer.get("summary") or summary
+                write_problems = self._write_answer(ws, answer)
             kept, problems = self.guard(ws, self.changes(ws))
+            problems = write_problems + problems
             if problems:
                 ctx.step("Change set refused by the guard", "error", "\n".join(problems))
                 errors = problems

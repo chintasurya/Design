@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 
 from app.usage import summarize
 
-from .fakes import sample_graph
 from .test_api import KEY, api  # noqa: F401 - fixture
 
 

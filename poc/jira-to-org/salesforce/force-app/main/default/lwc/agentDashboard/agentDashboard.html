@@ -165,9 +165,10 @@
 
                 <section class="panel">
                     <h2 class="panel__title">Recent agent runs</h2>
+                    <p class="muted">New in: what the agent sent the model this run (instructions, spec, ticket, graph context, files). Cached in: the same context re-sent within a run, served from the model's cache at a fraction of the cost. Out: what the model wrote (answer, spec or code). 0 means no model was called.</p>
                     <template lwc:if={hasRecent}>
                         <table class="runs">
-                            <thead><tr><th>When</th><th>Agent</th><th>Ticket</th><th>Status</th><th class="num">In</th><th class="num">Out</th><th class="num">Total</th><th class="num">Limit</th><th class="num">Credits</th></tr></thead>
+                            <thead><tr><th>When</th><th>Agent</th><th>Ticket</th><th>Status</th><th class="num">New in</th><th class="num">Cached in</th><th class="num">Out</th><th class="num">Total</th><th class="num">Limit</th><th class="num">Credits</th></tr></thead>
                             <tbody>
                                 <template for:each={recent} for:item="r">
                                     <tr key={r.key}>
@@ -175,7 +176,8 @@
                                         <td><span class="swatch" style={r.agentStyle}></span>{r.agentLabel}</td>
                                         <td class="mono">{r.ticket}</td>
                                         <td><span class={r.statusClass}>{r.status}</span></td>
-                                        <td class="num">{r.inLabel}</td>
+                                        <td class="num">{r.newInLabel}</td>
+                                        <td class="num">{r.cachedLabel}</td>
                                         <td class="num">{r.outLabel}</td>
                                         <td class="num"><strong>{r.totalLabel}</strong></td>
                                         <td class="num">{r.limitLabel}</td>
