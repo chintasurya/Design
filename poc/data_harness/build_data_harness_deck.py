@@ -216,7 +216,11 @@ def team_slide(prs, layout):
             ("QA, all pods", "Every release", "Zephyr test cases, Copado robotic and regression", [])]
     y = top + 0.42
     for t, sub, d, tags in pods:
-        cv.text(rx + 0.12, y, rw - 0.24, 0.22, t, size=8, bold=True, color=MAGENTA if "Marketing" in t else WHITE,
+        tx0 = rx + 0.12
+        if "Cloud" in t:
+            logo(cv, "salesforce", tx0, y + 0.01, 0.2)
+            tx0 += 0.27
+        cv.text(tx0, y, rw - 0.24, 0.22, t, size=8, bold=True, color=MAGENTA if "Marketing" in t else WHITE,
                 anchor=MSO_ANCHOR.MIDDLE)
         cv.text(rx + 0.12, y + 0.22, rw - 0.24, 0.2, sub, size=6, color=DIM)
         cv.text(rx + 0.12, y + 0.42, rw - 0.24, 0.36, d, size=6.6, color=WHITE)
@@ -234,7 +238,7 @@ def team_slide(prs, layout):
     by = 6.08
     paths = [("DELIVERY PATH", ["AI build", "Copado", "Quality gates", "DEV", "SIT", "UAT", "Human approval", "CAB",
                                 "PROD"], CYAN),
-             ("CAMPAIGN PATH", ["Ask in Codex", "Masked audience", "Pre-send review", "Release 6 fields",
+             ("CAMPAIGN PATH", ["Ask in Codex", "Masked audience", "Pre-send review", "Release minimum fields",
                                 "SFMC pulls", "Journey runs"], MAGENTA)]
     for k, (lab, steps, col) in enumerate(paths):
         yy = by + k * 0.4
@@ -290,15 +294,18 @@ def platform_slide(prs, layout):
     # surface
     sx, sw = 0.6, 1.85
     cv.rect(sx, fy + 0.14, sw, fh - 0.28, None, YELLOW, 1.25, R, 0.05)
-    cv.text(sx + 0.12, fy + 0.2, sw - 0.2, 0.42, [[("Harness", {})], [("Surface", {})]], size=10, color=WHITE,
+    logo(cv, "harness", sx + 0.12, fy + 0.26, 0.28)
+    cv.text(sx + 0.48, fy + 0.2, sw - 0.56, 0.42, [[("Harness", {})], [("Surface", {})]], size=10, color=WHITE,
             line=0.9)
-    surf = [("Codex", "a Jira number, or a campaign ask"), ("Salesforce LWC", "the Agentic Harness console"),
-            ("Approval page", "SSO · H1-H4 · G1-G3"), ("Looker review", "the masked pre-send report"),
-            ("Jira", "status of every step")]
+    surf = [("openai-white", "Codex", "a Jira number, or a campaign ask"),
+            ("salesforce", "Salesforce LWC", "the Agentic Harness console"),
+            ("people", "Approval page", "SSO · H1-H4 · G1-G3"), ("looker", "Looker review", "the masked pre-send report"),
+            ("jira", "Jira", "status of every step")]
     y = fy + 0.75
-    for i, (t, d) in enumerate(surf):
-        cv.text(sx + 0.12, y, sw - 0.2, 0.2, t, size=8, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(sx + 0.12, y + 0.2, sw - 0.2, 0.3, d, size=6.3, color=SOFT)
+    for i, (ic, t, d) in enumerate(surf):
+        logo(cv, ic, sx + 0.12, y + 0.01, 0.2)
+        cv.text(sx + 0.4, y, sw - 0.48, 0.2, t, size=8, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(sx + 0.4, y + 0.2, sw - 0.48, 0.3, d, size=6.3, color=SOFT)
         if t == "Looker review":
             new_tag(sx + sw - 0.46, y + 0.03)
         y += 0.6
@@ -376,8 +383,8 @@ def platform_slide(prs, layout):
               "aggregates for campaigns.", "Ask before build."),
              ("No pod breaks another", "The Change Guardian checks every change against who owns and uses it.",
               "Governed by design."),
-             ("Agents never see a patient", "Collibra policy masks PHI; only counts and tokens; six fields "
-              "released after review.", "Private by design.")]
+             ("Agents never see a patient", "Collibra policy masks PHI; only counts and tokens; minimum "
+              "fields released after review.", "Private by design.")]
     y = 2.12
     for i, (t, d, k) in enumerate(diffs):
         cv.rect(dx, y, dw, 1.12, CARD, WHITE, 1.0, R, 0.1)
@@ -396,16 +403,19 @@ def platform_slide(prs, layout):
                                                                                                        "color":
                                                                                                        SOFT})]],
             size=11, color=WHITE)
-    comps = [("Salesforce", "Health, Marketing + Data Cloud"), ("Delivery", "Copado, Git, Jira, Zephyr"),
-             ("Data", "BigQuery, Collibra, DLP, Looker, Spanner"), ("Models", "Codex Enterprise; model in config; "
-                                                                             "tools via MCP"),
-             ("Cloud", "Google Cloud: Cloud Run, VPC-SC, CMEK")]
+    comps = [("salesforce", "Salesforce", "Health, Marketing + Data Cloud"),
+             ("git", "Delivery", "Copado, Git, Jira, Zephyr"),
+             ("googlebigquery", "Data", "BigQuery, Collibra, DLP, Looker, Spanner"),
+             ("openai-white", "Models", "Codex Enterprise; model in config; tools via MCP"),
+             ("googlecloud", "Cloud", "Google Cloud: Cloud Run, VPC-SC, CMEK")]
     cw_ = (12.88 - 3.0 - 0.2) / 5
-    for i, (t, d) in enumerate(comps):
+    for i, (ic, t, d) in enumerate(comps):
         x = 3.0 + i * cw_
-        cv.text(x, by + 0.12, cw_ - 0.1, 0.26, t, size=9, bold=True, color=MAGENTA if t == "Data" else WHITE,
+        logo(cv, ic, x, by + 0.14, 0.22)
+        x += 0.3
+        cv.text(x, by + 0.12, cw_ - 0.4, 0.26, t, size=9, bold=True, color=MAGENTA if t == "Data" else WHITE,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x, by + 0.4, cw_ - 0.1, 0.45, d, size=6.6, color=SOFT)
+        cv.text(x, by + 0.4, cw_ - 0.4, 0.45, d, size=6.6, color=SOFT)
     set_notes(s, PLATFORM_NOTES)
     return s
 
@@ -475,9 +485,10 @@ def health_slide(prs, layout):
             pill(cv, x + (w - 0.5) / 2, y2 + h2 - 0.22, 0.5, "EVALS", YELLOW, True, h=0.17)
         elif c[0] == "g":
             cv.rect(x, y2, w, h2 - 0.28, YELLOW, None, shape=R, radius=0.2)
-            cv.text(x + 0.03, y2 + 0.2, w - 0.06, 0.3, c[1], size=8.5, bold=True, color=BLACK,
+            logo(cv, "people-black", x + (w - 0.2) / 2, y2 + 0.1, 0.2)
+            cv.text(x + 0.03, y2 + 0.3, w - 0.06, 0.3, c[1], size=8.5, bold=True, color=BLACK,
                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-            cv.text(x + 0.03, y2 + 0.52, w - 0.06, 0.6, c[2], size=6, color=BLACK, align=PP_ALIGN.CENTER)
+            cv.text(x + 0.03, y2 + 0.62, w - 0.06, 0.55, c[2], size=6, color=BLACK, align=PP_ALIGN.CENTER)
         else:
             cv.rect(x, y2, w, h2 - 0.28, None, SOFT, 1.0, R, 0.1, dash="dash")
             cv.text(x + 0.06, y2 + 0.1, w - 0.12, 0.26, c[1], size=8, bold=True, color=WHITE,
@@ -489,13 +500,15 @@ def health_slide(prs, layout):
     for k1, k2 in zip(keys, keys[1:]):
         x1 = xs[k1][0] + xs[k1][1]
         cv.arrow(x1, y2 + (h2 - 0.28) / 2, x1 + 0.1, y2 + (h2 - 0.28) / 2, WHITE, 1.0)
-    # bounded retry: review + test -> developer, over the top
+    # 1 -> 2: the Codex ask starts the Requirements Agent
+    rqx, rqw = xs["Requirements"]
+    cv.arrow(rqx + rqw / 2, y1 + 0.78, rqx + rqw / 2, y2, CYAN, 1.75)
+    # bounded retry: a failed check in 5 goes back to 4, over the top
     dvx, dvw = xs["Developer"]
     rtx, rtw = xs["Review + Test"]
-    path(cv, [(rtx + rtw / 2, y2), (rtx + rtw / 2, y2 - 0.16), (dvx + dvw / 2, y2 - 0.16), (dvx + dvw / 2, y2)],
-         MAGENTA, 1.5)
-    mid = (dvx + dvw / 2 + rtx + rtw / 2) / 2
-    pill(cv, mid - 0.95, y2 - 0.25, 1.9, "FAIL → FIX · MAX 5, THEN OWNER", MAGENTA, True, h=0.18,
+    ly_ = y2 - 0.14
+    path(cv, [(rtx + 0.35, y2), (rtx + 0.35, ly_), (dvx + dvw - 0.35, ly_), (dvx + dvw - 0.35, y2)], MAGENTA, 1.75)
+    pill(cv, rtx + 0.45, ly_ - 0.09, 1.95, "5 → 4  FAIL → FIX · MAX 5, THEN OWNER", MAGENTA, True, h=0.18,
          tcolor=WHITE)
 
     # row 3: knowledge graph + systems
@@ -522,7 +535,8 @@ def health_slide(prs, layout):
     # the GCP source, grey: not needed for Health Cloud delivery
     x = kx + 0.14 + 6 * (sw + 0.08)
     cv.rect(x, y3 + 0.38, sw, 0.62, GREY_BG, GREY_LN, 0.9, R, 0.1, dash="dash")
-    cv.text(x + 0.08, y3 + 0.42, sw - 0.12, 0.24, "GCP data", size=7, bold=True, color=GREY_TX,
+    logo(cv, "googlecloud-grey", x + 0.08, y3 + 0.45, 0.2)
+    cv.text(x + 0.33, y3 + 0.42, sw - 0.36, 0.24, "GCP data", size=7, bold=True, color=GREY_TX,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.text(x + 0.08, y3 + 0.66, sw - 0.12, 0.32, "not needed for Health Cloud stories", size=5.6, color=GREY_TX)
     qs = ["graph.exists", "graph.find_reuse", "graph.blast_radius", "graph.owners", "graph.context_slice"]
@@ -610,13 +624,14 @@ def marketing_slide(prs, layout):
     W = X1 - X0
     cx = [0.88 + i * 2.38 for i in range(4)]
     cw = 2.25
-    lanes = [(1.28, 1.1, "PEOPLE", "2A2A2A", WHITE, CARD, EDGE), (2.46, 1.04, "HARNESS", CYAN, BLACK, TINT[CYAN],
-                                                                  CYAN),
-             (3.58, 2.04, "GOOGLE CLOUD", MAGENTA, WHITE, BLACK, MAGENTA)]
-    for y, h, t, lc, tc, fill, line in lanes:
+    lanes = [(1.28, 1.1, "PEOPLE", "2A2A2A", WHITE, CARD, EDGE, "people"),
+             (2.46, 1.04, "HARNESS", "0A4A52", WHITE, TINT[CYAN], CYAN, "harness"),
+             (3.58, 2.04, "GOOGLE CLOUD", "3A0A1E", WHITE, BLACK, MAGENTA, "googlecloud")]
+    for y, h, t, lc, tc, fill, line, ic in lanes:
         cv.rect(X0, y, W, h, fill, line, 1.0, R, 0.03, dash="dash" if t == "GOOGLE CLOUD" else None)
         cv.rect(X0, y, 0.3, h, lc, None)
-        tb = cv.text(0.6 - h / 2, y + h / 2 - 0.14, h, 0.28, t, size=6.6, bold=True, color=tc,
+        logo(cv, ic, X0 + 0.04, y + 0.08, 0.22)
+        tb = cv.text(0.6 - (h - 0.3) / 2, y + 0.3 + (h - 0.3) / 2 - 0.14, h - 0.3, 0.28, t, size=6.6, bold=True, color=tc,
                      align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=150)
         tb.rotation = 270
     p_y, p_h = 1.43, 0.82
@@ -626,7 +641,8 @@ def marketing_slide(prs, layout):
     # people
     cv.rect(cx[0], p_y, cw, p_h, BLACK, CYAN, 1.0, R, 0.1)
     badge(cv, cx[0] + 0.07, p_y + 0.06, 1)
-    cv.text(cx[0] + 0.34, p_y + 0.05, cw - 0.4, 0.22, "Ask in Codex", size=7.6, bold=True, color=WHITE,
+    logo(cv, "openai-white", cx[0] + 0.35, p_y + 0.07, 0.18)
+    cv.text(cx[0] + 0.58, p_y + 0.05, cw - 0.64, 0.22, "Ask in Codex", size=7.6, bold=True, color=WHITE,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.text(cx[0] + 0.12, p_y + 0.3, cw - 0.22, p_h - 0.32,
             [[("“Top 10 campaigns I can run for heart patients?”", {})],
@@ -639,7 +655,7 @@ def marketing_slide(prs, layout):
     card(cv, cx[2], p_y, cw, p_h, "Pre-send review", ["SME + tech lead approve a masked report: counts, consent, "
                                                       "exclusions.", [("No PHI on screen.", {"bold": True,
                                                                                               "color": MAGENTA})]],
-         line=YELLOW, fill=TINT[YELLOW], n=7, tag=("G2", YELLOW, True), bsize=6)
+         line=YELLOW, fill=TINT[YELLOW], n=7, tag=("G2", YELLOW, True), bsize=6, icon="looker")
     card(cv, cx[3], p_y, cw, p_h, "Approve journey + content", "Clinical and compliance approve messages and "
          "journey; it waits, active, for entries.", line=YELLOW, fill=TINT[YELLOW], tag=("G3", YELLOW, True),
          bsize=6)
@@ -656,16 +672,17 @@ def marketing_slide(prs, layout):
     card(cv, cx[0], d_y, cw, d_h, "Knowledge graph", ["Segments, counts, care gaps, consent coverage, past lift.",
                                                      [("Masked: no patient visible.", {"bold": True,
                                                                                        "color": MAGENTA})]],
-         line=VIO, fill=TINT[VIO], n=3, ncolor=VIO, bsize=6)
+         line=VIO, fill=TINT[VIO], n=3, ncolor=VIO, bsize=6, icon="googlecloudspanner")
     card(cv, cx[1], d_y, cw, d_h, "Masked audience · BigQuery", ["Tokens and counts per run ID; holdout set aside.",
                                                                 [("Agents never unmask.", {"bold": True,
                                                                                            "color": MAGENTA})]],
-         line=MAGENTA, n=6, ncolor=MAGENTA, bsize=6)
+         line=MAGENTA, n=6, ncolor=MAGENTA, bsize=6, icon="googlebigquery")
     card(cv, cx[2], d_y, cw, d_h, "ROI engine", "EUID matching, attribution, lift vs holdout, Contribution "
-         "Margin.", line=EDGE, bsize=6)
+         "Margin.", line=EDGE, bsize=6, icon="googlebigquery")
     fx, fy, fw, fh = cv.frame(cx[3], d_y, cw, d_h, BLACK, 0.04)
     badge(cv, fx + 0.05, fy + 0.05, 9, YELLOW)
-    cv.text(fx + 0.32, fy + 0.03, fw - 0.36, 0.24, "Release store · Spanner", size=7.6, bold=True, color=WHITE,
+    logo(cv, "googlecloudspanner", fx + 0.33, fy + 0.05, 0.2)
+    cv.text(fx + 0.58, fy + 0.03, fw - 0.62, 0.24, "Release store · Spanner", size=7.6, bold=True, color=WHITE,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.text(fx + 0.08, fy + 0.29, fw - 0.16, fh - 0.3, [[("Only after G2 + G3: ", {"bold": True, "color": YELLOW}),
                                                          ("token, name, email, phone, condition group, discharge "
@@ -692,33 +709,40 @@ def marketing_slide(prs, layout):
     gbc = cx[1] + cw + 0.065
     path(cv, [(cx[1] + cw, d_y + 0.6), (gbc, d_y + 0.6), (gbc, p_y + p_h / 2), (cx[2], p_y + p_h / 2)], SOFT)
     gcd = cx[2] + cw + 0.065
-    path(cv, [(cx[2] + cw, p_y + p_h / 2), (gcd, p_y + p_h / 2), (gcd, d_y + 0.35), (cx[3], d_y + 0.35)], YELLOW,
-         1.75)
-    cv.arrow(cx[3], p_y + p_h - 0.14, gcd, p_y + p_h - 0.14, YELLOW, 1.75)
-    cv.arrow(cx[3] + m, a_y, cx[3] + m, p_y + p_h, CYAN, 1.25)
+    # 7 -> 8: an approved pre-send report lets the Developer Agent build
+    path(cv, [(cx[2] + cw, p_y + p_h / 2), (gcd, p_y + p_h / 2), (gcd, a_y + a_h / 2), (cx[3], a_y + a_h / 2)],
+         YELLOW, 1.75)
+    # 8 -> G3: the built journey goes to clinical + compliance
+    cv.arrow(cx[3] + m, a_y, cx[3] + m, p_y + p_h, CYAN, 1.5)
+    # G3 -> 9: only then is the release store filled (right-hand side, clear of 7 -> 8)
+    gr = cx[3] + cw + 0.065
+    path(cv, [(cx[3] + cw, p_y + p_h / 2), (gr, p_y + p_h / 2), (gr, d_y + 0.25), (cx[3] + cw, d_y + 0.25)],
+         YELLOW, 1.75)
     cv.arrow(cx[2] + m, d_y, cx[2] + m, a_y + a_h, MAGENTA, 1.5)
     ly = 4.82
     path(cv, [(cx[2] + 0.5, d_y + d_h), (cx[2] + 0.5, ly), (cx[0] + m, ly), (cx[0] + m, d_y + d_h)], GREEN)
     pill(cv, cx[0] + m + 0.15, ly - 0.09, 3.0, "← WHAT WORKED IMPROVES THE NEXT SUGGESTION", GREEN, True)
     # Marketing Cloud, bottom-up
     mx, mw = 10.55, 2.33
-    bar(cv, mx, 1.28, mw, "MARKETING CLOUD", "", WHITE, BLACK)
+    cv.rect(mx, 1.28, mw, 0.3, WHITE, None)
+    logo(cv, "salesforce", mx + 0.08, 1.31, 0.24)
+    cv.text(mx + 0.4, 1.28, mw - 0.5, 0.3, "MARKETING CLOUD", size=7, bold=True, color=BLACK, track=150,
+            anchor=MSO_ANCHOR.MIDDLE)
     cv.rect(mx, 1.58, mw, 4.04, CARD, EDGE, 0.75)
     nx, nw = mx + 0.1, mw - 0.2
     card(cv, nx, 1.7, nw, 0.62, "SMS or email nudge", "Consent, STOP, frequency caps re-checked at send.",
          line=EDGE, fill=BLACK, bsize=6)
-    card(cv, nx, 2.48, nw, 0.76, "Journey starts itself", "New records in the data extension enter the approved "
-         "journey.", line=EDGE, fill=BLACK, bsize=6)
+    card(cv, nx, 2.48, nw, 0.76, "Journey starts itself", "Built by the Developer Agent (8); new records in the data "
+         "extension enter it.", line=EDGE, fill=BLACK, bsize=6)
     fx, fy, fw, fh = cv.frame(nx, 3.4, nw, 0.74, BLACK, 0.04)
     cv.text(fx + 0.08, fy + 0.04, fw - 0.16, 0.22, "Campaign data extension", size=7.6, bold=True, color=WHITE,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.08, fy + 0.3, fw - 0.16, fh - 0.32, "The six released fields, for this run only.", size=6,
+    cv.text(fx + 0.08, fy + 0.3, fw - 0.16, fh - 0.32, "Only the released minimum fields, for this run.", size=6,
             color=SOFT)
     card(cv, nx, 4.3, nw, 0.82, "Pulls the released records", "Automation Studio calls the read-only API, scoped "
-         "to the run ID.", line=CYAN, fill=TINT[CYAN], n=10, bsize=6)
+         "to the run ID.", line=CYAN, fill=TINT[CYAN], n=10, bsize=6, icon="salesforce")
     for lo, hi in ((2.48, 2.32), (3.4, 3.24), (4.3, 4.14)):
         cv.arrow(nx + nw / 2, lo, nx + nw / 2, hi, SOFT, 1.25)
-    cv.arrow(cx[3] + cw, a_y + a_h / 2, nx, 2.86, CYAN, 1.5)
     cv.arrow(cx[3] + cw, d_y + 0.62, nx, 4.62, WHITE, 2.0)
     path(cv, [(nx + nw / 2, 5.12), (nx + nw / 2, 5.56), (cx[2] + 1.6, 5.56), (cx[2] + 1.6, sy + 0.5)], MAGENTA,
          1.25)
@@ -727,7 +751,7 @@ def marketing_slide(prs, layout):
     # bottom principles
     pr = [("Masked for agents and reviewers", "Collibra policy masks PHI; agents see counts and tokens.", MAGENTA),
           ("Consent decides, people confirm", "No consent for the channel, no message.", VIO),
-          ("Minimum necessary leaves", "Six fields, for one run, time-limited.", YELLOW),
+          ("Minimum necessary leaves", "Only the fields a campaign needs, one run, time-limited.", YELLOW),
           ("Review before release", "The data extension starts the journey, so review comes first.", GREEN)]
     pw = (12.43 - 3 * 0.15) / 4
     for i, (t, d, c) in enumerate(pr):
@@ -760,7 +784,7 @@ REJECTED PATH
 If the steward rejects, the policy remover clears the policy, the binding is retired and the column can be reprocessed. The remover is in progress.
 
 WHO SEES WHAT (right)
-Agents and the knowledge graph see masked values and aggregates. The pre-send review shows a masked report. Only the release step, under a raw-access service account and only after G2 and G3, reads the six fields a campaign needs."""
+Agents and the knowledge graph see masked values and aggregates. The pre-send review shows a masked report. Only the release step, under a raw-access service account and only after G2 and G3, reads only the fields a campaign needs."""
 
 ADDG = {  # id: (col, lane, title, subtitle, status)
     "A": (0, 1, ["DLP", "classification"], "Cloud DLP", "UPSTREAM"),
@@ -790,7 +814,8 @@ def masking_slide(prs, layout):
         y = fy0 + i * (lh + lg)
         cv.rect(fx0, y, fx1 - fx0, lh, CARD, None)
         cv.rect(fx0, y, 1.1, lh, CARD2, None)
-        cv.text(fx0 + 0.1, y + lh / 2 - 0.2, 1.0, 0.4, [[(role, {"bold": True, "color": WHITE, "track": 120})],
+        logo(cv, "people" if role == "REVIEW" else "googlecloud", fx0 + 0.1, y + 0.1, 0.2)
+        cv.text(fx0 + 0.1, y + lh / 2 - 0.08, 1.0, 0.4, [[(role, {"bold": True, "color": WHITE, "track": 120})],
                                                        [(proj, {"color": DIM, "size": 5.2, "font": "Courier New"})]],
                 size=6.4, anchor=MSO_ANCHOR.MIDDLE, after=1)
 
@@ -865,8 +890,8 @@ def masking_slide(prs, layout):
     who = [("Agents + knowledge graph", "masked values and counts", MAGENTA),
            ("Looker, dashboards", "masked, aggregated views", MAGENTA),
            ("SME + tech lead (G2)", "masked pre-send report", MAGENTA),
-           ("Release step (system)", "raw-access service account, 6 fields, after G2 + G3 only", YELLOW),
-           ("Marketing Cloud", "pulls those 6 fields for one run", YELLOW)]
+           ("Release step (system)", "raw-access service account, minimum fields, after G2 + G3", YELLOW),
+           ("Marketing Cloud", "pulls only those fields, for one run", YELLOW)]
     for i, (t, d, c) in enumerate(who):
         y = 3.88 + i * 0.36
         cv.rect(rx + 0.12, y + 0.08, 0.1, 0.1, c, None, shape=MSO_SHAPE.OVAL)
