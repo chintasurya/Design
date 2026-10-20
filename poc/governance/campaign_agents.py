@@ -75,56 +75,55 @@ def principles(cv, y, items):
                 size=6.6, anchor=MSO_ANCHOR.MIDDLE, after=1)
 
 
-PRINCIPLES = [("Agents never see patient rows", "They reason on counts, metadata and SQL; BigQuery runs the query.",
+PRINCIPLES = [("Masked for agents and reviewers", "Collibra policy masks PHI; agents see counts and tokens only.",
                MAGENTA),
-              ("Governed before it is used", "DLP, steward approval and policy tags on every column.", VIOLET),
-              ("People approve at four gates", "Pick the campaign, approve the audience, the content, the launch.",
-               GOLD),
-              ("Pull, not push · and it learns", "Marketing Cloud pulls approved records; results improve the next "
-               "suggestion.", GREEN)]
+              ("Consent decides, people confirm", "No consent for the channel, no message. Checked at every step.",
+               VIOLET),
+              ("Minimum necessary leaves", "Token, name, email, phone, condition group, discharge date. Nothing "
+               "else.", GOLD),
+              ("Released only after review", "The data extension starts the journey, so review comes before "
+               "release.", GREEN)]
 
 
 # ================================================================== high-level execution flow
 HL_NOTES = """SLIDE: Agentic campaigns on governed data, the execution flow   (about 3 minutes)
 
 KEY MESSAGE
-A marketer asks a question in Codex. The campaign agents answer from a knowledge graph built on governed Google Cloud data, prepare the approved audience inside the PHI boundary, and Marketing Cloud pulls it. People approve at four gates, and every campaign teaches the next one.
+A marketer asks in Codex. Agents work only on masked data; people review a masked pre-send report; only then do the minimum fields needed to send reach Marketing Cloud, which pulls them. Consent decides who can be messaged, at every step.
 
 WALK IT (follow the numbers)
-1 The marketer asks in Codex: "What are the top 10 campaigns I can run for heart patients?" or simply "Run a campaign for heart patients".
-2-3 The Campaign Strategist Agent reads the campaign knowledge graph: heart cohorts and care gaps, consent coverage, and how past campaigns performed. The graph holds aggregates and metadata only, never patient rows.
-4 Codex shows a ranked list with audience size, channel and expected lift. The marketer picks, for example "run 1 and 2" (gate G1).
-5-6 The Audience Agent writes the SQL on governed, policy-tagged views; the Privacy Guard Agent checks every column, consent, suppression and the minimum fields; BigQuery runs it under a governed identity and stages the records.
-7 A named approver reviews the audience in Looker (gate G2). Only then are tokenized records published to Spanner, behind a read-only Audience API.
-8 The Journey Agent builds the data extension, the pull and the journey as a draft from approved templates; clinical and compliance approve the content (gate G3).
-9 Marketing Cloud pulls the approved records through the Audience API into the data extension; marketing ops activates the journey (gate G4).
-10 Engagement and booked visits come back to the ROI engine; lift against a holdout is written back to the knowledge graph, so the next suggestion is better."""
+- Sources: Epic, athenahealth, Strata, SFDC leads, SFMC engagement, CallRail, forms and direct mail land in BigQuery. DLP classifies every column, the Collibra steward approves, and policy tags mask PHI for every agent and every reviewer.
+1 The marketer asks: "What are the top 10 campaigns I can run for heart patients?" or "Run a campaign for heart patients".
+2-3 The Campaign Strategist reads the knowledge graph, built on masked data: segments, counts, care gaps, consent coverage, past lift. No patient is ever visible.
+4 Codex shows a ranked list; the marketer picks, for example "run 1 and 2" (G1).
+5-6 The Audience and Privacy Guard Agents build the audience on masked views, consent first (channel opt-in, STOP, deceased, readmitted, duplicates). The result is tokens and counts per run ID; agents never unmask.
+7 The SME and tech lead review a masked pre-send report (G2): counts, consent by channel, exclusions, right-patient checks. No PHI is on screen.
+8 In parallel, the Journey Agent builds the data extension, the pull and the journey from approved templates; clinical and compliance approve the journey and the messages (G3). The journey waits, active, for entries.
+9 Only when G2 and G3 are both signed are the minimum fields released to the Spanner release store: token, name, email, phone, condition group, discharge date. Time-limited, behind a read-only API.
+10 Marketing Cloud pulls the released records into the data extension; new records trigger the journey automatically; consent, STOP and frequency caps are re-checked at send.
+11 Engagement comes back as a source; the Measurement Agent measures lift against the holdout and the graph learns what worked."""
 
 
 def high_level(prs, layout):
     s = prs.slides.add_slide(layout)
     cv = Canvas(s)
     cv.header("ASCENSION · AGENTIC CAMPAIGNS ON GOVERNED DATA",
-              "Ask in Codex, approve, and the agents prepare the campaign for Marketing Cloud to pull",
-              "Campaign agents in the Agentic Harness reason on a governed knowledge graph, prepare the audience "
-              "inside Google Cloud, and hand Marketing Cloud only approved, tokenized records.")
+              "Ask in Codex; agents work on masked data; people release only the right patients",
+              "Every source is masked by Collibra policy. Agents see counts and tokens; a masked pre-send report is "
+              "reviewed; only then do the minimum fields reach Marketing Cloud.")
     X0, X1 = 0.45, 10.38
     W = X1 - X0
     cx = [0.88 + i * 2.38 for i in range(4)]
     cw = 2.25
-    # lanes: bands, with vertical labels in a strip at the left edge
     cv.rect(X0, 1.28, W, 1.1, GREY, MUTE, 0.75, R, 0.03)
     cv.rect(X0, 2.46, W, 1.04, CYAN_T, CYAN_D, 0.75, R, 0.03)
     cv.rect(X0, 3.58, W, 2.04, WHITE, NAVY, 1.0, R, 0.02, dash="dash")
     side_label(cv, 1.28, 1.1, "PEOPLE", "D9D9D9", BLACK)
     side_label(cv, 2.46, 1.04, "HARNESS", CYAN_D, WHITE)
     side_label(cv, 3.58, 2.04, "GOOGLE CLOUD", NAVY, WHITE)
-    cv.text(0.88, 5.32, 6.3, 0.22, [[("PHI BOUNDARY  ", {"bold": True, "track": 120}),
-                                    ("DLP · Collibra steward · policy tags · authorized views · Looker · VPC-SC · CMEK",
-                                     {"color": MUTE})]], size=6.2, anchor=MSO_ANCHOR.MIDDLE)
     p_y, p_h = 1.43, 0.82
     a_y, a_h = 2.62, 0.74
-    d_y, d_h = 3.74, 1.06
+    d_y, d_h = 3.7, 0.95
 
     # people
     cv.rect(cx[0], p_y, cw, p_h, BLACK, None, shape=R, radius=0.1)
@@ -132,7 +131,7 @@ def high_level(prs, layout):
     cv.text(cx[0] + 0.34, p_y + 0.05, cw - 0.4, 0.22, "Ask in Codex", size=7.6, bold=True, color=WHITE,
             anchor=MSO_ANCHOR.MIDDLE)
     cv.text(cx[0] + 0.12, p_y + 0.3, cw - 0.22, p_h - 0.32,
-            [[("“What are the top 10 campaigns I can run for heart patients?”", {"italic": True})],
+            [[("“What are the top 10 campaigns I can run for heart patients?”", {})],
              [("or: “Run a campaign for heart patients”", {"color": "BFBFBF"})]], size=6.4,
             color=WHITE, font="Courier New", after=1)
     cv.rect(cx[1], p_y, cw, p_h, WHITE, GOLD, 1.5, R, 0.08)
@@ -143,89 +142,97 @@ def high_level(prs, layout):
     cv.text(cx[1] + cw - 0.37, p_y + 0.07, 0.3, 0.17, "G1", size=5.6, bold=True, align=PP_ALIGN.CENTER,
             anchor=MSO_ANCHOR.MIDDLE)
     ideas = ["1  CHF post-discharge SMS nudge", "2  Cardiac rehab referral", "3  Statin refill reminder",
-             "…  size, channel, expected lift each"]
+             "…  counts, channel, expected lift"]
     cv.text(cx[1] + 0.12, p_y + 0.29, cw - 0.2, 0.36, [[(t, {"bold": i < 2})] for i, t in enumerate(ideas)],
             size=5.9, color=INK)
     cv.rect(cx[1] + cw - 0.82, p_y + p_h - 0.24, 0.75, 0.18, BLACK, None, shape=R, radius=0.4)
     cv.text(cx[1] + cw - 0.82, p_y + p_h - 0.24, 0.75, 0.18, "“run 1 and 2”", size=5.6, bold=True,
             color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    box(cv, cx[2], p_y, cw, p_h, "Approve the audience · Looker",
-        "Size, segments, exclusions and the privacy evidence. A named approver signs off.", n=7, fill=YELLOW_T,
-        line=GOLD, lw=1.5, gate="G2")
-    box(cv, cx[3], p_y, cw, p_h, "Approve content, then launch",
-        "Clinical and compliance approve the messages (G3); marketing ops activates (G4).", fill=YELLOW_T,
+    box(cv, cx[2], p_y, cw, p_h, "Pre-send review",
+        ["SME + tech lead review a masked report: counts, consent by channel, exclusions, checks.",
+         [("No PHI on screen.", {"bold": True, "color": MAGENTA})]], n=7, fill=YELLOW_T, line=GOLD, lw=1.5,
+        gate="G2")
+    box(cv, cx[3], p_y, cw, p_h, "Approve journey + content",
+        "Clinical and compliance approve messages and journey; it waits, active, for entries.", fill=YELLOW_T,
         line=GOLD, lw=1.5, gate="G3")
 
     # agents
     box(cv, cx[0], a_y, cw, a_h, "Campaign Strategist Agent",
-        "Reads the graph, ranks campaigns by size, gap, consent and past lift.", n=2, fill=WHITE, line=CYAN_D,
-        lw=1.25)
+        "Reads the masked graph; ranks by size, care gap, consent coverage, past lift.", n=2, line=CYAN_D, lw=1.25)
     box(cv, cx[1], a_y, cw, a_h, "Audience + Privacy Guard Agents",
-        "Write SQL on governed views; check every column, consent, minimum fields.", n=5, fill=WHITE, line=CYAN_D,
-        lw=1.25)
+        "Consent first: channel opt-in, STOP, deceased, readmitted, duplicates out.", n=5, line=CYAN_D, lw=1.25)
     box(cv, cx[2], a_y, cw, a_h, "Measurement Agent",
-        "Lift against a holdout; writes what worked back to the graph.", n=10, fill=WHITE, line=CYAN_D, lw=1.25)
+        "Lift against a holdout; writes what worked back to the graph.", n=11, line=CYAN_D, lw=1.25)
     box(cv, cx[3], a_y, cw, a_h, "Journey Agent",
-        "Builds the data extension, the pull and the journey draft from approved templates.", n=8, fill=WHITE,
-        line=CYAN_D, lw=1.25)
+        "Builds the data extension, the pull and the journey from approved templates.", n=8, line=CYAN_D, lw=1.25)
 
     # data
     box(cv, cx[0], d_y, cw, d_h, "Campaign knowledge graph",
-        ["Cohorts, care gaps, consent coverage, past campaigns and their lift, policy-tagged data assets.",
-         [("Aggregates and metadata only.", {"bold": True, "color": MAGENTA})]], n=3, fill=VIOLET_T, line=VIOLET,
-        lw=1.25)
-    box(cv, cx[1], d_y, cw, d_h, "Governed audience · BigQuery",
-        ["Runs on policy-tagged, authorized views; dedupe, suppression, holdout split; staged per run ID.",
-         [("Agents get counts back, not rows.", {"bold": True, "color": MAGENTA})]], n=6, fill=WHITE, line=NAVY)
+        ["Segments, counts, care gaps, consent coverage, past lift.",
+         [("Built on masked data: no patient visible.", {"bold": True, "color": MAGENTA})]], n=3, fill=VIOLET_T,
+        line=VIOLET, lw=1.25)
+    box(cv, cx[1], d_y, cw, d_h, "Masked audience · BigQuery",
+        ["Tokens and counts per run ID; holdout set aside.",
+         [("Agents never unmask.", {"bold": True, "color": MAGENTA})]], n=6)
     box(cv, cx[2], d_y, cw, d_h, "ROI engine",
-        "Matching on EUID, attribution with lookback windows, lift vs holdout, Contribution Margin dashboard.",
-        fill=MAG_T, line=MAGENTA)
+        "EUID matching, attribution and lookback windows, lift vs holdout, Contribution Margin.", fill=MAG_T,
+        line=MAGENTA)
     fx, fy, fw, fh = cv.frame(cx[3], d_y, cw, d_h, WHITE, 0.04)
-    cv.text(fx + 0.08, fy + 0.04, fw - 0.16, 0.22, "Spanner audience store + API", size=7.6, bold=True,
+    badge(cv, fx + 0.04, fy + 0.04, 9)
+    cv.text(fx + 0.3, fy + 0.03, fw - 0.36, 0.22, "Release store · Spanner", size=7.6, bold=True,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.08, fy + 0.27, fw - 0.16, fh - 0.3,
-            [[("Published only after G2: tokenized records per run ID, with a time limit.", {})],
-             [("Read-only Audience API for Marketing Cloud.", {"bold": True})]], size=6.3, color=INK, after=1)
+    cv.text(fx + 0.08, fy + 0.26, fw - 0.16, fh - 0.28,
+            [[("Only after G2 + G3: ", {"bold": True}), ("token, name, email, phone, condition group, discharge "
+                                                          "date. Time-limited; read-only API.", {})]],
+            size=6.1, color=INK)
 
-    # arrows: the main flow
+    # sources strip: everything lands masked
+    sy = 5.02
+    cv.rect(cx[0], sy, cx[3] + cw - cx[0], 0.48, VIOLET_T, VIOLET, 0.75, R, 0.2)
+    cv.text(cx[0] + 0.12, sy, cx[3] + cw - cx[0] - 0.24, 0.48,
+            [[("SOURCES  ", {"bold": True, "track": 120, "color": VIOLET}),
+              ("Epic · athenahealth · Strata · SFDC leads · SFMC engagement · CallRail · forms · direct mail", {}),
+              ("   → BigQuery → ", {"bold": True}),
+              ("DLP classifies, the Collibra steward approves, policy tags mask PHI for every agent and reviewer",
+               {"color": INK})]], size=6.4, anchor=MSO_ANCHOR.MIDDLE)
+
+    # arrows
     m = cw / 2
-    cv.arrow(cx[0] + m, p_y + p_h, cx[0] + m, a_y, BLACK, 1.5)                       # 1 -> 2
-    cv.arrow(cx[0] + m - 0.15, a_y + a_h, cx[0] + m - 0.15, d_y, VIOLET, 1.5)          # 2 -> 3
-    cv.arrow(cx[0] + m + 0.15, d_y, cx[0] + m + 0.15, a_y + a_h, VIOLET, 1.5)          # 3 -> 2
-    gab = cx[0] + cw + 0.075
+    cv.arrow(cx[0] + m, p_y + p_h, cx[0] + m, a_y, BLACK, 1.5)
+    cv.arrow(cx[0] + m - 0.15, a_y + a_h, cx[0] + m - 0.15, d_y, VIOLET, 1.5)
+    cv.arrow(cx[0] + m + 0.15, d_y, cx[0] + m + 0.15, a_y + a_h, VIOLET, 1.5)
+    gab = cx[0] + cw + 0.065
     path(cv, [(cx[0] + cw, a_y + a_h / 2), (gab, a_y + a_h / 2), (gab, p_y + p_h / 2), (cx[1], p_y + p_h / 2)],
-         CYAN_D, 1.5)                                                                     # 2 -> 4
-    cv.arrow(cx[1] + m, p_y + p_h, cx[1] + m, a_y, GOLD, 1.5)                          # 4 -> 5
-    cv.arrow(cx[1] + m, a_y + a_h, cx[1] + m, d_y, CYAN_D, 1.5)                        # 5 -> 6
-    gbc = cx[1] + cw + 0.075
-    path(cv, [(cx[1] + cw, d_y + 0.62), (gbc, d_y + 0.62), (gbc, p_y + p_h / 2), (cx[2], p_y + p_h / 2)],
-         NAVY, 1.5)                                                                       # 6 -> 7
-    gcd = cx[2] + cw + 0.075
-    path(cv, [(cx[2] + cw, p_y + p_h / 2), (gcd, p_y + p_h / 2), (gcd, a_y + a_h / 2), (cx[3], a_y + a_h / 2)],
-         GOLD, 1.5)                                                                       # 7 -> 8 journey
-    path(cv, [(gcd, a_y + a_h / 2), (gcd, d_y + 0.4), (cx[3], d_y + 0.4)], GOLD, 1.5)   # 7 -> publish
-    cv.arrow(cx[3] + m, a_y, cx[3] + m, p_y + p_h, CYAN_D, 1.25)                       # 8 -> G3
-    cv.arrow(cx[2] + m, d_y, cx[2] + m, a_y + a_h, MAGENTA, 1.5)                       # roi -> measurement
-    # learning loop back to the graph
-    ly = 5.08
-    path(cv, [(cx[2] + 0.5, d_y + d_h), (cx[2] + 0.5, ly), (cx[0] + m, ly), (cx[0] + m, d_y + d_h)], GREEN, 1.75)
+         CYAN_D, 1.5)
+    cv.arrow(cx[1] + m, p_y + p_h, cx[1] + m, a_y, GOLD, 1.5)
+    cv.arrow(cx[1] + m, a_y + a_h, cx[1] + m, d_y, CYAN_D, 1.5)
+    gbc = cx[1] + cw + 0.065
+    path(cv, [(cx[1] + cw, d_y + 0.6), (gbc, d_y + 0.6), (gbc, p_y + p_h / 2), (cx[2], p_y + p_h / 2)], NAVY, 1.5)
+    gcd = cx[2] + cw + 0.065
+    path(cv, [(cx[2] + cw, p_y + p_h / 2), (gcd, p_y + p_h / 2), (gcd, d_y + 0.35), (cx[3], d_y + 0.35)], GOLD,
+         1.75)                                                                     # G2 -> release
+    cv.arrow(cx[3], p_y + p_h - 0.14, gcd, p_y + p_h - 0.14, GOLD, 1.75)          # G3 joins
+    cv.arrow(cx[3] + m, a_y, cx[3] + m, p_y + p_h, CYAN_D, 1.25)                 # journey agent -> G3
+    cv.arrow(cx[2] + m, d_y, cx[2] + m, a_y + a_h, MAGENTA, 1.5)
+    ly = 4.83
+    path(cv, [(cx[2] + 0.5, d_y + d_h), (cx[2] + 0.5, ly), (cx[0] + m, ly), (cx[0] + m, d_y + d_h)], GREEN, 1.5)
     tag(cv, cx[0] + m + 0.15, ly - 0.085, 2.4, "← WHAT WORKED IMPROVES THE NEXT SUGGESTION", GREEN)
 
-    # Marketing Cloud, bottom-up: pull -> data extension -> journey -> nudge
+    # Marketing Cloud, bottom-up
     mx, mw = 10.55, 2.33
     cv.rect(mx, 1.28, mw, 0.3, BLACK)
     cv.text(mx + 0.1, 1.28, mw - 0.2, 0.3, [[("MARKETING CLOUD", {"bold": True, "track": 150})]], size=7,
             color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
     cv.rect(mx, 1.58, mw, 4.04, WHITE, MUTE, 0.75)
     nx, nw = mx + 0.1, mw - 0.2
-    items = [(1.7, 0.62, "SMS or email nudge", "No clinical wording, no identifiers in links.", WHITE, NAVY, None),
-             (2.56, 0.66, "Journey Builder", "Built by the Journey Agent; approved, then activated.", WHITE, NAVY,
-              None),
-             (3.46, 0.7, "Campaign data extension", "SubscriberKey (token) · channel · segment · RunID", None, None,
-              None),
-             (4.4, 0.8, "Pulls the approved records", "Automation Studio calls the read-only Audience API, scoped "
-              "to the run ID.", CYAN_T, CYAN_D, 9)]
-    for y, h, t, d, f, ln, n in items:
+    items = [(1.7, 0.62, "SMS or email nudge", "Consent, STOP and frequency caps re-checked at send.", WHITE, NAVY,
+              None, False),
+             (2.48, 0.76, "Journey triggers itself", "New records in the data extension enter the approved "
+              "journey: no manual step.", WHITE, NAVY, None, False),
+             (3.4, 0.74, "Campaign data extension", "Minimum fields only, for this run.", None, None, None, False),
+             (4.3, 0.82, "Pulls the released records", "Automation Studio calls the read-only API, scoped to the "
+              "run ID.", CYAN_T, CYAN_D, 10, False)]
+    for y, h, t, d, f, ln, n, _ in items:
         if f is None:
             cv.frame(nx, y, nw, h, WHITE, 0.04)
         else:
@@ -234,56 +241,47 @@ def high_level(prs, layout):
         if n:
             badge(cv, nx + 0.07, y + 0.07, n)
         cv.text(tx, y + 0.05, nx + nw - tx - 0.06, 0.22, t, size=7.6, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(nx + 0.1, y + 0.3, nw - 0.18, h - 0.32, d, size=6.2, color=INK)
-    for (y1, h1), (y2, _) in zip([(2.56, 0.66), (3.46, 0.7), (4.4, 0.8)], [(1.7, 0.62), (2.56, 0.66), (3.46, 0.7)]):
-        cv.arrow(nx + nw / 2, y1, nx + nw / 2, y2 + (0.62 if y2 == 1.7 else (0.66 if y2 == 2.56 else 0.7)),
-                 NAVY, 1.25)
-    cv.arrow(cx[3] + cw, a_y + a_h / 2, nx, a_y + a_h / 2 + 0.17, CYAN_D, 1.5)          # journey agent -> journey
-    cv.arrow(cx[3] + cw, d_y + 0.7, nx, d_y + 0.7, BLACK, 2.0)                         # API pull
-    tag(cv, cx[3] + cw - 0.66, d_y + d_h + 0.05, 0.6, "PULL", BLACK)
-    # outcomes back
-    oy = 5.42
-    path(cv, [(nx + nw / 2, 5.2), (nx + nw / 2, oy), (cx[2] + 1.6, oy), (cx[2] + 1.6, d_y + d_h)], MAGENTA, 1.5)
-    tag(cv, 7.9, oy - 0.085, 2.35, "ENGAGEMENT + BOOKED VISITS ←", MAGENTA)
+        cv.text(nx + 0.1, y + 0.3, nw - 0.18, h - 0.32, d, size=6.1, color=INK)
+    for lo, hi in ((2.48, 2.32), (3.4, 3.24), (4.3, 4.14)):
+        cv.arrow(nx + nw / 2, lo, nx + nw / 2, hi, NAVY, 1.25)
+    cv.arrow(cx[3] + cw, a_y + a_h / 2, nx, 2.86, CYAN_D, 1.5)
+    cv.arrow(cx[3] + cw, d_y + 0.62, nx, 4.62, BLACK, 2.0)
+    oy = 5.56
+    path(cv, [(nx + nw / 2, 5.12), (nx + nw / 2, oy), (cx[2] + 1.6, oy), (cx[2] + 1.6, sy + 0.48)], MAGENTA, 1.25)
     principles(cv, 5.8, PRINCIPLES)
     set_notes(s, HL_NOTES)
     return s
 
 
+
 # ================================================================== detailed design
 DT_NOTES = """SLIDE: Agentic campaigns on governed data, the detailed design   (about 4 minutes)
 
-CODEX (left): campaign skills in the Agentic Harness plugin. $campaign-suggest asks for ideas, $campaign-run starts the chosen campaigns, $campaign-status follows them. Every run goes through the harness: Orchestrator, evals on every step, the tool gateway with one identity per agent, the change passport.
+CODEX (left): campaign skills in the Agentic Harness plugin. $campaign-suggest, $campaign-run, $campaign-status. Three human gates: G1 the marketer picks, G2 the SME and tech lead approve a masked pre-send report, G3 clinical and compliance approve the journey and content. Release happens only when G2 and G3 are both signed.
 
-CAMPAIGN AGENTS (top)
-- Orchestrator: turns the request into a run, routes the agents, waits at the four gates.
-- Campaign Strategist: queries the knowledge graph (cohorts, care gaps, consent coverage, past lift) and ranks campaigns. Output: a ranked list with size, channel and expected lift.
-- Audience Agent: writes the audience SQL against authorized, policy-tagged views only, as a BigQuery job under its own service account. It receives counts and validation results, never rows.
-- Privacy Guard: checks the classification and policy tag of every column used, the minimum-necessary field list, consent and suppression, frequency caps, and blocks small cells (fewer than 11). It writes the privacy evidence the Looker approver sees.
-- Measurement Agent: reads outcomes from the ROI engine after the send, computes lift against the holdout, and writes the result to the knowledge graph.
-- Journey Agent: in the Marketing Cloud development business unit, through the gateway: the data extension, the Automation Studio pull from the Audience API, and the journey draft from approved templates. Released through Package Manager after G3.
+CAMPAIGN AGENTS (top): Orchestrator; Campaign Strategist (reads the masked graph); Audience Agent (builds the audience on masked views as a BigQuery job, sees tokens and counts); Privacy Guard (consent per channel first, STOP, deceased, readmitted, duplicates; writes the pre-send report); Measurement Agent (lift vs holdout, writes back to the graph); Journey Agent (data extension, API pull and journey with entry on new records, in the development business unit). Each has its own identity and runs through the harness: evals, tool gateway, change passport.
 
-KNOWLEDGE GRAPH (middle): Spanner Graph with campaign entities: cohorts and condition groups, care gaps, campaigns and channels, outcomes and lift, data assets with their policy tags, consent rules, Marketing Cloud assets. Fed from governed BigQuery aggregates, ADDG classifications, the ROI engine and Marketing Cloud metadata. Aggregates and metadata only.
+KNOWLEDGE GRAPH (middle): Spanner Graph built on Collibra-masked data: counts and segments, never a patient.
 
-GOVERNED DATA PLANE (bottom): sources land in BigQuery; ADDG classifies, a steward approves and policies are applied; authorized views and the master table (one EUID); the audience is staged per run ID; a named approver signs off in Looker (G2); only then are tokenized records published to the Spanner audience store, with a time limit, behind a read-only Audience API (Cloud Run, OAuth client credentials, IP allowlist, scoped to the run ID).
+GOVERNED DATA PLANE (bottom): sources land in BigQuery; Collibra masking (DLP classifies, the steward approves, policy tags mask PHI for everyone); authorized views and the master table (one EUID); the masked audience per run ID; the masked pre-send review (G2). After G2 and G3, the release store in Spanner holds only token, name, email, phone, condition group and discharge date, time-limited, behind a read-only API.
 
-MARKETING CLOUD (right): Automation Studio pulls the approved records into the data extension; the journey runs after G3 content approval and G4 activation by marketing ops; engagement flows back to the ROI engine.
+MARKETING CLOUD (right): the agent-built journey is approved and active; Automation Studio pulls the released records; the data extension starts the journey automatically; consent and STOP are re-checked at send; engagement flows back.
 
 OPEN DECISIONS
 - Pull by API (this design) or a file import from a governed bucket.
-- Spanner as the audience store, or BigQuery with Data Cloud zero-copy.
-- Which agent-built journeys may go live without a developer review."""
+- Spanner as the release store, or BigQuery with Data Cloud zero-copy.
+- Whether a developer reviews agent-built journeys for the first campaigns."""
 
 AGENTS = [
-    ("Orchestrator", "Turns the request into a run; routes agents; waits at G1-G4.", "harness run loop"),
-    ("Campaign Strategist", "Reads the graph; ranks campaigns by size, care gap, consent and past lift.",
+    ("Orchestrator", "Turns the request into a run; routes agents; waits at G1, G2 and G3.", "harness run loop"),
+    ("Campaign Strategist", "Reads the masked graph; ranks by size, care gap, consent coverage, past lift.",
      "reads graph only"),
-    ("Audience Agent", "Writes SQL on authorized views; runs it as a BigQuery job; gets counts, not rows.",
+    ("Audience Agent", "Builds the audience on masked views as a BigQuery job; sees tokens and counts.",
      "sa-audience"),
-    ("Privacy Guard", "Checks tags, minimum fields, consent, suppression; blocks cells under 11.",
+    ("Privacy Guard", "Consent per channel first; STOP, deceased, readmitted, duplicates out; writes the report.",
      "blocks or passes"),
     ("Measurement Agent", "Lift vs holdout from the ROI engine; writes what worked to the graph.", "sa-measure"),
-    ("Journey Agent", "Builds the data extension, the API pull and the journey draft in the dev BU.",
+    ("Journey Agent", "Builds the data extension, the API pull and the journey (entry: new records).",
      "sa-sfmc-dev"),
 ]
 
@@ -293,8 +291,8 @@ def detailed(prs, layout):
     cv = Canvas(s)
     cv.header("ASCENSION · AGENTIC CAMPAIGNS ON GOVERNED DATA",
               "Detailed design: campaign agents, the knowledge graph and the governed data plane",
-              "Agents reason on metadata and counts; every patient record stays in Google Cloud until it is "
-              "approved, tokenized and pulled.")
+              "Agents reason on masked data. The minimum fields leave Google Cloud only after a masked pre-send "
+              "review, and Marketing Cloud pulls them.")
     top = 1.27
     # ---- Codex column
     lx, lw = 0.45, 2.02
@@ -318,8 +316,8 @@ def detailed(prs, layout):
                                               [(d, {"color": MUTE, "size": 5.6})]], size=6.2,
                 anchor=MSO_ANCHOR.MIDDLE)
     cv.text(lx + 0.12, 3.98, lw - 0.24, 0.18, "HUMAN GATES", size=6.2, bold=True, color=GOLD, track=150)
-    gates = [("G1", "marketer picks the campaigns"), ("G2", "named approver, audience (Looker)"),
-             ("G3", "clinical + compliance, content"), ("G4", "marketing ops activates")]
+    gates = [("G1", "marketer picks the campaigns"), ("G2", "SME + tech lead: masked pre-send report"),
+             ("G3", "clinical + compliance: journey + content"), ("\u2192", "release only when G2 + G3 signed")]
     for i, (g, d) in enumerate(gates):
         y = 4.18 + i * 0.34
         cv.rect(lx + 0.1, y + 0.04, 0.3, 0.2, YELLOW, BLACK, 0.5, R, 0.4)
@@ -336,7 +334,7 @@ def detailed(prs, layout):
     aw, ag = (MW - 0.2 - 5 * 0.08) / 6, 0.08
     ax = [MX0 + 0.1 + i * (aw + ag) for i in range(6)]
     ay, ah = top + 0.3, 1.22
-    nums = [None, 2, 5, 5, 10, 8]
+    nums = [None, 2, 5, 5, 11, 8]
     for i, (t, d, ident) in enumerate(AGENTS):
         cv.rect(ax[i], ay, aw, ah, WHITE, CYAN_D, 1.25 if i else 0.9, R, 0.08)
         tx = ax[i] + 0.08
@@ -352,7 +350,7 @@ def detailed(prs, layout):
     # knowledge graph band
     ky, kh = 2.98, 0.96
     lane_band(cv, MX0, ky, MW, kh, VIOLET_T, VIOLET, "CAMPAIGN KNOWLEDGE GRAPH · SPANNER GRAPH",
-              "aggregates and metadata only, never patient rows", color=VIOLET)
+              "built on Collibra-masked data: counts and segments, never a patient", color=VIOLET)
     badge(cv, MX1 - 0.32, ky + 0.04, 3, VIOLET)
     ents = ["Cohort", "Condition group", "Care gap", "Campaign", "Channel", "Outcome + lift", "Data asset + tag",
             "Consent rule", "SFMC asset"]
@@ -363,7 +361,7 @@ def detailed(prs, layout):
         cv.text(ex, ky + 0.32, w, 0.22, e, size=6, bold=True, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         ex += w + 0.06
     cv.text(MX0 + 0.12, ky + 0.6, MW - 0.24, 0.3,
-            [[("Fed by: ", {"bold": True}), ("governed BigQuery aggregates · ADDG classifications · ROI engine "
+            [[("Fed by: ", {"bold": True}), ("masked BigQuery aggregates · Collibra classifications · ROI engine "
                                              "outcomes · Marketing Cloud metadata · Confluence campaign briefs",
                                              {"color": INK})]], size=6.2, anchor=MSO_ANCHOR.MIDDLE)
 
@@ -374,16 +372,16 @@ def detailed(prs, layout):
     bw_, bg = (MW - 0.2 - 4 * 0.12) / 5, 0.12
     bx = [MX0 + 0.1 + i * (bw_ + bg) for i in range(5)]
     by, bh = gy + 0.3, 0.98
-    steps = [("Sources → BigQuery", "Marketing leads + clinical (Epic, Strata, athena) land per source.", None,
+    steps = [("Sources → BigQuery", "Epic, athena, Strata, SFDC, SFMC, CallRail, forms, direct mail.", None,
               WHITE, NAVY, None),
-             ("ADDG governance", "DLP classifies, steward approves in Collibra, policy tags mask.", None, VIOLET_T,
-              VIOLET, None),
+             ("Collibra masking", "DLP classifies; the steward approves; policy tags mask PHI for all.", None,
+              VIOLET_T, VIOLET, None),
              ("Authorized views + master", "Policy-tagged views; one EUID per patient; ROI engine reads here.",
               None, WHITE, NAVY, None),
-             ("Audience staging", "Agent SQL runs here per run ID: dedupe, suppression, holdout split.", 6,
+             ("Masked audience", "Tokens + counts per run ID; consent first; holdout set aside.", 6,
               WHITE, NAVY, None),
-             ("Looker approval", "Size, segments, exclusions + privacy evidence; named approver.", 7, YELLOW_T,
-              GOLD, "G2")]
+             ("Pre-send review", "Masked report to SME + tech lead (Looker): counts, consent, checks.", 7,
+              YELLOW_T, GOLD, "G2")]
     for i, (t, d, n, f, ln, gate) in enumerate(steps):
         box(cv, bx[i], by, bw_, bh, t, d, n=n, fill=f, line=ln, lw=1.25 if gate else 0.9, gate=gate, tsize=7,
             bsize=6)
@@ -392,9 +390,10 @@ def detailed(prs, layout):
     # publish row
     py = by + bh + 0.13
     fx, fy, fw, fh = cv.frame(bx[3], py, 2 * bw_ + bg, 0.42, WHITE, 0.035)
-    cv.text(fx + 0.08, fy, fw - 0.16, fh, [[("Spanner audience store + Audience API  ", {"bold": True}),
-                                           ("tokenized records per run ID, time-limited; read-only API", {})]],
-            size=6.2, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(fx + 0.08, fy, fw - 0.16, fh, [[("Release store · Spanner  ", {"bold": True}),
+                                           ("after G2 + G3 only: token, name, email, phone, condition group, "
+                                            "discharge date; time-limited; read-only API", {})]],
+            size=6, anchor=MSO_ANCHOR.MIDDLE)
     path(cv, [(bx[4] + bw_ / 2, by + bh), (bx[4] + bw_ / 2, py)], GOLD, 1.25)
     cv.rect(bx[0], py, bx[2] + bw_ - bx[0], 0.42, MAG_T, MAGENTA, 0.9, R, 0.15)
     cv.text(bx[0] + 0.08, py, bx[2] + bw_ - bx[0] - 0.16, 0.42,
@@ -417,19 +416,19 @@ def detailed(prs, layout):
     cv.rect(sx, top + 0.3, sw, 4.39, WHITE, MUTE, 0.75)
     nx, nw = sx + 0.1, sw - 0.2
     box(cv, nx, 1.7, nw, 0.86, "Journey built by the agent",
-        "Data extension, Automation Studio pull and journey draft from approved templates; released after G3.",
+        "Data extension, pull and journey from approved templates; approved at G3, then active, waiting.",
         n=8, fill=CYAN_T, line=CYAN_D, lw=1.25, bsize=6)
     box(cv, nx, 2.7, nw, 0.78, "Pull from the Audience API",
-        "OAuth client credentials, IP allowlist, read-only, scoped to the approved run ID.", n=9, fill=WHITE,
+        "Only after release. OAuth, IP allowlist, read-only, scoped to the run ID.", n=10, fill=WHITE,
         line=BLACK, lw=1.5, bsize=6)
     fx, fy, fw, fh = cv.frame(nx, 3.62, nw, 0.78, WHITE, 0.04)
     cv.text(fx + 0.08, fy + 0.03, fw - 0.16, 0.2, "Campaign data extension", size=7.4, bold=True,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.08, fy + 0.25, fw - 0.16, fh - 0.28, "SubscriberKey (token) · channel · segment · send "
-            "window · holdout flag · RunID", size=6, color=INK)
-    box(cv, nx, 4.54, nw, 0.66, "Journey runs · G4",
-        "Marketing ops activates; consent and STOP re-checked at send.", fill=YELLOW_T, line=GOLD, lw=1.25,
-        bsize=6)
+    cv.text(fx + 0.08, fy + 0.25, fw - 0.16, fh - 0.28, "token · name · email · phone · condition group · "
+            "discharge date · RunID", size=6, color=INK)
+    box(cv, nx, 4.54, nw, 0.66, "Journey triggers itself",
+        "New records enter the approved journey; consent and STOP re-checked at send.", fill=WHITE, line=NAVY,
+        lw=1.25, bsize=6)
     box(cv, nx, 5.32, nw, 0.56, "Engagement back",
         "Sends, clicks, replies, opt-outs to the ROI engine.", fill=MAG_T, line=MAGENTA, bsize=6)
     for y1, y2 in ((2.56, 2.7), (3.48, 3.62), (4.4, 4.54), (5.2, 5.32)):
@@ -447,6 +446,160 @@ def detailed(prs, layout):
     return s
 
 
+# ================================================================== the human angle
+HU_NOTES = """SLIDE: The human angle: who decides, what they see, and how we never message the wrong patient   (about 3 minutes)
+
+KEY MESSAGE
+Agents do the work, people make the decisions, and nobody looks at a patient's personal data to do either. Consent decides who can be messaged; people confirm it on a masked report before anything is released, because once records land in the data extension the journey starts by itself.
+
+THE PEOPLE (top row)
+- Marketer: picks the campaign (G1). Sees ideas and counts.
+- Data steward: approves classifications and masking in Collibra. Sees column metadata, never values.
+- SME and tech lead: the pre-send review (G2). See the masked report: counts, consent by channel, exclusions, right-patient checks, a masked sample.
+- Clinical and compliance: approve the journey and every message (G3). See templates with placeholders.
+- Marketing ops: watch the sends; can pause the journey at any time. See send metrics.
+- The patient: can reply STOP or DONE at any time; it is honoured immediately and synced back.
+
+THE PRE-SEND REPORT (middle; numbers are illustrative)
+The funnel shows why each patient was excluded; every check must be green; the sample is masked. Approve releases the minimum fields to the release store; Send back returns it to the agents with a reason; Stop ends the campaign.
+
+FIVE CHECKS BEFORE ANY MESSAGE (right)
+Consent and right-patient checks run at build, at review, at release, at send and on reply. If any check fails, nothing is sent and a named owner is told.
+
+BE READY FOR
+- "Can the reviewer see who is in the audience?" No. They see counts, reasons and masked tokens. The fields needed to send move system to system without a person seeing them.
+- "What if consent changes after approval?" Consent is re-checked at release and again by Marketing Cloud at send."""
+
+ROLES_H = [
+    ("Marketer", "G1", "Which campaign to run", "Ideas, audience counts, expected lift", "Any patient"),
+    ("Data steward", None, "What is PHI and how it is masked", "Column names, classifications", "Values"),
+    ("SME + tech lead", "G2", "Release the audience, or send it back", "Masked pre-send report", "Names, phones, "
+     "emails, diagnoses"),
+    ("Clinical + compliance", "G3", "Messages and journey logic", "Templates with placeholders", "Recipients"),
+    ("Marketing ops", None, "Pause or stop a live journey", "Send and opt-out metrics", "Individual records"),
+    ("The patient", None, "Reply STOP or DONE at any time", "Only their own message", "Anything about others"),
+]
+
+
+def human_angle(prs, layout):
+    s = prs.slides.add_slide(layout)
+    cv = Canvas(s)
+    cv.header("ASCENSION · AGENTIC CAMPAIGNS ON GOVERNED DATA · THE HUMAN ANGLE",
+              "People decide, consent rules, and nobody needs to see a patient to do it",
+              "Agents prepare everything on masked data. People confirm on a masked report before release, because "
+              "once records land in the data extension the journey starts by itself.")
+    # ---- the people
+    n = len(ROLES_H)
+    cw = (12.43 - (n - 1) * 0.12) / n
+    y0, ch = 1.28, 1.62
+    for i, (role, gate, decides, sees, never) in enumerate(ROLES_H):
+        x = 0.45 + i * (cw + 0.12)
+        patient = role == "The patient"
+        cv.rect(x, y0, cw, ch, GREEN_T if patient else (YELLOW_T if gate else WHITE),
+                GREEN if patient else (GOLD if gate else MUTE), 1.5 if gate or patient else 0.9, R, 0.06)
+        cv.text(x + 0.1, y0 + 0.06, cw - 0.55, 0.24, role, size=8.5, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        if gate:
+            cv.rect(x + cw - 0.4, y0 + 0.09, 0.3, 0.18, YELLOW, BLACK, 0.5, R, 0.4)
+            cv.text(x + cw - 0.4, y0 + 0.09, 0.3, 0.18, gate, size=5.8, bold=True, align=PP_ALIGN.CENTER,
+                    anchor=MSO_ANCHOR.MIDDLE)
+        rows = [("DECIDES", decides, BLACK), ("SEES", sees, CYAN_D), ("NEVER SEES", never, MAGENTA)]
+        yy = y0 + 0.36
+        for lab, txt, col in rows:
+            cv.text(x + 0.1, yy, cw - 0.2, 0.14, lab, size=5.4, bold=True, color=col, track=120,
+                    anchor=MSO_ANCHOR.MIDDLE)
+            cv.text(x + 0.1, yy + 0.14, cw - 0.2, 0.26, txt, size=6.6, color=INK)
+            yy += 0.41
+
+    # ---- the masked pre-send report (illustrative)
+    rx, ry, rw, rh = 0.45, 3.05, 7.25, 2.68
+    cv.rect(rx, ry, rw, rh, WHITE, GOLD, 1.75, R, 0.03)
+    cv.rect(rx, ry, rw, 0.34, YELLOW_T, None, shape=R, radius=0.1)
+    cv.text(rx + 0.15, ry, rw - 0.3, 0.34, [[("PRE-SEND REVIEW · G2  ", {"bold": True, "track": 120}),
+                                            ("CHF post-discharge SMS nudge · run R-0412 · ", {}),
+                                            ("illustrative numbers, masked data", {"color": MAGENTA})]],
+            size=7, anchor=MSO_ANCHOR.MIDDLE)
+    funnel = [("Eligible cohort (CHF, discharged in the last 7 days)", 1240, NAVY),
+              ("No SMS consent for this channel", -310, MAGENTA), ("Opted out (STOP / DONE)", -42, MAGENTA),
+              ("Readmitted or deceased", -18, MAGENTA), ("Identity match below threshold", -25, MAGENTA),
+              ("Shared or unverified mobile number", -11, MAGENTA), ("Holdout set aside (10%)", -83, MUTE),
+              ("Released for sending", 751, GREEN)]
+    fx0, fy0, bw_max = rx + 0.15, ry + 0.45, 1.5
+    cv.text(fx0, fy0 - 0.06, 3.6, 0.16, "WHO IS IN, AND WHY OTHERS ARE OUT", size=5.6, bold=True, color=MUTE,
+            track=120)
+    for i, (lab, v, col) in enumerate(funnel):
+        yy = fy0 + 0.12 + i * 0.19
+        cv.text(fx0, yy, 2.25, 0.19, lab, size=6.2, bold=i in (0, len(funnel) - 1), anchor=MSO_ANCHOR.MIDDLE)
+        w = max(0.04, bw_max * abs(v) / 1240)
+        cv.rect(fx0 + 2.3, yy + 0.035, w, 0.12, col, None)
+        cv.text(fx0 + 2.35 + w, yy, 0.55, 0.19, ("%+d" % v) if v < 0 else "{:,}".format(v), size=6.3, bold=True,
+                color=col, anchor=MSO_ANCHOR.MIDDLE)
+    # checks
+    cx0 = rx + 4.45
+    cv.text(cx0, fy0 - 0.06, 2.7, 0.16, "CHECKS · ALL MUST BE GREEN", size=5.6, bold=True, color=MUTE, track=120)
+    checks = ["Consent on record for SMS, with date and source", "Consent re-checked against today's opt-outs",
+              "Discharge date inside the 7-day window", "Mobile verified, E.164 format",
+              "Only the 6 approved fields will leave", "Message templates approved (G3)",
+              "Frequency cap: no other nudge this week"]
+    for i, t in enumerate(checks):
+        yy = fy0 + 0.12 + i * 0.19
+        cv.rect(cx0, yy + 0.03, 0.14, 0.14, GREEN, None, MSO_SHAPE.OVAL)
+        cv.text(cx0, yy + 0.03, 0.14, 0.14, "✓", size=6, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(cx0 + 0.2, yy, 2.55, 0.19, t, size=6.2, anchor=MSO_ANCHOR.MIDDLE)
+    # masked sample
+    sy = ry + 2.2
+    cv.text(fx0, sy - 0.02, 2.0, 0.15, "MASKED SAMPLE", size=5.6, bold=True, color=MUTE, track=120)
+    cols = ["token", "name", "phone", "condition group", "discharge", "SMS consent"]
+    vals = ["TKN-8F3A…", "•••••", "•••-•••-4417",
+            "Heart failure", "D-3", "yes"]
+    xs = [fx0, fx0 + 0.75, fx0 + 1.3, fx0 + 2.15, fx0 + 3.05, fx0 + 3.55]
+    for x, c_, v in zip(xs, cols, vals):
+        cv.text(x, sy + 0.13, 0.9, 0.14, c_, size=5.4, bold=True, color=MUTE)
+        cv.text(x, sy + 0.27, 0.95, 0.16, v, size=6.2, font="Courier New")
+    # decisions
+    bx0 = rx + rw - 2.52
+    for i, (t, f, ln, col) in enumerate([("Approve release", GREEN, GREEN, WHITE), ("Send back", WHITE, NAVY, NAVY),
+                                         ("Stop", WHITE, MAGENTA, MAGENTA)]):
+        bw = (1.0, 0.75, 0.55)[i]
+        cv.rect(bx0, sy + 0.15, bw, 0.28, f, ln, 1.0, R, 0.4)
+        cv.text(bx0, sy + 0.15, bw, 0.28, t, size=6.6, bold=True, color=col, align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
+        bx0 += bw + 0.08
+
+    # ---- five checks before any message
+    kx, kw = 7.88, 12.88 - 7.88
+    cv.rect(kx, 3.05, kw, 2.68, BLACK, None, shape=R, radius=0.03)
+    cv.text(kx + 0.18, 3.1, kw - 0.36, 0.3, [[("FIVE CHECKS BEFORE ANY MESSAGE", {"bold": True, "track": 120,
+                                                                                 "color": YELLOW})]], size=7.5,
+            anchor=MSO_ANCHOR.MIDDLE)
+    five = [("1 Build", "Privacy Guard: consent per channel, opt-outs, deceased, readmitted, duplicates.", "agent"),
+            ("2 Review", "SME + tech lead approve the masked report (G2).", "people"),
+            ("3 Release", "Consent re-checked at release; records time-limited to this run.", "system"),
+            ("4 Send", "Marketing Cloud re-checks STOP, unsubscribes and frequency caps.", "system"),
+            ("5 Reply", "STOP or DONE honoured at once and synced back to every pod.", "patient")]
+    tagc = {"agent": CYAN, "people": YELLOW, "system": "BFBFBF", "patient": GREEN}
+    for i, (t, d, who) in enumerate(five):
+        yy = 3.45 + i * 0.42
+        cv.text(kx + 0.18, yy, 0.75, 0.36, t, size=8, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(kx + 0.95, yy, kw - 1.85, 0.36, d, size=6.5, color="E6E6E6", anchor=MSO_ANCHOR.MIDDLE)
+        cv.rect(kx + kw - 0.82, yy + 0.09, 0.66, 0.18, None, tagc[who], 0.75, R, 0.4)
+        cv.text(kx + kw - 0.82, yy + 0.09, 0.66, 0.18, who.upper(), size=5.4, bold=True, color=tagc[who],
+                align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=100)
+    cv.text(kx + 0.18, 5.55, kw - 0.36, 0.16, "Any check fails: nothing is sent, and a named owner is told.",
+            size=6.5, bold=True, color=MAGENTA, anchor=MSO_ANCHOR.MIDDLE)
+
+    # ---- bottom line
+    by = 5.88
+    fx, fy, fw, fh = cv.frame(0.45, by, 12.43, 0.62, WHITE, 0.04)
+    cv.text(fx + 0.2, fy, fw - 0.4, fh,
+            [[("No person and no agent sees a patient's personal data to run a campaign.  ", {"bold": True}),
+              ("The six fields needed to send (token, name, email, phone, condition group, discharge date) move "
+               "from the release store to Marketing Cloud system to system, after G2 and G3, and only for this run.",
+               {"color": INK})]], size=7.6, anchor=MSO_ANCHOR.MIDDLE)
+    set_notes(s, HU_NOTES)
+    return s
+
+
 def main(out=OUT):
     prs = Presentation(TEMPLATE)
     lst = prs.slides._sldIdLst
@@ -456,6 +609,7 @@ def main(out=OUT):
     layout = next(l_ for l_ in prs.slide_layouts if l_.name == "DEFAULT")
     high_level(prs, layout)
     detailed(prs, layout)
+    human_angle(prs, layout)
     prs.save(out)
     print("wrote", os.path.abspath(out))
 
