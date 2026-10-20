@@ -24,148 +24,177 @@ OUT = os.path.join(HERE, "build", "combined_flow.pptx")
 ON_COLOR = "FFFFFE"     # white text on a brand-colour bar: stays white in the light theme
 
 
+def band(cv, y, h, color, fill, title, icon, tcolor):
+    cv.rect(0.45, y, 12.25, h, fill, color, 1.0, R, 0.02)
+    cv.rect(0.45, y, 12.25, 0.26, color, None)
+    logo(cv, icon, 0.53, y + 0.03, 0.2)
+    cv.text(0.8, y, 11.75, 0.26, title, size=6.4, bold=True, color=tcolor, track=100, align=PP_ALIGN.RIGHT,
+            anchor=MSO_ANCHOR.MIDDLE)
+
+
+def slots(x0, widths, gap=0.16):
+    xs = []
+    for w in widths:
+        xs.append(x0)
+        x0 += w + gap
+    return xs
+
+
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
     dark_header(cv, "AGENTIC HEALTHCARE CAMPAIGN PLATFORM · END TO END (FOR REVIEW)",
                 "From governed data to a tested, approved campaign",
-                "Read left to right, top to bottom: the data is governed in Google Cloud first, then the user prompts "
-                "in Codex, then approved patients are released to Marketing Cloud.")
-    rows = [1.66 + k * 0.74 for k in range(6)]
-    rh = 0.64
-    zt, zb = 1.28, 6.08
-
-    def mid(k):
-        return rows[k] + rh / 2
-    zones = [(0.45, 3.75, MAGENTA, BLACK, "1  GOVERN THE DATA IN GOOGLE CLOUD", "googlecloud", ON_COLOR),
-             (3.95, 9.3, VIO, TINT[VIO], "2  PROMPT IN CODEX, PLAN, BUILD + TEST · MASKED DATA ONLY", "harness",
-              ON_COLOR),
-             (9.5, 12.88, YELLOW, BLACK, "3  RELEASE + SEND · ONLY AFTER G2 + G3", "salesforce", BLACK)]
-    for k, (x0, x1, c, fill, t, ic, tc) in enumerate(zones):
-        cv.rect(x0, zt, x1 - x0, zb - zt, fill, c, 1.0, R, 0.02)
-        cv.rect(x0, zt, x1 - x0, 0.3, c, None)
-        logo(cv, ic, x0 + 0.08, zt + 0.04, 0.22)
-        cv.text(x0 + 0.36, zt, x1 - x0 - 0.42, 0.3, t, size=6.2, bold=True, color=tc, track=80,
-                anchor=MSO_ANCHOR.MIDDLE)
-    for bx_, y0, y1, t in ((3.85, 1.7, 3.9, "AGENTS: NO RAW-PHI ACCESS"), (9.4, 1.7, 3.9, "RECOMMENDATION ≠ RELEASE")):
-        cv.arrow(bx_, zt, bx_, zb + 0.14, MAGENTA, 1.25, dash="dash", head=False)
-        cv.rect(bx_ - 0.09, y0, 0.18, y1 - y0, MAGENTA, None, shape=R, radius=0.5)
-        tb = cv.text(bx_ - (y1 - y0) / 2, (y0 + y1) / 2 - 0.09, y1 - y0, 0.18, t, size=4.8, bold=True,
-                     color=ON_COLOR, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
-        tb.rotation = 270
-    # ---------------------------------------------------------------- 1 govern the data (top-down)
-    gx, gw = 0.65, 3.0
+                "Read top to bottom: the data is governed in Google Cloud first, then the user prompts in Codex, then "
+                "approved patients are released to Marketing Cloud.")
+    X0 = 0.6
+    # ---------------------------------------------------------------- 1 govern the data (top band)
+    b1, h1 = 1.28, 1.32
+    band(cv, b1, h1, MAGENTA, BLACK, "1  GOVERN THE DATA IN GOOGLE CLOUD", "googlecloud", ON_COLOR)
+    cy, ch = b1 + 0.34, 0.88
+    w1 = (11.95 - 4 * 0.16) / 5
+    xs1 = slots(X0, [w1] * 5)
     data = [("Sources", "Epic, athenahealth, ADSI, Strata, SFDC, SFMC engagement. Approved datasets only.", EDGE,
              CARD, "googlecloud"),
             ("Bronze", "Approved raw extracts with lineage and timestamps. Restricted access.", "A0703C", CARD, None),
             ("DLP + Collibra", "DLP classifies, the Collibra steward approves, policy tags mask PHI.", MAGENTA,
              TINT[MAGENTA], None),
             ("Silver", "Validated identities, encounters, contacts, consent evidence. Keeps everyone.", SOFT, CARD,
-             None),
-            ("Gold A · intelligence", "Protected aggregates for agents: cohorts e.g. Heart · Maternity · General · "
-             "more.", YELLOW, CARD, "googlebigquery"),
-            ("Gold B · eligibility", "Identity-linked eligibility inputs. Restricted services only.", YELLOW, CARD,
              None)]
     for k, (t, d, ln, fl, ic) in enumerate(data):
-        item(cv, gx, rows[k], gw, rh, t, d, line=ln, fill=fl, icon=ic, n=k + 1, ncolor=MAGENTA if k < 4 else YELLOW,
-             bsize=5.4, tsize=6.4)
-    for k in range(4):
-        cv.arrow(gx + gw / 2, rows[k] + rh, gx + gw / 2, rows[k + 1], WHITE, 1.25)
-    path(cv, [(gx, mid(3)), (0.55, mid(3)), (0.55, mid(5)), (gx, mid(5))], MAGENTA, 1.25)
-    # ---------------------------------------------------------------- 2 prompt, plan, build + test
-    mx, mw = 4.1, 2.9
-    sx, sw = 7.12, 2.0
-    item(cv, mx, rows[0], mw, rh, "Prompt in Codex", "“Build a post-discharge follow-up campaign for heart "
+        item(cv, xs1[k], cy, w1, ch, t, d, line=ln, fill=fl, icon=ic, n=k + 1, ncolor=MAGENTA, bsize=5.6,
+             tsize=6.6)
+        if k < 3:
+            cv.arrow(xs1[k] + w1, cy + ch / 2, xs1[k + 1], cy + ch / 2, WHITE, 1.25)
+    gh = (ch - 0.06) / 2
+    gx = xs1[4]
+    item(cv, gx, cy, w1, gh, "Gold B · eligibility", "Identity-linked inputs. Restricted services only.", line=YELLOW,
+         n=5, ncolor=YELLOW, bsize=5.2, tsize=6.2)
+    item(cv, gx, cy + gh + 0.06, w1, gh, "Gold A · intelligence", "Protected aggregates: e.g. Heart · Maternity · "
+         "General · more.", line=YELLOW, n=6, ncolor=YELLOW, icon="googlebigquery", bsize=5.2, tsize=6.2)
+    sxr = xs1[3] + w1
+    cv.arrow(sxr, cy + gh / 2, gx, cy + gh / 2, WHITE, 1.25)
+    cv.arrow(sxr, cy + gh + 0.06 + gh / 2, gx, cy + gh + 0.06 + gh / 2, WHITE, 1.25)
+    # ---------------------------------------------------------------- boundary 1
+    l1 = 2.75
+    cv.arrow(0.45, l1, 12.7, l1, MAGENTA, 1.25, dash="dash", head=False)
+    pill(cv, 0.6, l1 - 0.09, 3.0, "TRUST BOUNDARY · AGENTS: NO RAW-PHI ACCESS", MAGENTA, True, h=0.18, size=5,
+         tcolor=ON_COLOR)
+    # ---------------------------------------------------------------- 2 prompt, plan, build + test (centre band)
+    b2, h2 = 2.9, 1.75
+    band(cv, b2, h2, VIO, TINT[VIO], "2  PROMPT IN CODEX, PLAN, BUILD + TEST · MASKED DATA ONLY", "harness",
+         ON_COLOR)
+    my, mh = b2 + 0.32, 0.78
+    w2 = (11.95 - 5 * 0.16) / 6
+    xs2 = slots(X0, [w2] * 6)
+    item(cv, xs2[0], my, w2, mh, "Prompt in Codex", "“Build a post-discharge follow-up campaign for heart "
          "patients”. Or the business console.", line=CYAN, n=7, icon="openai-white", bsize=5.3, tsize=6.4)
-    item(cv, mx, rows[1], mw, rh, "Orchestrator · Strategist · Analytics", "Read the graph and Gold A; size the "
-         "audience as counts.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=6.2)
-    gatecard(cv, mx, rows[2], mw, rh, "G1", "Confirm the brief", "Marketer + clinical approve the Campaign "
-             "Opportunity Brief: size, channel, content plan.", n=9, bsize=5.2)
-    item(cv, mx, rows[3], mw, rh, "Campaign Design Agent", "Invokes Journey Builder (native); builds the journey "
-         "and data extension, paused; seeds known risks.", line=VIO, n=10, ncolor=VIO, bsize=5.2, tsize=6.4)
-    cv.rect(mx, rows[4], mw, rh, "0B2418", GREEN, 1.0, R, 0.07)
-    badge(cv, mx + 0.08, rows[4] + 0.06, 11, GREEN, 0.22)
-    cv.text(mx + 0.36, rows[4] + 0.04, mw - 0.4, 0.22, "Activation Readiness · testing", size=6.4, bold=True,
-            color=GREEN, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(mx + 0.1, rows[4] + 0.28, mw - 0.16, rh - 0.3, [[("Test contacts only → failure modes (consent, STOP, "
-                                                             "links, quiet hours) → classify + report. ", {}),
-                                                            ("Failed → 10, max 5, then an owner.",
-                                                             {"bold": True, "color": MAGENTA})]], size=5.2,
-            color=SOFT)
-    gatecard(cv, mx, rows[5], mw, rh, "G3", "Approve journey + content", "Clinical + compliance, when every test "
-             "passes. The journey then waits, active.", n=12, bsize=5.2)
+    item(cv, xs2[1], my, w2, mh, "Orchestrator · Strategist · Analytics", "Read the graph and Gold A; size the "
+         "audience as counts.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=5.9)
+    gatecard(cv, xs2[2], my, w2, mh, "G1", "Confirm brief", "Marketer + clinical approve the Campaign Opportunity "
+             "Brief: size, channel, content plan.", n=9, bsize=5.2)
+    item(cv, xs2[3], my, w2, mh, "Campaign Design Agent", "Invokes Journey Builder (native); builds the journey and "
+         "data extension, paused; seeds risks.", line=VIO, n=10, ncolor=VIO, bsize=5.2, tsize=6.2)
+    tx = xs2[4]
+    cv.rect(tx, my, w2, mh, "0B2418", GREEN, 1.0, R, 0.07)
+    badge(cv, tx + 0.08, my + 0.06, 11, GREEN, 0.22)
+    cv.text(tx + 0.36, my + 0.04, w2 - 0.4, 0.22, "Readiness · testing", size=6.2, bold=True, color=GREEN,
+            anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(tx + 0.08, my + 0.28, w2 - 0.14, mh - 0.3, [[("Test contacts only → failure modes (consent, STOP, "
+                                                         "links, hours) → classify + report. ", {}),
+                                                        ("Failed → 10, max 5, then an owner.",
+                                                         {"bold": True, "color": MAGENTA})]], size=5.0, color=SOFT)
+    gatecard(cv, xs2[5], my, w2, mh, "G3", "Approve journey", "Clinical + compliance, when every test passes. "
+             "The journey then waits, active.", n=12, bsize=5.2)
     for k in range(5):
-        xo = mx + mw / 2 + (0.35 if k == 3 else 0)
-        cv.arrow(xo, rows[k] + rh, xo, rows[k + 1], WHITE, 1.25)
-    cv.arrow(mx + mw / 2 - 0.35, rows[4], mx + mw / 2 - 0.35, rows[3] + rh, MAGENTA, 1.5)
-    # Gold A -> agents, across the boundary
-    path(cv, [(gx + gw, mid(4)), (4.02, mid(4)), (4.02, mid(1)), (mx, mid(1))], YELLOW, 1.5)
-    # Gold A also feeds the knowledge graph and Tableau (protected aggregates), along the top channel
-    ch = sx + sw + 0.1
-    path(cv, [(4.02, mid(1)), (4.02, 1.62), (ch, 1.62), (ch, mid(1)), (sx + sw, mid(1))], YELLOW, 1.5)
-    cv.arrow(ch, mid(0), sx + sw, mid(0), YELLOW, 1.5)
-    # knowledge graph -> agents (context); Tableau -> confirm the brief (masked dashboards)
-    path(cv, [(sx, mid(0)), (7.06, mid(0)), (7.06, mid(1) - 0.12), (mx + mw, mid(1) - 0.12)], VIO, 1.25)
-    path(cv, [(sx, mid(1) + 0.12), (7.06, mid(1) + 0.12), (7.06, mid(2)), (mx + mw, mid(2))], "E97627", 1.25)
-    # shared context + oversight
-    item(cv, sx, rows[0], sw, rh, "Knowledge graph", "Metadata, rules, lineage, aggregates from 5. Context for 8.", line=VIO,
-         icon="googlecloudspanner", bsize=5.2, tsize=6.0)
-    item(cv, sx, rows[1], sw, rh, "Tableau", "Masked dashboards from 5, used to confirm the brief (9).", icon="tableau", bsize=5.2, tsize=6.0)
-    item(cv, sx, rows[2], sw, rh, "Compliance Guardian", "Explains exclusions for 14; cannot override policy.",
-         line=VIO, bsize=5.2, tsize=6.0)
-    item(cv, sx, rows[3], sw, rh, "Measurement Agent", "Aggregated outcomes, forecasts, experiments.", line=VIO,
-         bsize=5.2, tsize=6.0)
-    gatecard(cv, sx, rows[4], sw, rows[5] + rh - rows[4], "G1-3", "People approve", "Product, clinical, privacy, "
-             "security: purpose, audience rules and release. Their approvals go to the gateway (15).", bsize=5.3)
-    # ---------------------------------------------------------------- 3 release + send (top-down)
-    rx, rw = 9.66, 3.14
-    item(cv, rx, rows[0], rw, rh, "Eligibility service", "Gold B + approved rules: no consent, no phone or email, "
-         "STOP, deceased, duplicates excluded, with reasons.", line=MAGENTA, n=13, ncolor=MAGENTA, bsize=5.2,
-         tsize=6.4)
-    gatecard(cv, rx, rows[1], rw, rh, "G2", "Pre-send review", "SME + tech lead review a masked report: counts, "
-             "consent, exclusions. No PHI on screen.", n=14, bsize=5.2)
-    fx, fy, fw, fh = cv.frame(rx, rows[2], rw, rh, BLACK, 0.04)
+        cv.arrow(xs2[k] + w2, my + mh / 2, xs2[k + 1], my + mh / 2, WHITE, 1.25)
+    # failed tests: 11 back to 10, under the row
+    lp = my + mh + 0.05
+    path(cv, [(tx + w2 / 2, my + mh), (tx + w2 / 2, lp), (xs2[3] + w2 / 2, lp), (xs2[3] + w2 / 2, my + mh)],
+         MAGENTA, 1.5)
+    # context + oversight row
+    sy, sh = my + mh + 0.12, 0.47
+    cv.text(xs2[0], sy, w2, sh, [[("CONTEXT + OVERSIGHT", {"bold": True, "color": DIM, "track": 100})],
+                                 [("masked data only", {"color": DIM, "size": 5})]], size=5.4,
+            anchor=MSO_ANCHOR.MIDDLE, after=1)
+    item(cv, xs2[1], sy, w2, sh, "Knowledge graph", "Metadata, rules, lineage; from 6.", line=VIO,
+         icon="googlecloudspanner", bsize=5.0, tsize=5.8)
+    item(cv, xs2[2], sy, w2, sh, "Tableau", "Masked dashboards from 6.", icon="tableau", bsize=5.0, tsize=5.8)
+    item(cv, xs2[3], sy, w2, sh, "Compliance Guardian", "Explains exclusions for 14.", line=VIO, bsize=5.0,
+         tsize=5.8)
+    item(cv, xs2[4], sy, w2, sh, "Measurement Agent", "Reads results from 20.", line=VIO, bsize=5.0, tsize=5.8)
+    gatecard(cv, xs2[5], sy, w2, sh, "G1-3", "People approve", "Approvals go to the gateway (15).", bsize=5.0)
+    cv.arrow(xs2[1] + w2 / 2, sy, xs2[1] + w2 / 2, my + mh, VIO, 1.25)
+    cv.arrow(xs2[2] + w2 / 2, sy, xs2[2] + w2 / 2, my + mh, "E97627", 1.25)
+    # Gold A -> agents (8), across boundary 1
+    ga_y = cy + gh + 0.06 + gh
+    ch1 = 2.68
+    path(cv, [(gx + w1 / 2, ga_y), (gx + w1 / 2, ch1), (xs2[1] + w2 / 2 + 0.3, ch1), (xs2[1] + w2 / 2 + 0.3, my)],
+         YELLOW, 1.5)
+    # ---------------------------------------------------------------- boundary 2
+    l2 = 4.74
+    cv.arrow(0.45, l2, 12.7, l2, MAGENTA, 1.25, dash="dash", head=False)
+    pill(cv, 5.0, l2 - 0.09, 3.0, "RECOMMENDATION ≠ RELEASE", MAGENTA, True, h=0.18, size=5, tcolor=ON_COLOR)
+    # ---------------------------------------------------------------- 3 release + send (bottom band)
+    b3, h3 = 4.95, 1.27
+    band(cv, b3, h3, YELLOW, BLACK, "3  RELEASE + SEND · ONLY AFTER G2 + G3", "salesforce", BLACK)
+    ry, rh = b3 + 0.32, 0.88
+    widths = [1.7, 1.6, 2.0, 1.45, 1.45, 1.45, 1.34]
+    xs3 = slots(X0, widths)
+    item(cv, xs3[0], ry, widths[0], rh, "Eligibility service", "Gold B + approved rules: no consent, no phone or "
+         "email, STOP, deceased, duplicates out, with reasons.", line=MAGENTA, n=13, ncolor=MAGENTA, bsize=5.0,
+         tsize=6.2)
+    gatecard(cv, xs3[1], ry, widths[1], rh, "G2", "Pre-send", "SME + tech lead review a masked report: counts, "
+             "consent, exclusions. No PHI on screen.", n=14, bsize=5.0)
+    fx, fy, fw, fh = cv.frame(xs3[2], ry, widths[2], rh, BLACK, 0.04)
     badge(cv, fx + 0.05, fy + 0.04, 15, YELLOW, 0.2)
-    cv.text(fx + 0.3, fy + 0.01, fw - 0.34, 0.22, "Policy engine + activation gateway", size=6.4, bold=True,
-            color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.08, fy + 0.24, fw - 0.14, fh - 0.25, "Purpose, consent, suppression, minimum fields, human "
-            "authorization. Compliance Passport; time-limited; no agent access.", size=5.2, color=SOFT)
-    hw = (rw - 0.1) / 2
-    item(cv, rx, rows[3], hw, rh, "A · via Data Cloud", "Data Cloud → Marketing Cloud.", line=CYAN, n=16,
+    cv.text(fx + 0.3, fy + 0.01, fw - 0.34, 0.36, "Policy engine + activation gateway", size=6.2, bold=True,
+            color=WHITE, line=0.9)
+    cv.text(fx + 0.08, fy + 0.38, fw - 0.14, fh - 0.39, "Purpose, consent, suppression, minimum fields, human "
+            "authorization. Compliance Passport; time-limited.", size=5.0, color=SOFT)
+    ph = (rh - 0.06) / 2
+    item(cv, xs3[3], ry, widths[3], ph, "A · via Data Cloud", None, line=CYAN, n=16, icon="salesforce", tsize=5.6)
+    item(cv, xs3[3], ry + ph + 0.06, widths[3], ph, "B · direct pull", None, line=CYAN, dash="dash", tsize=5.6)
+    item(cv, xs3[4], ry, widths[4], rh, "Data extension", "Approved records, this run only.", n=17,
          icon="salesforce", bsize=5.2, tsize=5.8)
-    item(cv, rx + hw + 0.1, rows[3], hw, rh, "B · direct pull", "Automation Studio, read-only.", line=CYAN,
-         dash="dash", bsize=5.2, tsize=5.8)
-    item(cv, rx, rows[4], hw, rh, "Data extension", "Approved records, this run only.", n=17, icon="salesforce",
+    item(cv, xs3[5], ry, widths[5], rh, "Journey starts", "Built in 10, tested in 11, approved in 12.", n=18,
          bsize=5.2, tsize=5.8)
-    item(cv, rx + hw + 0.1, rows[4], hw, rh, "Journey starts", "Built in 10, tested in 11, approved in 12.", n=18,
-         bsize=5.2, tsize=5.8)
-    item(cv, rx + hw + 0.1, rows[5], hw, rh, "Send-time check", "Consent, STOP, caps re-checked. Engagement back "
-         "to 2.", line=MAGENTA, fill=TINT[MAGENTA], n=19, ncolor=MAGENTA, bsize=5.2, tsize=5.8)
-    item(cv, rx, rows[5], hw, rh, "Measurement service", "Protected attribution; aggregates refresh 5.",
-         line=MAGENTA, n=20, ncolor=MAGENTA, bsize=5.2, tsize=5.6)
-    for k in (0, 1, 2):
-        cv.arrow(rx + rw / 2, rows[k] + rh, rx + rw / 2, rows[k + 1], WHITE, 1.25)
-    for x in (rx + hw / 2, rx + hw + 0.1 + hw / 2):
-        cv.arrow(x, rows[3] + rh, x, rows[4], WHITE, 1.0)
-    cv.arrow(rx + hw, mid(4), rx + hw + 0.1, mid(4), WHITE, 1.25)
-    cv.arrow(rx + hw + 0.1 + hw / 2, rows[4] + rh, rx + hw + 0.1 + hw / 2, rows[5], WHITE, 1.25)
-    cv.arrow(rx + hw + 0.1, mid(5), rx + hw, mid(5), WHITE, 1.25)
-    # Gold B -> eligibility, along the bottom channel
-    path(cv, [(gx + 1.5, rows[5] + rh), (gx + 1.5, 6.16), (9.57, 6.16), (9.57, mid(0)), (rx, mid(0))], MAGENTA,
+    item(cv, xs3[6], ry, widths[6], ph, "Send-time check", None, line=MAGENTA, fill=TINT[MAGENTA], n=19,
+         ncolor=MAGENTA, tsize=5.4)
+    item(cv, xs3[6], ry + ph + 0.06, widths[6], ph, "Measurement", None, line=MAGENTA, n=20, ncolor=MAGENTA,
+         tsize=5.4)
+    cv.arrow(xs3[6] + widths[6] / 2, ry + ph, xs3[6] + widths[6] / 2, ry + ph + 0.06, WHITE, 1.0)
+    mid3 = ry + rh / 2
+    for k in (0, 1):
+        cv.arrow(xs3[k] + widths[k], mid3, xs3[k + 1], mid3, WHITE, 1.25)
+    for yy in (ry + ph / 2, ry + ph + 0.06 + ph / 2):
+        cv.arrow(xs3[2] + widths[2], yy, xs3[3], yy, WHITE, 1.0)
+        cv.arrow(xs3[3] + widths[3], yy, xs3[4], yy, WHITE, 1.0)
+    cv.arrow(xs3[4] + widths[4], mid3, xs3[5], mid3, WHITE, 1.25)
+    cv.arrow(xs3[5] + widths[5], ry + ph / 2, xs3[6], ry + ph / 2, WHITE, 1.25)
+    # Gold B -> eligibility: down the right margin, across boundary 2
+    gb_y = cy + gh / 2
+    ch2 = 4.86
+    path(cv, [(gx + w1, gb_y), (12.82, gb_y), (12.82, ch2), (xs3[0] + 0.5, ch2), (xs3[0] + 0.5, ry)], MAGENTA,
          1.5)
+    # engagement back: measurement -> sources, round the left margin
+    fb = 6.27
+    path(cv, [(xs3[6] + widths[6] / 2, ry + rh), (xs3[6] + widths[6] / 2, fb), (0.33, fb), (0.33, cy + ch / 2),
+              (X0, cy + ch / 2)], GREEN, 1.25)
+    pill(cv, 8.6, fb - 0.07, 2.4, "ENGAGEMENT BACK → NEXT RUN", GREEN, True, h=0.14, size=4.6)
     # ---------------------------------------------------------------- safeguards
-    sy, sh = 6.28, 0.56
-    cv.text(0.45, sy, 1.25, sh, [[("SAFEGUARDS", {"bold": True, "color": MAGENTA, "track": 120})],
-                                 [("no wrong or no-consent patient", {"color": DIM, "size": 5})]], size=6.2,
+    sgy, sgh = 6.36, 0.5
+    cv.text(0.45, sgy, 1.25, sgh, [[("SAFEGUARDS", {"bold": True, "color": MAGENTA, "track": 120})],
+                                   [("no wrong or no-consent patient", {"color": DIM, "size": 5})]], size=6.2,
             anchor=MSO_ANCHOR.MIDDLE, after=1)
     guards = ["Build and test before any data lands", "G2: masked pre-send report",
               "Minimum fields, only after G2 + G3", "Gateway release; agents hold no raw PHI",
               "Collibra steward approves masking", "Retry cap: 5, then an owner", "Send-time re-checks + feedback"]
-    gw_ = (12.88 - 1.75 - 6 * 0.08) / 7
+    gw_ = (12.7 - 1.75 - 6 * 0.08) / 7
     for k, t in enumerate(guards):
         x = 1.75 + k * (gw_ + 0.08)
-        cv.rect(x, sy, gw_, sh, CARD, None)
-        cv.rect(x, sy, 0.05, sh, MAGENTA, None)
-        cv.text(x + 0.12, sy, gw_ - 0.16, sh, t, size=6, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.rect(x, sgy, gw_, sgh, CARD, None)
+        cv.rect(x, sgy, 0.05, sgh, MAGENTA, None)
+        cv.text(x + 0.12, sgy, gw_ - 0.16, sgh, t, size=5.8, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
     return s
 
 
