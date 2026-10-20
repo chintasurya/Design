@@ -1,11 +1,15 @@
-"""Agentic Harness + data harness: a short black-theme deck on the IG template (6 slides).
+"""Agentic Harness + data harness: a short deck on the IG template (8 slides).
 
 1 Title
 2 One agent team: seven delivery agents and four data agents
 3 The platform, now with the data harness
 4 Health Cloud: a story from Codex to production (GCP patient data not needed, shown grey)
-5 Marketing Cloud: campaigns on governed GCP data (GCP data required)
-6 How PHI is masked in GCP (the ADDG flow)
+5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
+6 Marketing campaigns end to end, from governed data to a tested, approved campaign (white)
+7 How we build it: safeguards first, release last (white)
+8 How PHI is masked in GCP (the ADDG flow)
+
+Slides 6 and 7 come from combined_flow.py and campaign_platform_deck.py, recoloured for a white background.
 
     python3 build_data_harness_deck.py [out.pptx]
 """
@@ -595,176 +599,6 @@ def health_slide(prs, layout):
     return s
 
 
-# ================================================================== 5 Marketing Cloud campaigns
-MC_NOTES = """SLIDE: Marketing Cloud: campaigns on governed GCP data   (about 3 minutes)
-
-KEY MESSAGE
-For Marketing Cloud the governed GCP data is required: it is where the patients are. Agents only ever see it masked; people review a masked pre-send report; only then are the minimum fields released for Marketing Cloud to pull, and the journey starts by itself.
-
-WALK IT (follow the numbers)
-- Sources: Epic, athenahealth, Strata, SFDC leads, SFMC engagement, CallRail, forms and direct mail land in BigQuery; DLP classifies, the Collibra steward approves, policy tags mask PHI.
-1 The marketer asks in Codex: "What are the top 10 campaigns I can run for heart patients?"
-2-3 The Campaign Strategist reads the knowledge graph built on masked data and ranks campaigns.
-4 The marketer picks (G1).
-5-6 The Audience Agent and Privacy Guard build the audience on masked views, consent first: tokens and counts per run ID.
-7 The SME and tech lead approve the masked pre-send report (G2).
-8 The Developer Agent builds the data extension, the pull and the journey from approved templates; clinical and compliance approve (G3).
-9 Only after G2 and G3: token, name, email, phone, condition group and discharge date go to the release store, time-limited.
-10 Marketing Cloud pulls; new records start the journey; consent and STOP are re-checked at send.
-11 Engagement comes back; the Measurement Agent measures lift and the graph learns."""
-
-
-def marketing_slide(prs, layout):
-    s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · MARKETING CLOUD CAMPAIGNS",
-                "Marketing Cloud: ask in Codex, agents work masked, people release the right patients",
-                "Here the governed GCP data is required. Agents see counts and tokens; a masked pre-send report is "
-                "approved before the minimum fields reach Marketing Cloud.")
-    X0, X1 = 0.45, 10.38
-    W = X1 - X0
-    cx = [0.88 + i * 2.38 for i in range(4)]
-    cw = 2.25
-    lanes = [(1.28, 1.1, "PEOPLE", "2A2A2A", WHITE, CARD, EDGE, "people"),
-             (2.46, 1.04, "HARNESS", "0A4A52", WHITE, TINT[CYAN], CYAN, "harness"),
-             (3.58, 2.04, "GOOGLE CLOUD", "3A0A1E", WHITE, BLACK, MAGENTA, "googlecloud")]
-    for y, h, t, lc, tc, fill, line, ic in lanes:
-        cv.rect(X0, y, W, h, fill, line, 1.0, R, 0.03, dash="dash" if t == "GOOGLE CLOUD" else None)
-        cv.rect(X0, y, 0.3, h, lc, None)
-        logo(cv, ic, X0 + 0.04, y + 0.08, 0.22)
-        tb = cv.text(0.6 - (h - 0.3) / 2, y + 0.3 + (h - 0.3) / 2 - 0.14, h - 0.3, 0.28, t, size=6.6, bold=True, color=tc,
-                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=150)
-        tb.rotation = 270
-    p_y, p_h = 1.43, 0.82
-    a_y, a_h = 2.62, 0.74
-    d_y, d_h = 3.7, 0.95
-
-    # people
-    cv.rect(cx[0], p_y, cw, p_h, BLACK, CYAN, 1.0, R, 0.1)
-    badge(cv, cx[0] + 0.07, p_y + 0.06, 1)
-    logo(cv, "openai-white", cx[0] + 0.35, p_y + 0.07, 0.18)
-    cv.text(cx[0] + 0.58, p_y + 0.05, cw - 0.64, 0.22, "Ask in Codex", size=7.6, bold=True, color=WHITE,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(cx[0] + 0.12, p_y + 0.3, cw - 0.22, p_h - 0.32,
-            [[("“Top 10 campaigns I can run for heart patients?”", {})],
-             [("or: “Run a campaign for heart patients”", {"color": DIM})]], size=6.3, color=SOFT,
-            font="Courier New", after=1)
-    card(cv, cx[1], p_y, cw, p_h, "Ranked list · pick", ["1  CHF post-discharge SMS nudge",
-                                                          "2  Cardiac rehab referral",
-                                                          "3  Statin refill reminder …"],
-         line=YELLOW, fill=TINT[YELLOW], n=4, tag=("G1", YELLOW, True), bsize=6)
-    card(cv, cx[2], p_y, cw, p_h, "Pre-send review", ["SME + tech lead approve a masked report: counts, consent, "
-                                                      "exclusions.", [("No PHI on screen.", {"bold": True,
-                                                                                              "color": MAGENTA})]],
-         line=YELLOW, fill=TINT[YELLOW], n=7, tag=("G2", YELLOW, True), bsize=6, icon="looker")
-    card(cv, cx[3], p_y, cw, p_h, "Approve journey + content", "Clinical and compliance approve messages and "
-         "journey; it waits, active, for entries.", line=YELLOW, fill=TINT[YELLOW], tag=("G3", YELLOW, True),
-         bsize=6)
-    # agents
-    card(cv, cx[0], a_y, cw, a_h, "Campaign Strategist", "Reads the masked graph; ranks by size, care gap, "
-         "consent, past lift.", line=CYAN, n=2, bsize=6)
-    card(cv, cx[1], a_y, cw, a_h, "Audience + Privacy Guard", "Consent first: opt-in per channel, STOP, deceased, "
-         "readmitted, duplicates out.", line=CYAN, n=5, bsize=6)
-    card(cv, cx[2], a_y, cw, a_h, "Measurement Agent", "Lift against a holdout; writes what worked back to the "
-         "graph.", line=CYAN, n=11, bsize=6)
-    card(cv, cx[3], a_y, cw, a_h, "Developer Agent · journeys", "Builds the data extension, the pull and the "
-         "journey from approved templates.", line=CYAN, n=8, bsize=6)
-    # data
-    card(cv, cx[0], d_y, cw, d_h, "Knowledge graph", ["Segments, counts, care gaps, consent coverage, past lift.",
-                                                     [("Masked: no patient visible.", {"bold": True,
-                                                                                       "color": MAGENTA})]],
-         line=VIO, fill=TINT[VIO], n=3, ncolor=VIO, bsize=6, icon="googlecloudspanner")
-    card(cv, cx[1], d_y, cw, d_h, "Masked audience · BigQuery", ["Tokens and counts per run ID; holdout set aside.",
-                                                                [("Agents never unmask.", {"bold": True,
-                                                                                           "color": MAGENTA})]],
-         line=MAGENTA, n=6, ncolor=MAGENTA, bsize=6, icon="googlebigquery")
-    card(cv, cx[2], d_y, cw, d_h, "ROI engine", "EUID matching, attribution, lift vs holdout, Contribution "
-         "Margin.", line=EDGE, bsize=6, icon="googlebigquery")
-    fx, fy, fw, fh = cv.frame(cx[3], d_y, cw, d_h, BLACK, 0.04)
-    badge(cv, fx + 0.05, fy + 0.05, 9, YELLOW)
-    logo(cv, "googlecloudspanner", fx + 0.33, fy + 0.05, 0.2)
-    cv.text(fx + 0.58, fy + 0.03, fw - 0.62, 0.24, "Release store · Spanner", size=7.6, bold=True, color=WHITE,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.08, fy + 0.29, fw - 0.16, fh - 0.3, [[("Only after G2 + G3: ", {"bold": True, "color": YELLOW}),
-                                                         ("token, name, email, phone, condition group, discharge "
-                                                          "date. Time-limited, read-only API.", {})]],
-            size=6, color=SOFT)
-    # sources strip: required here
-    sy = 5.0
-    cv.rect(cx[0], sy, cx[3] + cw - cx[0], 0.5, TINT[MAGENTA], MAGENTA, 1.25, R, 0.2)
-    pill(cv, cx[0] + 0.1, sy + 0.16, 0.8, "REQUIRED", MAGENTA, True, tcolor=WHITE)
-    cv.text(cx[0] + 1.0, sy, cx[3] + cw - cx[0] - 1.1, 0.5,
-            [[("Epic · athenahealth · Strata · SFDC leads · SFMC engagement · CallRail · forms · direct mail", {}),
-              ("  → BigQuery →  ", {"bold": True, "color": WHITE}),
-              ("DLP classifies, Collibra steward approves, policy tags mask PHI", {"color": MAGENTA})]],
-            size=6.3, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
-    # arrows
-    m = cw / 2
-    cv.arrow(cx[0] + m, p_y + p_h, cx[0] + m, a_y, WHITE, 1.5)
-    cv.arrow(cx[0] + m - 0.15, a_y + a_h, cx[0] + m - 0.15, d_y, VIO, 1.5)
-    cv.arrow(cx[0] + m + 0.15, d_y, cx[0] + m + 0.15, a_y + a_h, VIO, 1.5)
-    gab = cx[0] + cw + 0.065
-    path(cv, [(cx[0] + cw, a_y + a_h / 2), (gab, a_y + a_h / 2), (gab, p_y + p_h / 2), (cx[1], p_y + p_h / 2)], CYAN)
-    cv.arrow(cx[1] + m, p_y + p_h, cx[1] + m, a_y, YELLOW, 1.5)
-    cv.arrow(cx[1] + m, a_y + a_h, cx[1] + m, d_y, CYAN, 1.5)
-    gbc = cx[1] + cw + 0.065
-    path(cv, [(cx[1] + cw, d_y + 0.6), (gbc, d_y + 0.6), (gbc, p_y + p_h / 2), (cx[2], p_y + p_h / 2)], SOFT)
-    gcd = cx[2] + cw + 0.065
-    # 7 -> 8: an approved pre-send report lets the Developer Agent build
-    path(cv, [(cx[2] + cw, p_y + p_h / 2), (gcd, p_y + p_h / 2), (gcd, a_y + a_h / 2), (cx[3], a_y + a_h / 2)],
-         YELLOW, 1.75)
-    # 8 -> G3: the built journey goes to clinical + compliance
-    cv.arrow(cx[3] + m, a_y, cx[3] + m, p_y + p_h, CYAN, 1.5)
-    # G3 -> 9: only then is the release store filled (right-hand side, clear of 7 -> 8)
-    gr = cx[3] + cw + 0.065
-    path(cv, [(cx[3] + cw, p_y + p_h / 2), (gr, p_y + p_h / 2), (gr, d_y + 0.25), (cx[3] + cw, d_y + 0.25)],
-         YELLOW, 1.75)
-    cv.arrow(cx[2] + m, d_y, cx[2] + m, a_y + a_h, MAGENTA, 1.5)
-    ly = 4.82
-    path(cv, [(cx[2] + 0.5, d_y + d_h), (cx[2] + 0.5, ly), (cx[0] + m, ly), (cx[0] + m, d_y + d_h)], GREEN)
-    pill(cv, cx[0] + m + 0.15, ly - 0.09, 3.0, "← WHAT WORKED IMPROVES THE NEXT SUGGESTION", GREEN, True)
-    # Marketing Cloud, bottom-up
-    mx, mw = 10.55, 2.33
-    cv.rect(mx, 1.28, mw, 0.3, WHITE, None)
-    logo(cv, "salesforce", mx + 0.08, 1.31, 0.24)
-    cv.text(mx + 0.4, 1.28, mw - 0.5, 0.3, "MARKETING CLOUD", size=7, bold=True, color=BLACK, track=150,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.rect(mx, 1.58, mw, 4.04, CARD, EDGE, 0.75)
-    nx, nw = mx + 0.1, mw - 0.2
-    card(cv, nx, 1.7, nw, 0.62, "SMS or email nudge", "Consent, STOP, frequency caps re-checked at send.",
-         line=EDGE, fill=BLACK, bsize=6)
-    card(cv, nx, 2.48, nw, 0.76, "Journey starts itself", "Built by the Developer Agent (8); new records in the data "
-         "extension enter it.", line=EDGE, fill=BLACK, bsize=6)
-    fx, fy, fw, fh = cv.frame(nx, 3.4, nw, 0.74, BLACK, 0.04)
-    cv.text(fx + 0.08, fy + 0.04, fw - 0.16, 0.22, "Campaign data extension", size=7.6, bold=True, color=WHITE,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.08, fy + 0.3, fw - 0.16, fh - 0.32, "Only the released minimum fields, for this run.", size=6,
-            color=SOFT)
-    card(cv, nx, 4.3, nw, 0.82, "Pulls the released records", "Automation Studio calls the read-only API, scoped "
-         "to the run ID.", line=CYAN, fill=TINT[CYAN], n=10, bsize=6, icon="salesforce")
-    for lo, hi in ((2.48, 2.32), (3.4, 3.24), (4.3, 4.14)):
-        cv.arrow(nx + nw / 2, lo, nx + nw / 2, hi, SOFT, 1.25)
-    cv.arrow(cx[3] + cw, d_y + 0.62, nx, 4.62, WHITE, 2.0)
-    path(cv, [(nx + nw / 2, 5.12), (nx + nw / 2, 5.56), (cx[2] + 1.6, 5.56), (cx[2] + 1.6, sy + 0.5)], MAGENTA,
-         1.25)
-    cv.text(nx + nw / 2 + 0.06, 5.15, nw / 2 - 0.06, 0.3, "engagement back to BigQuery", size=5.4, color=MAGENTA,
-            anchor=MSO_ANCHOR.MIDDLE)
-    # bottom principles
-    pr = [("Masked for agents and reviewers", "Collibra policy masks PHI; agents see counts and tokens.", MAGENTA),
-          ("Consent decides, people confirm", "No consent for the channel, no message.", VIO),
-          ("Minimum necessary leaves", "Only the fields a campaign needs, one run, time-limited.", YELLOW),
-          ("Review before release", "The data extension starts the journey, so review comes first.", GREEN)]
-    pw = (12.43 - 3 * 0.15) / 4
-    for i, (t, d, c) in enumerate(pr):
-        x = 0.45 + i * (pw + 0.15)
-        cv.rect(x, 5.8, pw, 0.62, CARD, None)
-        cv.rect(x, 5.8, 0.06, 0.62, c, None)
-        cv.text(x + 0.18, 5.84, pw - 0.26, 0.56, [[(t, {"bold": True, "size": 8, "color": WHITE})],
-                                                 [(d, {"color": SOFT})]], size=6.6, anchor=MSO_ANCHOR.MIDDLE,
-                after=1)
-    set_notes(s, MC_NOTES)
-    return s
-
-
 # ================================================================== 6 masking in GCP (ADDG)
 MASK_NOTES = """SLIDE: How PHI is masked in Google Cloud   (about 3 minutes)
 
@@ -918,7 +752,48 @@ def masking_slide(prs, layout):
 
 
 # ================================================================== build
+SECTION_NOTES = ("Section: the HIPAA-aligned agentic healthcare campaign platform. The same harness, now for "
+                 "Marketing Cloud campaigns: the data is governed in Google Cloud first, agents plan and build on "
+                 "masked data, and only approved patients are released. It is a proposed target state, piloted "
+                 "first on the CHF post-discharge nudge.")
+
+
+def section_slide(prs):
+    """A section title on the IG colour title layout, styled like slide 1."""
+    import copy
+    first = prs.slides[0]
+    s = prs.slides.add_slide(first.slide_layout)
+    tree = s.shapes._spTree
+    for sp in list(s.shapes):
+        tree.remove(sp._element)
+    for sp in first.shapes:
+        tree.append(copy.deepcopy(sp._element))
+    for sh in s.shapes:
+        if not sh.has_text_frame:
+            continue
+        t = sh.text_frame.text
+        paras = sh.text_frame.paragraphs
+        if t.startswith("Ascension"):
+            from pptx.util import Pt
+            runs = paras[0].runs
+            runs[0].text = "HIPAA-Aligned Agentic Healthcare Campaign Platform"
+            runs[0].font.size = Pt(36)
+            for r in runs[1:]:
+                r.text = ""
+        elif paras and paras[0].runs and (t.startswith("One harness") or t.startswith("An Agentic")):
+            paras[0].runs[0].text = ("Governed data in Google Cloud, agents on masked data, approved patients "
+                                     "released to Marketing Cloud. Proposed target state.")
+            for r in paras[0].runs[1:]:
+                r.text = ""
+        elif t in ("AGENTS FOR DELIVERY AND DATA", "AI-DRIVEN SALESFORCE DELIVERY"):
+            paras[0].runs[0].text = "MARKETING CLOUD CAMPAIGNS"
+    set_notes(s, SECTION_NOTES)
+    return s
+
+
 def main(out=OUT):
+    import combined_flow
+    import campaign_platform_deck as cpd
     prs = Presentation(SRC)
     lst = prs.slides._sldIdLst
     for el in list(lst)[1:]:                    # keep only the title slide
@@ -929,8 +804,21 @@ def main(out=OUT):
     team_slide(prs, layout)
     platform_slide(prs, layout)
     health_slide(prs, layout)
-    marketing_slide(prs, layout)
     masking_slide(prs, layout)
+    section_slide(prs)
+    combined_flow.light_logos()                 # white slides use the dark icon variants
+    flow = combined_flow.build(prs, layout)
+    set_notes(flow, cpd.FLOW_NOTES)
+    order = cpd.build_order(prs, layout)
+    for sl in (flow, order):
+        set_bg(sl, "FFFFFF")
+        combined_flow.recolor_light(sl)
+    # built as title, team, platform, health, masking, section, flow, order; shown with masking last
+    ids = list(lst)
+    for el in ids:
+        lst.remove(el)
+    for k in (0, 1, 2, 3, 5, 6, 7, 4):
+        lst.append(ids[k])
     for line in fix_footers(prs):
         print(line)
     prs.save(out)

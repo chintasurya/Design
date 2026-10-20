@@ -1,27 +1,19 @@
-"""Agentic Healthcare Campaign Platform: a short white-theme deck on the IG template.
+"""Campaign-platform slides for the Agentic Harness deck (build_data_harness_deck.py places them).
 
-1  Title (IG colour title)
-2  End to end: from governed data to a tested, approved campaign (the combined slide, light theme)
-3  Build order: how we execute it, safety first and release last
-4  Closer (IG)
-
-    python3 campaign_platform_deck.py [out.pptx]
+FLOW_NOTES   talk track for the end-to-end slide (combined_flow.build)
+build_order  how we build it: phases 0-6 mapped to the slide's boxes, safeguards first, release last
 """
 import os
-import sys
 
-from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
 import combined_flow
-from build_data_harness_deck import CARD, CARD2, DIM, EDGE, R, SOFT, SRC, TINT, VIO, new_slide, pill
+from build_data_harness_deck import CARD, CARD2, DIM, R, SOFT, TINT, VIO, new_slide, pill
 from build_mad_ig_deck import BLACK, CYAN, GREEN, MAGENTA, WHITE, YELLOW, set_notes
-from footer import fix_footers
-from story_slides import dark_header, set_bg
+from story_slides import dark_header
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "Agentic Healthcare Campaign Platform.pptx")
 ON_COLOR = combined_flow.ON_COLOR
 
 TITLE_NOTES = ("Open: this is the agentic healthcare campaign platform. The data is governed in Google Cloud first, "
@@ -182,63 +174,3 @@ def build_order(prs, layout):
                                       "today's baseline.", {"color": SOFT})]], size=6.6, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, BUILD_NOTES)
     return s
-
-
-def title_slide(prs):
-    s = prs.slides[0]
-    for sh in s.shapes:
-        if not sh.has_text_frame:
-            continue
-        t = sh.text_frame.text
-        if t.startswith("Ascension"):
-            p = sh.text_frame.paragraphs
-            p[0].runs[0].text = "Agentic Healthcare"
-            for r in p[0].runs[1:]:
-                r.text = ""
-            if len(p) > 1 and p[1].runs:
-                p[1].runs[0].text = "Campaign Platform"
-                for r in p[1].runs[1:]:
-                    r.text = ""
-            else:
-                p[0].runs[0].text = "Agentic Healthcare Campaign Platform"
-        elif t.startswith("An Agentic Harness"):
-            r = sh.text_frame.paragraphs[0].runs
-            r[0].text = ("Governed data in Google Cloud, agents on masked data, approved patients released to "
-                         "Marketing Cloud.")
-            for extra in r[1:]:
-                extra.text = ""
-        elif t == "AI-DRIVEN SALESFORCE DELIVERY":
-            sh.text_frame.paragraphs[0].runs[0].text = "PROPOSED TARGET STATE · FOR REVIEW"
-    set_notes(s, TITLE_NOTES)
-
-
-def main(out=OUT):
-    combined_flow.light_logos()
-    prs = Presentation(SRC)
-    lst = prs.slides._sldIdLst
-    keep = {0, next(i for i, sl in enumerate(prs.slides) if sl.slide_layout.name == "Closer_1")}
-    for i, el in enumerate(list(lst)):
-        if i not in keep:
-            prs.part.drop_rel(el.rId)
-            lst.remove(el)
-    title_slide(prs)
-    layout = next(l_ for l_ in prs.slide_layouts if l_.name == "DEFAULT")
-    flow = combined_flow.build(prs, layout)
-    set_notes(flow, FLOW_NOTES)
-    order = build_order(prs, layout)
-    for sl in (flow, order):
-        set_bg(sl, "FFFFFF")
-        combined_flow.recolor_light(sl)
-    # move the closer (now slide 2) to the end
-    ids = list(lst)
-    closer = ids[1]
-    lst.remove(closer)
-    lst.append(closer)
-    for line in fix_footers(prs):
-        print(line)
-    prs.save(out)
-    print("wrote", os.path.abspath(out), "-", len(prs.slides), "slides")
-
-
-if __name__ == "__main__":
-    main(*sys.argv[1:])
