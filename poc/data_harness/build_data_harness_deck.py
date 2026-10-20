@@ -5,11 +5,12 @@
 3 The platform, now with the data harness
 4 Health Cloud: a story from Codex to production (GCP patient data not needed, shown grey)
 5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
-6 Marketing campaigns end to end, from governed data to a tested, approved campaign (white)
+6 Marketing campaigns end to end, from governed data to a tested, approved campaign
 7 How we build it: safeguards first, release last (white)
 8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
 
-Slides 6-8 come from combined_flow.py and campaign_platform_deck.py; 6 and 7 are recoloured for a white background.
+Slides 6-8 come from combined_flow.py and campaign_platform_deck.py; 7 is recoloured for a white background.
+Slides 2, 3, 4 and 6 use the muted styles in muted_theme.py.
 
     python3 build_data_harness_deck.py [out.pptx]
 """
@@ -647,8 +648,10 @@ def section_slide(prs):
 
 
 def main(out=OUT):
+    import build_mad_ig_deck as ig
     import combined_flow
     import campaign_platform_deck as cpd
+    import muted_theme as mt
     prs = Presentation(SRC)
     lst = prs.slides._sldIdLst
     for el in list(lst)[1:]:                    # keep only the title slide
@@ -656,18 +659,33 @@ def main(out=OUT):
         lst.remove(el)
     layout = next(l_ for l_ in prs.slide_layouts if l_.name == "DEFAULT")
     title_slide(prs)
-    team_slide(prs, layout)
-    platform_slide(prs, layout)
-    health_slide(prs, layout)
+    team = team_slide(prs, layout)
+    platform = platform_slide(prs, layout)
+    health = health_slide(prs, layout)
     section_slide(prs)
-    cpd.phi_governance(prs, layout)             # dark, built before the light icon swap
-    combined_flow.light_logos()                 # white slides use the dark icon variants
+    cpd.phi_governance(prs, layout)             # dark slides are built before the light icon swap
+    frame = ig.Canvas.frame                     # thinner gradient frame on the end-to-end slide
+    ig.Canvas.frame = lambda cv, x, y, w, h, inner=WHITE, t=0.045: frame(cv, x, y, w, h, inner, min(t, 0.02))
     flow = combined_flow.build(prs, layout)
+    ig.Canvas.frame = frame
     set_notes(flow, cpd.FLOW_NOTES)
+    combined_flow.light_logos()                 # the white slide uses the dark icon variants
     order = cpd.build_order(prs, layout)
-    for sl in (flow, order):
-        set_bg(sl, "FFFFFF")
-        combined_flow.recolor_light(sl)
+    set_bg(order, "FFFFFF")
+    combined_flow.recolor_light(order)
+    # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
+    mt.accent_dark(team, (CYAN, CYAN))
+    mt.muted(platform, "dark", accent="yellow",
+             hooks=[("frame", lambda sh: mt.near(sh.left, 9.75) and mt.near(sh.width, 3.13))])
+    mt.muted(health, "dark", yellow_if=lambda sh: sh.height > mt.EMU,
+             hooks=[("frame", lambda sh: mt.near(sh.top, 5.95) and mt.near(sh.height, 0.85) and sh.width > 3 * mt.EMU),
+                    ("bar", lambda sh: mt.near(sh.top, 5.95) and mt.near(sh.width, 0.06))])
+    mt.muted(flow, "dark", hooks=[("bar", lambda sh: mt.near(sh.top, 6.36) and mt.near(sh.width, 0.05))])
+    w1 = (11.95 - 4 * 0.16) / 5
+    xs1 = [0.6 + k * (w1 + 0.16) for k in range(5)]
+    gh = (0.88 - 0.06) / 2
+    mt.metals(flow, [("bronze", xs1[1], 1.62, w1, 0.88), ("silver", xs1[3], 1.62, w1, 0.88),
+                     ("gold", xs1[4], 1.62, w1, gh), ("gold", xs1[4], 1.62 + gh + 0.06, w1, gh)], theme="dark")
     # built as title, team, platform, health, section, governance, flow, order; governance shown last
     ids = list(lst)
     for el in ids:
