@@ -5,7 +5,7 @@ patient (consent and contact filtering move to the per-campaign eligibility serv
 and Gold B, the release store becomes the activation gateway, the Developer Agent is the Campaign Design Agent
 and the testing loop runs under the Activation Readiness Agent.
 
-    python3 combined_flow.py [out.pptx]
+    python3 combined_flow.py [out.pptx] [dark|light]
 """
 import os
 import sys
@@ -21,6 +21,7 @@ from story_slides import dark_header
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "combined_flow.pptx")
+ON_COLOR = "FFFFFE"     # white text on a brand-colour bar: stays white in the light theme
 
 
 def build(prs, layout):
@@ -35,9 +36,9 @@ def build(prs, layout):
 
     def mid(k):
         return rows[k] + rh / 2
-    zones = [(0.45, 3.75, MAGENTA, BLACK, "1  GOVERN THE DATA IN GOOGLE CLOUD", "googlecloud", WHITE),
+    zones = [(0.45, 3.75, MAGENTA, BLACK, "1  GOVERN THE DATA IN GOOGLE CLOUD", "googlecloud", ON_COLOR),
              (3.95, 9.3, VIO, TINT[VIO], "2  PROMPT IN CODEX, PLAN, BUILD + TEST · MASKED DATA ONLY", "harness",
-              WHITE),
+              ON_COLOR),
              (9.5, 12.88, YELLOW, BLACK, "3  RELEASE + SEND · ONLY AFTER G2 + G3", "salesforce", BLACK)]
     for k, (x0, x1, c, fill, t, ic, tc) in enumerate(zones):
         cv.rect(x0, zt, x1 - x0, zb - zt, fill, c, 1.0, R, 0.02)
@@ -49,7 +50,7 @@ def build(prs, layout):
         cv.arrow(bx_, zt, bx_, zb + 0.14, MAGENTA, 1.25, dash="dash", head=False)
         cv.rect(bx_ - 0.09, y0, 0.18, y1 - y0, MAGENTA, None, shape=R, radius=0.5)
         tb = cv.text(bx_ - (y1 - y0) / 2, (y0 + y1) / 2 - 0.09, y1 - y0, 0.18, t, size=4.8, bold=True,
-                     color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
+                     color=ON_COLOR, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
         tb.rotation = 270
     # ---------------------------------------------------------------- 1 govern the data (top-down)
     gx, gw = 0.65, 3.0
@@ -161,19 +162,71 @@ def build(prs, layout):
     return s
 
 
-def main(out=OUT):
+# light theme: same slide, recoloured for a white background
+LIGHT_FILL = {BLACK: "FFFFFF", CARD: "F7F7F7", "1E1E1E": "EFEFEF", "2A2A2A": "E6E6E6", "06262B": "E0FAFE",
+              "2B2508": "FFF7CC", "2B0716": "FFE6F0", "1A1630": "ECE9F5", "0E2A08": "EAFBE6", "0B2418": "EAFBE6",
+              "0A1A24": "E6EEF2"}
+LIGHT_LINE = {EDGE: "C8C8C8", SOFT: "8C8C8C", WHITE: "404040", BLACK: "404040"}
+LIGHT_TEXT = {WHITE: "1A1A1A", SOFT: "4D4D4D", DIM: "6B6B6B", YELLOW: "9A7B00", GREEN: "2E8F1C", CYAN: "0089A0"}
+LIGHT_LOGOS = {"openai-white": "openai", "people": "people-black", "harness": "harness-black"}
+
+
+def light_logos():
+    """A logo folder for white slides: white icons swapped for their dark versions."""
+    import shutil
+    import build_data_harness_deck as bd
+    src = bd.LOGOS
+    dst = os.path.join(HERE, "build", "logos_light")
+    os.makedirs(dst, exist_ok=True)
+    for f in os.listdir(src):
+        if f.endswith(".png"):
+            shutil.copy(os.path.join(src, f), os.path.join(dst, f))
+    for name, dark in LIGHT_LOGOS.items():
+        shutil.copy(os.path.join(src, dark + ".png"), os.path.join(dst, name + ".png"))
+    bd.LOGOS = dst
+
+
+def recolor_light(slide):
+    A_ = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    for clr in slide._element.iter("{%s}srgbClr" % A_):
+        tags = set()
+        node = clr.getparent()
+        while node is not None:
+            tags.add(node.tag.split("}")[-1])
+            node = node.getparent()
+        if "gradFill" in tags or "bg" in tags:
+            continue
+        v = clr.get("val").upper()
+        if tags & {"rPr", "defRPr", "endParaRPr"}:
+            table = LIGHT_TEXT
+        elif "ln" in tags:
+            table = LIGHT_LINE
+        else:
+            table = LIGHT_FILL
+        if v in table:
+            clr.set("val", table[v])
+
+
+def main(out=OUT, theme="dark"):
+    from story_slides import set_bg
+    light = theme == "light"
+    if light:
+        light_logos()
     prs = Presentation(SRC)
     lst = prs.slides._sldIdLst
     for el in list(lst):
         prs.part.drop_rel(el.rId)
         lst.remove(el)
     layout = next(l_ for l_ in prs.slide_layouts if l_.name == "DEFAULT")
-    build(prs, layout)
+    s = build(prs, layout)
+    if light:
+        set_bg(s, "FFFFFF")
+        recolor_light(s)
     for line in fix_footers(prs):
         print(line)
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     prs.save(out)
-    print("wrote", os.path.abspath(out), "-", len(prs.slides), "slide")
+    print("wrote", os.path.abspath(out), "-", len(prs.slides), "slide", "(%s)" % theme)
 
 
 if __name__ == "__main__":

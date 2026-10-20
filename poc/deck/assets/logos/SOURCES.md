@@ -8,3 +8,4 @@ Logos used on the high-level design slide. Brand marks belong to their owners an
 - people (lucide "users") and harness (lucide "workflow"): lucide-static 0.460.0 (ISC), white, rendered to PNG
 - googlecloud-grey (greyed, for 'not needed') and people-black: recoloured from googlecloud and people
 - tableau: simple-icons 13.21.0 (CC0), brand colour, rendered to PNG
+- harness-black: recoloured from harness, for light slides
