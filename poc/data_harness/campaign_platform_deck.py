@@ -1,7 +1,8 @@
 """Campaign-platform slides for the Agentic Harness deck (build_data_harness_deck.py places them).
 
-FLOW_NOTES   talk track for the end-to-end slide (combined_flow.build)
-build_order  how we build it: phases 0-6 mapped to the slide's boxes, safeguards first, release last
+FLOW_NOTES      talk track for the end-to-end slide (combined_flow.build)
+build_order     how we build it: phases 0-6 mapped to the slide's boxes, safeguards first, release last
+phi_governance  PHI governance: masking is one control; the four additions the architecture review asked for
 """
 import os
 
@@ -10,6 +11,7 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
 import combined_flow
 from build_data_harness_deck import CARD, CARD2, DIM, R, SOFT, TINT, VIO, new_slide, pill
+from build_data_harness_deck import EDGE as EDGE_
 from build_mad_ig_deck import BLACK, CYAN, GREEN, MAGENTA, WHITE, YELLOW, set_notes
 from story_slides import dark_header
 
@@ -173,4 +175,107 @@ def build_order(prs, layout):
                                      ("No speed or ROI number is committed before Phase 6 compares the pilot with "
                                       "today's baseline.", {"color": SOFT})]], size=6.6, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, BUILD_NOTES)
+    return s
+
+
+GOV_NOTES = """SLIDE: PHI governance: masking is one control, not HIPAA compliance   (about 3 minutes)
+
+KEY MESSAGE
+The classification-and-approval flow stays: DLP classifies, a Collibra steward approves, policies protect the columns and bindings prove it. But column masking only controls who sees a value. On its own it does not make data de-identified, establish permitted use, isolate tenants, or complete the HIPAA controls, so we add all four.
+
+WALK IT
+- Top left: today's flow, with its status. DLP and Collibra are upstream, the reviewed table, rollout gate and bindings are built, the tagger and policies are live in DEV. The rejected path is now fail-closed: rejecting a classification never removes existing protection.
+- Top right: three different things. Masking hides values from readers without access; the data underneath is still PHI. Tokenization can still be PHI, depending on linkability. Only HIPAA de-identification (Safe Harbor or Expert Determination) can take data out of PHI status.
+- Bottom, the four additions:
+  1 Safe de-identification: assess agent-facing data under Safe Harbor or Expert Determination; measure re-identification risk at column, row, combination and aggregate level; agents get aggregates by default.
+  2 Permitted use: privacy-approved purpose and authorization rules per campaign, as policy-as-code; consent and restrictions checked at release and again at send; the Compliance Passport records it.
+  3 Tenant isolation: per-customer projects, datasets, keys and identities; tenant-specific policies, retention and audit; no cross-tenant joins.
+  4 Complete HIPAA controls: a compliance control register mapping evidence to the Privacy, Security and Breach Notification Rule safeguards: BAAs, risk analysis, workforce training, access reviews, incident and breach handling.
+- Strip: how we prove it works, and a reminder that PROPOSED items are design, not production evidence."""
+
+GAPS4 = [("Safe de-identification", "A masked or tokenized row can still identify a patient: dates, rare diagnoses, "
+          "facility, geography.",
+          ["Safe Harbor or Expert Determination assessment for agent-facing data",
+           "Re-identification risk at column, row, combination and aggregate level; small-cell suppression",
+           "Agents get aggregates by default; tokenized rows only for an authorized task"], YELLOW),
+         ("Permitted use", "Having the data is not permission to use it for a campaign.",
+          ["Privacy-approved purpose and authorization rules per campaign, as policy-as-code",
+           "Consent and communication restrictions checked at release and again at send",
+           "Campaign Compliance Passport records purpose, rule version and approvals"], MAGENTA),
+         ("Tenant isolation", "A product for many healthcare organizations cannot mix their PHI or policies.",
+          ["Per-customer projects, datasets, CMEK keys and service identities",
+           "Tenant-specific policies, retention and audit boundaries",
+           "No cross-tenant joins; proven with negative-access tests"], CYAN),
+         ("Complete HIPAA controls", "Technical controls and audit evidence are not compliance on their own.",
+          ["Compliance control register: evidence mapped to Privacy, Security and Breach Notification safeguards",
+           "BAAs, risk analysis, workforce training, access reviews",
+           "Incident and breach handling; independent approval to weaken any policy"], GREEN)]
+
+
+def phi_governance(prs, layout):
+    from final_solution import ORANGE, addg_flow
+    s, cv = new_slide(prs, layout)
+    dark_header(cv, "AGENTIC HEALTHCARE CAMPAIGN PLATFORM · PHI GOVERNANCE",
+                "Classification and approval stay. Masking alone is not HIPAA compliance.",
+                "Column masking controls who sees a value. It does not by itself give safe de-identification, "
+                "permitted use, tenant isolation or complete HIPAA controls, so we add all four.")
+    addg_flow(cv, 0.45, 7.6, 1.3)
+    rx, rw = 7.78, 12.88 - 7.78
+    cv.rect(rx, 1.3, rw, 2.72, CARD, EDGE_, 0.75, R, 0.04)
+    cv.text(rx + 0.12, 1.34, rw - 0.24, 0.24, "MASKED IS NOT DE-IDENTIFIED", size=6.4, bold=True, color=YELLOW,
+            track=120, anchor=MSO_ANCHOR.MIDDLE)
+    colx = [rx + 0.12, rx + 1.35, rx + 3.05]
+    colw = [1.2, 1.65, rw - 3.12]
+    for x, w, t in zip(colx, colw, ["", "What it does", "HIPAA implication"]):
+        cv.text(x, 1.62, w, 0.18, t, size=5.6, bold=True, color=DIM)
+    rows = [("Masking", "Hides values from readers without access", "An access control; the data underneath is "
+             "still PHI", MAGENTA),
+            ("Tokenization", "Replaces identifiers; reversible through a separate map", "Can still be PHI, "
+             "depending on linkability and context", ORANGE),
+            ("De-identification", "Safe Harbor or Expert Determination met", "Can leave PHI status when the "
+             "standard is met", GREEN)]
+    for k, (a, b, c, col) in enumerate(rows):
+        y = 1.84 + k * 0.56
+        cv.rect(rx + 0.08, y, rw - 0.16, 0.5, CARD2, None)
+        cv.rect(rx + 0.08, y, 0.05, 0.5, col, None)
+        cv.text(colx[0] + 0.06, y, colw[0], 0.5, a, size=6.6, bold=True, color=col, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(colx[1], y, colw[1], 0.5, b, size=5.8, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(colx[2], y, colw[2], 0.5, c, size=5.8, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(rx + 0.12, 3.52, rw - 0.24, 0.46, [[("A token, a count, a diagnosis combination or a small cohort can "
+                                                 "remain sensitive. ", {"color": WHITE}),
+                                                ("Each is assessed, not assumed safe.", {"bold": True,
+                                                                                       "color": YELLOW})]],
+            size=6, anchor=MSO_ANCHOR.MIDDLE)
+    gy = 4.3
+    cv.text(0.45, gy, 9, 0.22, [[("WHAT MASKING ALONE DOES NOT GIVE US, AND WHAT WE ADD", {"bold": True,
+                                                                                       "track": 120,
+                                                                                       "color": VIO}),
+                                 ("   proposed design", {"color": SOFT})]], size=6.4, anchor=MSO_ANCHOR.MIDDLE)
+    cw = (12.43 - 3 * 0.12) / 4
+    for k, (t, gap, adds, c) in enumerate(GAPS4):
+        x = 0.45 + k * (cw + 0.12)
+        y = gy + 0.28
+        h = 1.68
+        cv.rect(x, y, cw, h, CARD, c, 1.0, R, 0.05)
+        cv.rect(x, y, cw, 0.3, c, None)
+        cv.text(x + 0.1, y, cw - 0.9, 0.3, [[("%d  " % (k + 1), {"bold": True}), (t, {"bold": True})]], size=7.2,
+                color=ON_COLOR if c == MAGENTA else BLACK, anchor=MSO_ANCHOR.MIDDLE)
+        pill(cv, x + cw - 0.72, y + 0.07, 0.62, "PROPOSED", ON_COLOR if c == MAGENTA else BLACK, h=0.16,
+             size=4.6)
+        cv.text(x + 0.1, y + 0.34, cw - 0.2, 0.34, [[("Gap: ", {"bold": True, "color": WHITE}), (gap, {})]],
+                size=5.8, color=SOFT)
+        for j, a in enumerate(adds):
+            yy = y + 0.72 + j * 0.31
+            cv.rect(x + 0.12, yy + 0.07, 0.06, 0.06, c, None, shape=MSO_SHAPE.OVAL)
+            cv.text(x + 0.24, yy, cw - 0.32, 0.3, a, size=5.7, color=WHITE)
+    ey = 6.35
+    cv.rect(0.45, ey, 12.43, 0.46, TINT[GREEN], GREEN, 0.9, R, 0.2)
+    cv.text(0.6, ey, 12.1, 0.46, [[("HOW WE PROVE IT  ", {"bold": True, "color": GREEN, "track": 100}),
+                                   ("Discovery inventory across the approved scope · row-level security and authorized "
+                                    "views with masking · raw access isolated from the LLM runtime · negative-access "
+                                    "tests · drift detection · periodic access review. ", {"color": WHITE}),
+                                   ("PROPOSED items are design, not production evidence.", {"bold": True,
+                                                                                          "color": WHITE})]],
+            size=5.9, anchor=MSO_ANCHOR.MIDDLE)
+    set_notes(s, GOV_NOTES)
     return s

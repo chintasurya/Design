@@ -1,15 +1,15 @@
 """Agentic Harness + data harness: a short deck on the IG template (8 slides).
 
 1 Title
-2 One agent team: seven delivery agents and four data agents
+2 One agent team: seven delivery agents and seven campaign agents
 3 The platform, now with the data harness
 4 Health Cloud: a story from Codex to production (GCP patient data not needed, shown grey)
 5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
 6 Marketing campaigns end to end, from governed data to a tested, approved campaign (white)
 7 How we build it: safeguards first, release last (white)
-8 How PHI is masked in GCP (the ADDG flow)
+8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance (white)
 
-Slides 6 and 7 come from combined_flow.py and campaign_platform_deck.py, recoloured for a white background.
+Slides 6-8 come from combined_flow.py and campaign_platform_deck.py, recoloured for a white background.
 
     python3 build_data_harness_deck.py [out.pptx]
 """
@@ -130,31 +130,37 @@ DELIVERY = [("Orchestrator", "Classifies the task, gathers context, routes the c
             ("Review Agent", "Quality, security and Ascension coding standards", "HUMAN GATE", YELLOW),
             ("Test Agent", "Unit, regression and performance tests; Zephyr to Copado", "HUMAN GATE", YELLOW),
             ("Release Agent", "Packages and promotes through Copado to lower environments", "AI-LED", GREEN)]
-DATA = [("Campaign Strategist", "Ranks campaigns from the masked graph: size, care gap, consent, past lift",
+DATA = [("Orchestrator Agent", "Coordinates opportunity analysis, approvals and execution steps", "COORDINATES",
+         CYAN),
+        ("Campaign Strategist", "Identifies campaigns from approved, aggregated insight (Gold A)", "HUMAN GATE",
+         YELLOW),
+        ("Audience Analytics", "Aggregate cohorts, overlap and reach; counts, never names", "AI-LED", GREEN),
+        ("Compliance Guardian", "Investigates policy risk, prepares evidence; cannot override policy", "GUARD",
+         MAGENTA),
+        ("Campaign Design", "Platform-ready specs; journeys through Marketing Cloud's native automation",
          "HUMAN GATE", YELLOW),
-        ("Audience Agent", "Builds the audience on masked views as a BigQuery job: tokens and counts only",
-         "AI-LED", GREEN),
-        ("Privacy Guard", "Consent first, minimum fields; writes the masked pre-send report", "GUARD", MAGENTA),
-        ("Measurement Agent", "Lift against a holdout; writes what worked back to the graph", "AI-LED", GREEN)]
+        ("Activation Readiness", "Tests on test contacts; readiness report without raw PHI", "GUARD", MAGENTA),
+        ("Measurement Agent", "Aggregated outcomes, forecasts and experiments; ROI report", "AI-LED", GREEN)]
 
-TEAM_NOTES = """SLIDE: One agent team: seven delivery agents and four data agents   (about 2 minutes)
+TEAM_NOTES = """SLIDE: One agent team: seven delivery agents and seven campaign agents   (about 2 minutes)
 
 KEY MESSAGE
-The seven delivery agents are unchanged and serve every pod. Four data agents are added for campaigns on governed Google Cloud data. They only ever see masked data, and people approve at every gate.
+The seven delivery agents are unchanged and serve every pod. Seven campaign agents are added for Marketing Cloud campaigns on governed Google Cloud data. They work on aggregated, masked data only; deterministic services, not agents, resolve identity, evaluate eligibility, enforce policy and release patient data. People approve at every gate.
 
 WALK IT
-- Left: what the agents read. The engineering sources (Jira, Confluence, Salesforce, Git, Copado, Drive) for every pod. Google Cloud governed data, masked by Collibra policy, only for Marketing Cloud pods: counts and segments, never a patient.
-- Middle: the seven delivery agents, then the four data agents: Campaign Strategist (ranks campaigns), Audience (builds the audience on masked views), Privacy Guard (consent first, minimum fields, the pre-send report), Measurement (lift and learning). The Developer Agent builds Marketing Cloud journeys with its Marketing Cloud skills.
-- Right: what changes per pod. Health Cloud pods use the delivery agents; Marketing Cloud pods use the delivery and the data agents.
-- Bottom: two governed paths. The delivery path is unchanged; the campaign path releases only the minimum fields after a masked pre-send review."""
+- Left: what the agents read. The engineering sources (Jira, Confluence, Salesforce, Git, Copado, Drive) for every pod. For Marketing Cloud pods, governed Google Cloud data: Gold A aggregates and masked views only.
+- Middle: the seven delivery agents, then the seven campaign agents:
+  Orchestrator (coordinates analysis, approvals and execution), Campaign Strategist (campaign opportunities from Gold A), Audience Analytics (cohorts, overlap and reach as counts), Compliance Guardian (policy risk and evidence; cannot override policy), Campaign Design (platform-ready specs, journeys with Marketing Cloud's native automation), Activation Readiness (tests on test contacts, readiness without raw PHI), Measurement (aggregated outcomes, forecasts, ROI).
+- Right: what changes per pod. Health Cloud pods use the delivery agents; Marketing Cloud pods use the delivery and the campaign agents.
+- Bottom: two governed paths. The delivery path is unchanged; the campaign path builds and tests first, then a masked pre-send review, then release through the gateway."""
 
 
 def team_slide(prs, layout):
     s, cv = new_slide(prs, layout)
     dark_header(cv, "ASCENSION AGENTIC HARNESS · AGENT TEAM",
-                "One agent team: seven delivery agents and four data agents",
-                "Delivery agents build and release changes for every pod. Data agents plan and prepare campaigns "
-                "on masked Google Cloud data. People approve at every gate.")
+                "One agent team: seven delivery agents and seven campaign agents",
+                "Delivery agents build and release changes for every pod. Campaign agents plan, design and test on "
+                "masked data; deterministic services release patients. People approve at every gate.")
     top, bot = 1.28, 5.95
     # left: what agents read
     lx, lw = 0.45, 2.75
@@ -180,29 +186,30 @@ def team_slide(prs, layout):
     logo(cv, "googlecloud", lx + 0.2, gy + 0.08, 0.22)
     cv.text(lx + 0.5, gy + 0.05, lw - 0.7, 0.26, "Governed GCP data", size=7.8, bold=True, color=WHITE,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(lx + 0.2, gy + 0.33, lw - 0.4, 0.5, "Masked by Collibra policy: agents see counts and segments, "
-            "never a patient.", size=6.3, color=SOFT)
+    cv.text(lx + 0.2, gy + 0.33, lw - 0.4, 0.5, "Gold A only: protected aggregates and masked views. Raw PHI "
+            "stays behind the gateway.", size=6.3, color=SOFT)
     cv.text(lx + 0.12, bot - 0.42, lw - 0.24, 0.36, "Every fact is cited with its source and SHA-256.", size=6.2,
             color=DIM, anchor=MSO_ANCHOR.MIDDLE)
 
     # middle: agents
     mx, mw = 3.35, 6.35
     bar(cv, mx, top, mw, "DELIVERY AGENTS", "the same on every pod", CYAN)
-    rh = 0.345
+    rh = 0.276
     y = top + 0.36
 
     def row(i, n, name, desc, mode, col):
         cv.rect(mx, y, mw, rh - 0.04, CARD if i % 2 == 0 else BLACK, None)
-        badge(cv, mx + 0.08, y + (rh - 0.04 - 0.22) / 2, n, col if col != YELLOW else YELLOW)
-        cv.text(mx + 0.38, y, 1.65, rh - 0.04, name, size=7.6, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(mx + 2.05, y, mw - 3.15, rh - 0.04, desc, size=6.4, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
-        pill(cv, mx + mw - 1.0, y + (rh - 0.04 - 0.18) / 2, 0.9, mode, col)
+        badge(cv, mx + 0.08, y + (rh - 0.04 - 0.2) / 2, n, col, 0.2)
+        cv.text(mx + 0.36, y, 1.65, rh - 0.04, name, size=7.0, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(mx + 2.0, y, mw - 3.1, rh - 0.04, desc, size=6.0, color=SOFT, anchor=MSO_ANCHOR.MIDDLE)
+        pill(cv, mx + mw - 1.0, y + (rh - 0.04 - 0.16) / 2, 0.9, mode, col, h=0.16)
 
     for i, (name, desc, mode, col) in enumerate(DELIVERY):
         row(i, i + 1, name, desc, mode, col)
         y += rh
     y += 0.06
-    bar(cv, mx, y, mw, "DATA AGENTS", "new: campaigns on governed, masked data", MAGENTA, WHITE)
+    bar(cv, mx, y, mw, "CAMPAIGN AGENTS", "new · masked data only · services, not agents, release patients",
+        MAGENTA, WHITE)
     y += 0.36
     for i, (name, desc, mode, col) in enumerate(DATA):
         row(i, i + 8, name, desc, mode, col)
@@ -215,7 +222,7 @@ def team_slide(prs, layout):
     pods = [("Health Cloud pods", "Network Services, Clinical Transformation, Contact Center",
              "Apex, Flows, LWC, sharing, Health Cloud objects", [("DELIVERY AGENTS", CYAN)]),
             ("Marketing Cloud pods", "Nudge / Demand, VBC outreach",
-             "Data Cloud, SFMC SQL, AMPscript, journeys", [("DELIVERY + DATA AGENTS", MAGENTA),
+             "Data Cloud, SFMC SQL, AMPscript, journeys", [("DELIVERY + CAMPAIGN AGENTS", MAGENTA),
                                                             ("GCP DATA", MAGENTA)]),
             ("QA, all pods", "Every release", "Zephyr test cases, Copado robotic and regression", [])]
     y = top + 0.42
@@ -242,8 +249,8 @@ def team_slide(prs, layout):
     by = 6.08
     paths = [("DELIVERY PATH", ["AI build", "Copado", "Quality gates", "DEV", "SIT", "UAT", "Human approval", "CAB",
                                 "PROD"], CYAN),
-             ("CAMPAIGN PATH", ["Ask in Codex", "Masked audience", "Pre-send review", "Release minimum fields",
-                                "SFMC pulls", "Journey runs"], MAGENTA)]
+             ("CAMPAIGN PATH", ["Prompt in Codex", "Gold A insights", "Build + test", "Pre-send review",
+                                "Gateway release", "Journey runs"], MAGENTA)]
     for k, (lab, steps, col) in enumerate(paths):
         yy = by + k * 0.4
         cv.text(0.45, yy, 1.3, 0.32, lab, size=6.4, bold=True, color=col, track=120, anchor=MSO_ANCHOR.MIDDLE)
@@ -265,14 +272,14 @@ def team_slide(prs, layout):
 PLATFORM_NOTES = """SLIDE: The platform, now with the data harness   (about 2 minutes)
 
 KEY MESSAGE
-Codex is the engine; the Agentic Harness is everything around it. The data harness adds three things: a data context built on masked BigQuery data, a Privacy Guard and Collibra masking in Govern, and a masked pre-send review in Looker.
+Codex is the engine; the Agentic Harness is everything around it. For campaigns it adds a masked data context (Gold A), Collibra masking, a Compliance Guardian with a deterministic policy engine, and a masked pre-send review. Agents get the minimum data they need, never raw PHI.
 
 WALK IT
-- Surface: where people work. Codex (a Jira number for a delivery story, or a campaign question), the Salesforce LWC console, the approval page, the masked pre-send review in Looker, and Jira.
+- Surface: where people work. Codex (a Jira number for a delivery story, or a campaign prompt), the Salesforce LWC console, the approval page, masked Tableau dashboards and the pre-send report, and Jira.
 - Runtime and Registry: unchanged. Durable runs, one agent task per step; tools, skills and templates, now including campaign skills and journey templates.
-- Context: the knowledge graph and cited retrieval, plus the new data context: masked BigQuery aggregates through Collibra policy tags.
-- Govern: Change Guardian, Model Armor guardrails, identities, human gates, evals and the change passport, plus Collibra masking and the Privacy Guard (consent first, minimum fields).
-- Bottom: it all runs on what Ascension already owns, including BigQuery, Collibra, DLP, Looker and Spanner."""
+- Context: the knowledge graph and cited retrieval, plus the data context: Gold A aggregates and masked views.
+- Govern: Change Guardian, Model Armor guardrails, identities, human gates, evals and the change passport, plus Collibra masking and DLP, and the Compliance Guardian with the policy engine. Patient data leaves only through the activation gateway.
+- Bottom: it all runs on what Ascension already owns, including BigQuery, Collibra, DLP, Tableau and Spanner."""
 
 
 def platform_slide(prs, layout):
@@ -280,8 +287,8 @@ def platform_slide(prs, layout):
     dark_header(cv, "ASCENSION AGENTIC HARNESS · PLATFORM",
                 "Agentic Harness platform, now with the data harness",
                 "Codex is the engine; the harness is everything around it. New: a masked data context, Collibra "
-                "masking and a Privacy Guard, and a masked pre-send review.")
-    chips = [("7 delivery agents", VIO), ("4 data agents", MAGENTA), ("9-step workflow", VIO),
+                "masking, a Compliance Guardian with a policy engine, and a masked pre-send review.")
+    chips = [("7 delivery agents", VIO), ("7 campaign agents", MAGENTA), ("9-step workflow", VIO),
              ("Campaign run", MAGENTA), ("Pod skill packs", VIO)]
     x = 1.6
     for t, c in chips:
@@ -303,14 +310,14 @@ def platform_slide(prs, layout):
             line=0.9)
     surf = [("openai-white", "Codex", "a Jira number, or a campaign ask"),
             ("salesforce", "Salesforce LWC", "the Agentic Harness console"),
-            ("people", "Approval page", "SSO · H1-H4 · G1-G3"), ("looker", "Looker review", "the masked pre-send report"),
+            ("people", "Approval page", "SSO · H1-H4 · G1-G3"), ("tableau", "Tableau review", "masked dashboards, pre-send report"),
             ("jira", "Jira", "status of every step")]
     y = fy + 0.75
     for i, (ic, t, d) in enumerate(surf):
         logo(cv, ic, sx + 0.12, y + 0.01, 0.2)
         cv.text(sx + 0.4, y, sw - 0.48, 0.2, t, size=8, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(sx + 0.4, y + 0.2, sw - 0.48, 0.3, d, size=6.3, color=SOFT)
-        if t == "Looker review":
+        if t == "Tableau review":
             new_tag(sx + sw - 0.46, y + 0.03)
         y += 0.6
 
@@ -369,7 +376,7 @@ def platform_slide(prs, layout):
     cv.text(gx + 0.14, fy + 0.47, gw - 0.2, 0.2, "Safe, controlled and measurable.", size=6, color=DIM)
     gov = [("Change Guardian", False), ("Guardrails in + out · Model Armor", False), ("Identity + access",
                                                                                         False),
-           ("Collibra masking + DLP", True), ("Privacy Guard: consent first", True),
+           ("Collibra masking + DLP", True), ("Compliance Guardian + policy engine", True),
            ("Human gates H1-H4, CAB, G1-G3", False), ("Evaluation set", False),
            ("Observability + change passport", False)]
     y = fy + 0.78
@@ -387,8 +394,8 @@ def platform_slide(prs, layout):
               "aggregates for campaigns.", "Ask before build."),
              ("No pod breaks another", "The Change Guardian checks every change against who owns and uses it.",
               "Governed by design."),
-             ("Agents never see a patient", "Collibra policy masks PHI; only counts and tokens; minimum "
-              "fields released after review.", "Private by design.")]
+             ("Minimum-data agent access", "Agents get aggregates and masked views, never raw PHI; patient "
+              "data leaves only through the gateway.", "Private by design.")]
     y = 2.12
     for i, (t, d, k) in enumerate(diffs):
         cv.rect(dx, y, dw, 1.12, CARD, WHITE, 1.0, R, 0.1)
@@ -409,7 +416,7 @@ def platform_slide(prs, layout):
             size=11, color=WHITE)
     comps = [("salesforce", "Salesforce", "Health, Marketing + Data Cloud"),
              ("git", "Delivery", "Copado, Git, Jira, Zephyr"),
-             ("googlebigquery", "Data", "BigQuery, Collibra, DLP, Looker, Spanner"),
+             ("googlebigquery", "Data", "BigQuery, Collibra, DLP, Tableau, Spanner"),
              ("openai-white", "Models", "Codex Enterprise; model in config; tools via MCP"),
              ("googlecloud", "Cloud", "Google Cloud: Cloud Run, VPC-SC, CMEK")]
     cw_ = (12.88 - 3.0 - 0.2) / 5
@@ -599,158 +606,6 @@ def health_slide(prs, layout):
     return s
 
 
-# ================================================================== 6 masking in GCP (ADDG)
-MASK_NOTES = """SLIDE: How PHI is masked in Google Cloud   (about 3 minutes)
-
-KEY MESSAGE
-Sensitive BigQuery columns are found by scanning, approved by a data steward in Collibra, then protected automatically with masking or raw-access policies inside BigQuery. Agents, dashboards and reviewers only ever see the masked values.
-
-WALK IT (the approved path, left to right)
-- DLP classification: Cloud DLP scans BigQuery columns and proposes an infotype for each (person name, identifier, phone). Results land in the fgac_governance dataset, in the governance tier asc-ahnat-datarepository.
-- Steward review: a data steward approves or rejects each classification in Collibra. Nothing changes before that sign-off; Collibra stays the source of truth.
-- Reviewed classifications: one governed table (adc_collibra_reviewed_classifications), keyed by project, dataset, table and column.
-- Rollout gate: production is enabled project by project; each run logs the promotion SQL for a person to run.
-- Data Policy Tagger: a Cloud Run job, the same code in every environment, configured per environment, with a dry-run mode.
-- Policies applied: column-level data policies in BigQuery: SHA-256 masking for text and bytes, a numeric-safe policy for numbers. People and agents without raw access see masked values.
-- Bindings and validation: every policy is recorded and the table schema is read back to prove it took effect.
-
-REJECTED PATH
-If the steward rejects, the policy remover clears the policy, the binding is retired and the column can be reprocessed. The remover is in progress.
-
-WHO SEES WHAT (right)
-Agents and the knowledge graph see masked values and aggregates. The pre-send review shows a masked report. Only the release step, under a raw-access service account and only after G2 and G3, reads only the fields a campaign needs."""
-
-ADDG = {  # id: (col, lane, title, subtitle, status)
-    "A": (0, 1, ["DLP", "classification"], "Cloud DLP", "UPSTREAM"),
-    "B": (1, 0, ["Steward", "review"], "Collibra", "UPSTREAM"),
-    "C": (2, 1, ["Reviewed", "classifications"], "governance table", "BUILT"),
-    "G": (2, 2, ["Rollout", "gate"], "per project", "BUILT"),
-    "T": (3, 2, ["Data Policy", "Tagger"], "Cloud Run job", "LIVE IN DEV"),
-    "P": (4, 3, ["Policies", "applied"], "BigQuery columns", "LIVE IN DEV"),
-    "V": (5, 1, ["Bindings +", "validation"], "audit trail", "BUILT"),
-    "R": (4, 2, ["Policy", "remover"], "rejected path", "IN PROGRESS"),
-}
-ST_COL = {"UPSTREAM": SOFT, "BUILT": GREEN, "LIVE IN DEV": CYAN, "IN PROGRESS": "FA8B35"}
-LANES = [("REVIEW", "Collibra"), ("GOVERNANCE", "asc-ahnat-datarepository"), ("COMPUTE", "asc-datalake"),
-         ("TARGET", "asc-ahnat-dataplace")]
-
-
-def masking_slide(prs, layout):
-    s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · DATA GOVERNANCE (ADDG)",
-                "How PHI is masked in Google Cloud: classify, approve, protect, prove",
-                "Sensitive BigQuery columns are found by scanning, approved by a Collibra data steward, then masked "
-                "inside BigQuery. Agents, dashboards and reviewers only ever see masked values.")
-    fx0, fx1, fy0 = 0.45, 9.45, 1.3          # the flow, redrawn from the ADDG governance diagram
-    lh, lg = 0.92, 0.08
-    nx0, pitch, nw, nh = 1.68, 1.29, 1.1, 0.66
-    for i, (role, proj) in enumerate(LANES):
-        y = fy0 + i * (lh + lg)
-        cv.rect(fx0, y, fx1 - fx0, lh, CARD, None)
-        cv.rect(fx0, y, 1.1, lh, CARD2, None)
-        logo(cv, "people" if role == "REVIEW" else "googlecloud", fx0 + 0.1, y + 0.1, 0.2)
-        cv.text(fx0 + 0.1, y + lh / 2 - 0.08, 1.0, 0.4, [[(role, {"bold": True, "color": WHITE, "track": 120})],
-                                                       [(proj, {"color": DIM, "size": 5.2, "font": "Courier New"})]],
-                size=6.4, anchor=MSO_ANCHOR.MIDDLE, after=1)
-
-    def box(nid):
-        c, l = ADDG[nid][:2]
-        return nx0 + c * pitch, fy0 + l * (lh + lg) + (lh - nh) / 2
-
-    def right(nid, dy=0.0):
-        x, y = box(nid)
-        return x + nw, y + nh / 2 + dy
-
-    def left(nid):
-        x, y = box(nid)
-        return x, y + nh / 2
-
-    def elbow(a, b, dy=0.0):
-        (x1, y1), (x2, y2) = right(a, dy), left(b)
-        xm = x1 + (x2 - x1) / 2
-        return [(x1, y1), (xm, y1), (xm, y2), (x2, y2)]
-    for a, b in (("A", "B"), ("B", "C"), ("C", "T"), ("G", "T"), ("T", "P"), ("P", "V")):
-        path(cv, elbow(a, b), CYAN, 1.5)
-    # rejected path: reviewed classifications -> policy remover -> policy cleared on the column
-    rx_, ry_ = box("R")
-    x1, y1 = right("C", 0.16)
-    path(cv, [(x1, y1), (rx_ + nw / 2, y1), (rx_ + nw / 2, ry_)], MAGENTA, 1.5, dash="dash")
-    px_, py_ = box("P")
-    path(cv, [(rx_ + nw / 2, ry_ + nh), (px_ + nw / 2, py_)], MAGENTA, 1.5, dash="dash")
-    # nodes
-    for nid, (c, l, t, sub, st) in ADDG.items():
-        x, y = box(nid)
-        gate = nid in ("B", "G")
-        cv.rect(x, y, nw, nh, TINT[YELLOW] if gate else BLACK, YELLOW if gate else (MAGENTA if nid == "R" else EDGE),
-                1.25, R, 0.1, dash="dash" if nid == "G" else None)
-        cv.text(x + 0.08, y + 0.04, nw - 0.12, 0.28, [[(t[0], {})], [(t[1], {})]], size=7.2, bold=True,
-                color=WHITE, line=0.9)
-        sw = 0.14 + 0.05 * len(st)
-        pill(cv, x + 0.08, y + 0.34, sw, st, ST_COL[st], h=0.14, size=4.6)
-        cv.text(x + 0.08, y + nh - 0.18, nw - 0.12, 0.16, sub, size=5.6, color=DIM, font="Courier New",
-                anchor=MSO_ANCHOR.MIDDLE)
-    # legend for the paths
-    lg_y = fy0 + 4 * (lh + lg) + 0.1
-    cv.arrow(1.68, lg_y, 2.08, lg_y, CYAN, 1.5)
-    cv.text(2.13, lg_y - 0.08, 1.6, 0.16, "steward approves: protect", size=6, color=SOFT,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.arrow(3.9, lg_y, 4.3, lg_y, MAGENTA, 1.5, dash="dash")
-    cv.text(4.35, lg_y - 0.08, 2.4, 0.16, "steward rejects: policy removed, binding retired", size=6, color=SOFT,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(7.0, lg_y - 0.08, 2.4, 0.16, "yellow: a human or rollout gate", size=6, color=SOFT,
-            anchor=MSO_ANCHOR.MIDDLE)
-
-    # right: what masking looks like + who sees what
-    rx, rw = 9.6, 12.88 - 9.6
-    cv.rect(rx, 1.3, rw, 2.12, CARD, EDGE, 0.75, R, 0.05)
-    cv.text(rx + 0.12, 1.34, rw - 0.24, 0.24, "WHAT A MASKED COLUMN LOOKS LIKE", size=6.2, bold=True, color=YELLOW,
-            track=120, anchor=MSO_ANCHOR.MIDDLE)
-    hdr = ["column", "DLP infotype", "without raw access"]
-    rows = [("patient_name", "PERSON_NAME", "9f2c…e41a"), ("phone", "PHONE_NUMBER", "71b0…c9d3"),
-            ("dob", "DATE_OF_BIRTH", "masked"), ("diagnosis", "medical term", "a4e8…107f"),
-            ("encounter_count", "number", "0 (numeric-safe)")]
-    xs = [rx + 0.12, rx + 1.08, rx + 2.12]
-    for x, t in zip(xs, hdr):
-        cv.text(x, 1.62, 1.2, 0.16, t, size=5.6, bold=True, color=DIM)
-    for i, row in enumerate(rows):
-        y = 1.82 + i * 0.29
-        cv.rect(rx + 0.08, y, rw - 0.16, 0.25, CARD2 if i % 2 == 0 else CARD, None)
-        for j, (x, v) in enumerate(zip(xs, row)):
-            cv.text(x, y, 1.0 if j < 2 else rw - 2.16, 0.25, v, size=6.1, color=MAGENTA if j == 2 else WHITE,
-                    font="Courier New", anchor=MSO_ANCHOR.MIDDLE)
-    cv.rect(rx, 3.55, rw, 2.15, CARD, EDGE, 0.75, R, 0.05)
-    cv.text(rx + 0.12, 3.59, rw - 0.24, 0.24, "WHO SEES WHAT", size=6.2, bold=True, color=YELLOW, track=120,
-            anchor=MSO_ANCHOR.MIDDLE)
-    who = [("Agents + knowledge graph", "masked values and counts", MAGENTA),
-           ("Looker, dashboards", "masked, aggregated views", MAGENTA),
-           ("SME + tech lead (G2)", "masked pre-send report", MAGENTA),
-           ("Release step (system)", "raw-access service account, minimum fields, after G2 + G3", YELLOW),
-           ("Marketing Cloud", "pulls only those fields, for one run", YELLOW)]
-    for i, (t, d, c) in enumerate(who):
-        y = 3.88 + i * 0.36
-        cv.rect(rx + 0.12, y + 0.08, 0.1, 0.1, c, None, shape=MSO_SHAPE.OVAL)
-        cv.text(rx + 0.3, y, rw - 0.4, 0.34, [[(t, {"bold": True, "color": WHITE})], [(d, {"color": SOFT,
-                                                                                          "size": 5.9})]],
-                size=6.8, anchor=MSO_ANCHOR.MIDDLE)
-
-    # built-in controls
-    cy = 5.88
-    ctrls = [("Human approval first", "No policy until a Collibra steward approves the classification."),
-             ("Dry run before apply", "Every run can report its changes without making them."),
-             ("Human-gated promotion", "Production rollout by project; the pipeline never promotes itself."),
-             ("Auditable bindings", "Each applied or removed policy is recorded and checked against the schema.")]
-    cw_ = (12.43 - 3 * 0.15) / 4
-    for i, (t, d) in enumerate(ctrls):
-        x = 0.45 + i * (cw_ + 0.15)
-        cv.rect(x, cy, cw_, 0.92, CARD, None)
-        cv.rect(x, cy, 0.06, 0.92, GREEN, None)
-        cv.text(x + 0.2, cy + 0.08, cw_ - 0.3, 0.8, [[(t, {"bold": True, "size": 8.4, "color": WHITE})],
-                                                    [(d, {"color": SOFT})]], size=6.8, after=2,
-                anchor=MSO_ANCHOR.MIDDLE)
-    set_notes(s, MASK_NOTES)
-    return s
-
-
 # ================================================================== build
 SECTION_NOTES = ("Section: the HIPAA-aligned agentic healthcare campaign platform. The same harness, now for "
                  "Marketing Cloud campaigns: the data is governed in Google Cloud first, agents plan and build on "
@@ -804,21 +659,15 @@ def main(out=OUT):
     team_slide(prs, layout)
     platform_slide(prs, layout)
     health_slide(prs, layout)
-    masking_slide(prs, layout)
     section_slide(prs)
     combined_flow.light_logos()                 # white slides use the dark icon variants
     flow = combined_flow.build(prs, layout)
     set_notes(flow, cpd.FLOW_NOTES)
     order = cpd.build_order(prs, layout)
-    for sl in (flow, order):
+    gov = cpd.phi_governance(prs, layout)
+    for sl in (flow, order, gov):
         set_bg(sl, "FFFFFF")
         combined_flow.recolor_light(sl)
-    # built as title, team, platform, health, masking, section, flow, order; shown with masking last
-    ids = list(lst)
-    for el in ids:
-        lst.remove(el)
-    for k in (0, 1, 2, 3, 5, 6, 7, 4):
-        lst.append(ids[k])
     for line in fix_footers(prs):
         print(line)
     prs.save(out)
