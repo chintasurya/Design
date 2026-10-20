@@ -73,7 +73,7 @@ def build(prs, layout):
     path(cv, [(gx, mid(3)), (0.55, mid(3)), (0.55, mid(5)), (gx, mid(5))], MAGENTA, 1.25)
     # ---------------------------------------------------------------- 2 prompt, plan, build + test
     mx, mw = 4.1, 2.9
-    sx, sw = 7.12, 2.08
+    sx, sw = 7.12, 2.0
     item(cv, mx, rows[0], mw, rh, "Prompt in Codex", "“Build a post-discharge follow-up campaign for heart "
          "patients”. Or the business console.", line=CYAN, n=7, icon="openai-white", bsize=5.3, tsize=6.4)
     item(cv, mx, rows[1], mw, rh, "Orchestrator · Strategist · Analytics", "Read the graph and Gold A; size the "
@@ -99,10 +99,17 @@ def build(prs, layout):
     cv.arrow(mx + mw / 2 - 0.35, rows[4], mx + mw / 2 - 0.35, rows[3] + rh, MAGENTA, 1.5)
     # Gold A -> agents, across the boundary
     path(cv, [(gx + gw, mid(4)), (4.02, mid(4)), (4.02, mid(1)), (mx, mid(1))], YELLOW, 1.5)
+    # Gold A also feeds the knowledge graph and Tableau (protected aggregates), along the top channel
+    ch = sx + sw + 0.1
+    path(cv, [(4.02, mid(1)), (4.02, 1.62), (ch, 1.62), (ch, mid(1)), (sx + sw, mid(1))], YELLOW, 1.5)
+    cv.arrow(ch, mid(0), sx + sw, mid(0), YELLOW, 1.5)
+    # knowledge graph -> agents (context); Tableau -> confirm the brief (masked dashboards)
+    path(cv, [(sx, mid(0)), (7.06, mid(0)), (7.06, mid(1) - 0.12), (mx + mw, mid(1) - 0.12)], VIO, 1.25)
+    path(cv, [(sx, mid(1) + 0.12), (7.06, mid(1) + 0.12), (7.06, mid(2)), (mx + mw, mid(2))], "E97627", 1.25)
     # shared context + oversight
-    item(cv, sx, rows[0], sw, rh, "Knowledge graph", "Metadata, rules, lineage. No patients.", line=VIO,
+    item(cv, sx, rows[0], sw, rh, "Knowledge graph", "Metadata, rules, lineage, aggregates from 5. Context for 8.", line=VIO,
          icon="googlecloudspanner", bsize=5.2, tsize=6.0)
-    item(cv, sx, rows[1], sw, rh, "Tableau", "Masked dashboards only.", icon="tableau", bsize=5.2, tsize=6.0)
+    item(cv, sx, rows[1], sw, rh, "Tableau", "Masked dashboards from 5, used to confirm the brief (9).", icon="tableau", bsize=5.2, tsize=6.0)
     item(cv, sx, rows[2], sw, rh, "Compliance Guardian", "Explains exclusions for 14; cannot override policy.",
          line=VIO, bsize=5.2, tsize=6.0)
     item(cv, sx, rows[3], sw, rh, "Measurement Agent", "Aggregated outcomes, forecasts, experiments.", line=VIO,
