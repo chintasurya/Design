@@ -60,12 +60,17 @@ def box(shape):
     return shape.left, shape.top, shape.left + shape.width, shape.top + shape.height
 
 
-def muted(slide, theme, hooks=(), accent="blue", yellow_if=None):
+def muted(slide, theme, hooks=(), accent="blue", yellow_if=None, src=None, src_accent=None, neutral_if=None):
+    """src: the original colours that become the accent (default yellow and cyan); src_accent maps one of
+    them to another palette; neutral_if forces a shape's brand fill to grey."""
     t = dict(TH[theme])
     a = ACC[accent][theme]
     t.update(blue=a["fill"], aline=a["line"], tacc=a["text"])
     ya = ACC["yellow"][theme]
-    accent_fills = {a["fill"], a["oval"], ya["fill"], ya["oval"]}
+    src = set(src or ACCENT_SRC)
+    src_accent = src_accent or {}
+    pal = {v: ACC[src_accent.get(v, accent)][theme] for v in src}
+    accent_fills = {a["fill"], a["oval"], ya["fill"], ya["oval"]} | {p["fill"] for p in pal.values()}
     shapes = list(slide.shapes)
     # fills
     for sh in shapes:
@@ -83,14 +88,16 @@ def muted(slide, theme, hooks=(), accent="blue", yellow_if=None):
             c.set("val", t["card2"])
         elif v in TINTS:
             c.set("val", t["tint"])
-        elif yellow_if is not None and v in ACCENT_SRC and yellow_if(sh):
+        elif neutral_if is not None and (v in BRAND or v in src) and neutral_if(sh):
+            c.set("val", t["oval"] if oval else t["brand"])
+        elif yellow_if is not None and v in src and yellow_if(sh):
             c.set("val", ya["fill"])
-        elif v in ACCENT_SRC and not oval and sh.width > 6 * EMU:
+        elif v in src and not oval and sh.width > 6 * EMU:
             c.set("val", t["brand"])                 # full-width header bars stay neutral
-        elif v in ACCENT_SRC and not oval:
-            c.set("val", t["blue"])
-        elif v == YELLOW and oval:
-            c.set("val", a["oval"])
+        elif v in src and not oval:
+            c.set("val", pal[v]["fill"])
+        elif v == YELLOW and oval and YELLOW in src:
+            c.set("val", pal[v]["oval"])
         elif v in BRAND or v in ACCENT_SRC:
             c.set("val", t["oval"] if oval else t["brand"])
     # lines: recolour and thin
@@ -105,8 +112,8 @@ def muted(slide, theme, hooks=(), accent="blue", yellow_if=None):
             if c is None:
                 continue
             v = c.get("val").upper()
-            if v in ACCENT_SRC:
-                c.set("val", t["aline"])
+            if v in src:
+                c.set("val", pal[v]["line"])
             elif v in (WHITE, BLACK):
                 c.set("val", t["arrow"])
             elif v == bd.EDGE:
@@ -171,8 +178,9 @@ def muted(slide, theme, hooks=(), accent="blue", yellow_if=None):
             if par is None or par.tag.split("}")[-1] not in ("rPr", "defRPr", "endParaRPr"):
                 continue
             v = rc.get("val").upper()
-            if v in ACCENT_SRC and not on_blue:
-                new = ACC[accent]["dark"]["text"] if dark else ACC[accent]["white"]["text"]
+            if v in src and not on_blue:
+                name = src_accent.get(v, accent)
+                new = ACC[name]["dark"]["text"] if dark else ACC[name]["white"]["text"]
             elif v in (bd.SOFT, "4D4D4D"):
                 new = TH["dark"]["t2"] if dark else TH["white"]["t2"]
             elif v == bd.DIM:

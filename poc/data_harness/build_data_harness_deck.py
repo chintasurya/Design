@@ -6,11 +6,11 @@
 4 Health Cloud: a story from Codex to production (GCP patient data not needed, shown grey)
 5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
 6 Marketing campaigns end to end, from governed data to a tested, approved campaign
-7 How we build it: safeguards first, release last (white)
+7 How we build it: safeguards first, release last
 8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
 
-Slides 6-8 come from combined_flow.py and campaign_platform_deck.py; 7 is recoloured for a white background.
-Slides 2, 3, 4 and 6 use the muted styles in muted_theme.py.
+Slides 6-8 come from combined_flow.py and campaign_platform_deck.py. Slides 2-4 and 6-8 use the muted styles in
+muted_theme.py: greys, one accent, thin borders, the IG gradient only on differentiators and hooks.
 
     python3 build_data_harness_deck.py [out.pptx]
 """
@@ -663,16 +663,13 @@ def main(out=OUT):
     platform = platform_slide(prs, layout)
     health = health_slide(prs, layout)
     section_slide(prs)
-    cpd.phi_governance(prs, layout)             # dark slides are built before the light icon swap
+    gov = cpd.phi_governance(prs, layout)       # dark slides are built with the white icon variants
     frame = ig.Canvas.frame                     # thinner gradient frame on the end-to-end slide
     ig.Canvas.frame = lambda cv, x, y, w, h, inner=WHITE, t=0.045: frame(cv, x, y, w, h, inner, min(t, 0.02))
     flow = combined_flow.build(prs, layout)
     ig.Canvas.frame = frame
     set_notes(flow, cpd.FLOW_NOTES)
-    combined_flow.light_logos()                 # the white slide uses the dark icon variants
     order = cpd.build_order(prs, layout)
-    set_bg(order, "FFFFFF")
-    combined_flow.recolor_light(order)
     # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
     mt.accent_dark(team, (CYAN, CYAN))
     mt.muted(platform, "dark", accent="yellow",
@@ -686,6 +683,12 @@ def main(out=OUT):
     gh = (0.88 - 0.06) / 2
     mt.metals(flow, [("bronze", xs1[1], 1.62, w1, 0.88), ("silver", xs1[3], 1.62, w1, 0.88),
                      ("gold", xs1[4], 1.62, w1, gh), ("gold", xs1[4], 1.62 + gh + 0.06, w1, gh)], theme="dark")
+    mt.muted(order, "dark", accent="yellow", src={YELLOW},          # phase 5, first real patients, stands out
+             hooks=[("bar", lambda sh: mt.near(sh.top, 5.78) and mt.near(sh.width, 0.05))])
+    mt.muted(gov, "dark", src={CYAN, YELLOW}, src_accent={YELLOW: "yellow"},
+             neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
+             or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
+             hooks=[("frame", lambda sh: mt.near(sh.top, 4.58) and mt.near(sh.height, 1.68))])
     # built as title, team, platform, health, section, governance, flow, order; governance shown last
     ids = list(lst)
     for el in ids:
