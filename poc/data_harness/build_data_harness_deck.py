@@ -7,9 +7,9 @@
 5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
 6 Marketing campaigns end to end, from governed data to a tested, approved campaign (white)
 7 How we build it: safeguards first, release last (white)
-8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance (white)
+8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
 
-Slides 6-8 come from combined_flow.py and campaign_platform_deck.py, recoloured for a white background.
+Slides 6-8 come from combined_flow.py and campaign_platform_deck.py; 6 and 7 are recoloured for a white background.
 
     python3 build_data_harness_deck.py [out.pptx]
 """
@@ -660,14 +660,20 @@ def main(out=OUT):
     platform_slide(prs, layout)
     health_slide(prs, layout)
     section_slide(prs)
+    cpd.phi_governance(prs, layout)             # dark, built before the light icon swap
     combined_flow.light_logos()                 # white slides use the dark icon variants
     flow = combined_flow.build(prs, layout)
     set_notes(flow, cpd.FLOW_NOTES)
     order = cpd.build_order(prs, layout)
-    gov = cpd.phi_governance(prs, layout)
-    for sl in (flow, order, gov):
+    for sl in (flow, order):
         set_bg(sl, "FFFFFF")
         combined_flow.recolor_light(sl)
+    # built as title, team, platform, health, section, governance, flow, order; governance shown last
+    ids = list(lst)
+    for el in ids:
+        lst.remove(el)
+    for k in (0, 1, 2, 3, 4, 6, 7, 5):
+        lst.append(ids[k])
     for line in fix_footers(prs):
         print(line)
     prs.save(out)
