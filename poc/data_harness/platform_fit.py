@@ -12,13 +12,14 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
 from build_data_harness_deck import R, SRC, logo, new_slide
-from build_mad_ig_deck import CYAN, YELLOW, set_notes
+from build_mad_ig_deck import CYAN, MAGENTA, YELLOW, set_notes
 from footer import fix_footers
 from sierra_voice import CARD, CARD2, EDGE, GATE, T1, T2, T3, gbar
 from story_slides import dark_header
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "platform_fit.pptx")
+TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716"}
 
 NOTES = """SLIDE: Platform fit   (about 2-3 minutes)
 
@@ -28,7 +29,7 @@ One harness serves every pod and three jobs: delivery, campaigns and the Sierra 
 WALK IT
 - Top: one harness, three jobs, sharing the knowledge graph, governance, evals, approvals and the change passport.
 - How we build: one definition per agent plus pod skill packs; versioned prompts, skills and model; an eval gate before any new version ships; pods onboard one at a time.
-- How it scales (concurrency): each request is its own isolated run; up to 3 runs per pod so no pod crowds out another; about 30 at once, set by model and API quotas (proposed, sized in the Phase 0 load test); extra requests wait, none are dropped.
+- How it scales (concurrency): each request is its own isolated run; fair share for every pod, a per-pod cap set in config so no pod crowds out another; scales with demand within model and API quotas, sized in the Phase 0 load test; extra requests wait, none are dropped. If asked for numbers: our starting design is a few runs per pod and a few dozen overall, both settings.
 - How it stays accurate: cited facts only; the same eval bar for every pod, max 5 retries then an owner; load changes the wait, not the answer, because runs share no memory; measured every run.
 - How we protect data (measured): share of sensitive fields classified by DLP and approved in Collibra (target 100% before use); masking policy tags verified against the schema every run, drift flagged; negative-access tests each release prove agent identities cannot read raw PHI (target zero); every PHI access logged, releases reconciled, access reviewed each quarter.
 - How we control: no production access, guardrails, people decide at the gates, quotas and a kill switch.
@@ -44,7 +45,8 @@ def panel(cv, x, y, w, h, title, sub=""):
             size=6.4, anchor=MSO_ANCHOR.MIDDLE)
 
 
-def build(prs, layout):
+def build(prs, layout, colorful=False):
+    """colorful: IG cyan, yellow and magenta per job and per column (black deck); else muted greys."""
     s, cv = new_slide(prs, layout)
     dark_header(cv, "ASCENSION AGENTIC HARNESS · PLATFORM FIT",
                 "Platform fit: one harness for every pod, every job",
@@ -61,7 +63,8 @@ def build(prs, layout):
     jw = 2.45
     for k, (ic, t, d) in enumerate(jobs):
         x = 1.95 + k * (jw + 0.12)
-        cv.rect(x, ty, jw, th, CARD, CYAN, 0.75, R, 0.12)
+        jc = (CYAN, MAGENTA, YELLOW)[k] if colorful else CYAN
+        cv.rect(x, ty, jw, th, TINTS[jc] if colorful else CARD, jc, 1.0 if colorful else 0.75, R, 0.12)
         tx = x + 0.12
         if ic:
             logo(cv, ic, tx, ty + 0.14, 0.22)
@@ -80,12 +83,12 @@ def build(prs, layout):
                 ("Versioned", "prompts, skills and model pinned in config; roll back in one step"),
                 ("Eval gate", "a new agent version ships only if it passes its eval set"),
                 ("Pod by pod", "onboard one pod, measure it, then the next")]),
-            ("HOW IT SCALES", "concurrency", CYAN, [
+            ("HOW IT SCALES", "concurrency", YELLOW, [
                 ("One isolated run per request", "own container, context, branch and checkpoint; no shared memory"),
-                ("Up to 3 runs per pod", "fair share: no pod crowds out another"),
-                ("About 30 runs at once", "set by model and API quotas; proposed, sized in the Phase 0 load test"),
+                ("Fair share for every pod", "a per-pod cap, set in config: no pod crowds out another"),
+                ("Scales with demand", "runs added as load grows, within model and API quotas; sized in Phase 0"),
                 ("Queued, never dropped", "waits its turn, resumes from checkpoints; the wait time is measured")]),
-            ("HOW IT STAYS ACCURATE", "accuracy", CYAN, [
+            ("HOW IT STAYS ACCURATE", "accuracy", MAGENTA, [
                 ("Cited facts only", "every fact from the graph carries its source; agents never guess"),
                 ("Same bar for every pod", "every run scored before it moves; max 5 retries, then an owner"),
                 ("Load changes the wait, not the answer", "runs share no memory; two pods on one object are "
@@ -99,7 +102,7 @@ def build(prs, layout):
                 ("Zero unauthorized access", "negative-access tests each release: agent identities cannot read "
                  "raw PHI"),
                 ("Every access audited", "PHI access logged, release reconciled, access reviewed each quarter")]),
-            ("HOW WE CONTROL", "", YELLOW, [
+            ("HOW WE CONTROL", "", MAGENTA, [
                 ("No production access", "three identities, tool allowlist"),
                 ("Guardrails", "Model Armor in and out; no raw PHI for agents"),
                 ("People decide", "human gates H1-H4, CAB, G1-G3; change passport"),
@@ -107,15 +110,26 @@ def build(prs, layout):
     cw = (12.43 - 4 * 0.12) / 5
     for k, (t, sub, acc, items) in enumerate(cols):
         x = 0.45 + k * (cw + 0.12)
-        panel(cv, x, my, cw, mh, t, sub)
+        if not colorful:
+            acc = CYAN
+        if colorful:
+            tc = "FFFFFE" if acc == MAGENTA else "000000"
+            cv.rect(x, my, cw, mh, TINTS[acc], acc, 0.75, R, 0.02)
+            cv.rect(x, my, cw, 0.28, acc, None)
+            cv.text(x + 0.12, my, cw - 0.24, 0.28, [[(t, {"bold": True, "track": 120}), ("   " + sub, {})] if sub
+                                                    else [(t, {"bold": True, "track": 120})]], size=6.6, color=tc,
+                    anchor=MSO_ANCHOR.MIDDLE)
+        else:
+            panel(cv, x, my, cw, mh, t, sub)
         ih = (mh - 0.28 - 0.12 - 3 * 0.08) / 4
         for j, (it, d) in enumerate(items):
             y = my + 0.38 + j * (ih + 0.08)
             gate_ = t == "HOW WE CONTROL" and j == 2
             cv.rect(x + 0.12, y, cw - 0.24, ih, CARD, None)
-            cv.rect(x + 0.12, y, 0.04, ih, YELLOW if gate_ else CYAN, None)
+            cv.rect(x + 0.12, y, 0.05 if colorful else 0.04, ih, YELLOW if gate_ else acc, None)
             cv.text(x + 0.24, y + 0.04, cw - 0.4, ih - 0.08, [[(it, {"bold": True, "size": 7.2,
-                                                                   "color": YELLOW if gate_ else T1})],
+                                                                   "color": YELLOW if gate_ else
+                                                                   (acc if colorful else T1)})],
                                                               [(d, {"color": T2})]], size=6.2,
                     anchor=MSO_ANCHOR.MIDDLE, after=2)
     # ---------------------------------------------------------------- bottom: core benefits

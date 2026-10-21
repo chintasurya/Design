@@ -319,3 +319,28 @@ def to_light(slide):
             else:
                 continue
         clr.set("val", new)
+
+
+# ------------------------------------------------------------------ colourful black: IG colours only, thin lines
+VIVID = {"8B7CD8": MAGENTA, GREEN: CYAN, "FA8B35": YELLOW, "E97627": CYAN, NAVY: "06262B",
+         "1A1630": "2B0716", "0E2A08": "06262B", "0B2418": "06262B", "0A2A44": "06262B"}
+
+
+def vivid(slide):
+    """Keep the colourful design, but only in IG cyan, yellow and magenta (plus greys, metals and the gradient),
+    with borders and arrows about 40% thinner."""
+    for clr in slide._element.iter(q(A, "srgbClr")):
+        anc = [n.tag.split("}")[-1] for n in clr.iterancestors()]
+        if "gradFill" in anc or "bg" in anc:
+            continue
+        v = clr.get("val").upper()
+        if v in VIVID:
+            clr.set("val", VIVID[v])
+    for sh in slide.shapes:
+        el = sh._element
+        conn = el.tag == q(P, "cxnSp")
+        for ln in el.iter(q(A, "ln")):
+            w = ln.get("w")
+            if w:
+                ln.set("w", str(max(9525 if conn else 6350, int(int(w) * 0.6))))
+

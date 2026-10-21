@@ -712,28 +712,36 @@ def main(out=OUT, theme="dark"):
     import sierra_voice
     sierra = sierra_voice.build(prs, layout)    # Sierra voice agent
     import platform_fit
-    platform_fit.build(prs, layout)             # platform fit: build, scale, accuracy, data, control
+    platform_fit.build(prs, layout, colorful=not white)   # platform fit: build, scale, accuracy, data, control
     import lean_team
     lean_team.build(prs, layout)                # last slide: lean team and cost
-    # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
-    mt.accent_dark(team, (CYAN, CYAN))
-    mt.muted(platform, "dark", accent="yellow",
-             hooks=[("frame", lambda sh: mt.near(sh.left, 9.75) and mt.near(sh.width, 3.13))])
-    mt.muted(health, "dark", yellow_if=lambda sh: sh.height > mt.EMU,
-             hooks=[("frame", lambda sh: mt.near(sh.top, 5.95) and mt.near(sh.height, 0.85) and sh.width > 3 * mt.EMU),
-                    ("bar", lambda sh: mt.near(sh.top, 5.95) and mt.near(sh.width, 0.06))])
-    mt.muted(flow, "dark", hooks=[("bar", lambda sh: mt.near(sh.top, 6.36) and mt.near(sh.width, 0.05))])
     w1 = (11.95 - 4 * 0.16) / 5
     xs1 = [0.6 + k * (w1 + 0.16) for k in range(5)]
     gh = (combined_flow.CH1 - 0.06) / 2
-    mt.metals(flow, [("bronze", xs1[1], 1.62, w1, combined_flow.CH1), ("silver", xs1[3], 1.62, w1, combined_flow.CH1),
-                     ("gold", xs1[4], 1.62, w1, gh), ("gold", xs1[4], 1.62 + gh + 0.06, w1, gh)], theme="dark")
-    mt.muted(order, "dark", accent="yellow", src={YELLOW},          # phase 5, first real patients, stands out
-             hooks=[("bar", lambda sh: mt.near(sh.top, 5.78) and mt.near(sh.width, 0.05))])
-    mt.muted(gov, "dark", src={CYAN, YELLOW}, src_accent={YELLOW: "yellow"},
-             neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
-             or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
-             hooks=[("frame", lambda sh: mt.near(sh.top, 4.58) and mt.near(sh.height, 1.68))])
+    metal_cards = [("bronze", xs1[1], 1.62, w1, combined_flow.CH1), ("silver", xs1[3], 1.62, w1, combined_flow.CH1),
+                   ("gold", xs1[4], 1.62, w1, gh), ("gold", xs1[4], 1.62 + gh + 0.06, w1, gh)]
+    if white:
+        # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
+        mt.accent_dark(team, (CYAN, CYAN))
+        mt.muted(platform, "dark", accent="yellow",
+                 hooks=[("frame", lambda sh: mt.near(sh.left, 9.75) and mt.near(sh.width, 3.13))])
+        mt.muted(health, "dark", yellow_if=lambda sh: sh.height > mt.EMU,
+                 hooks=[("frame", lambda sh: mt.near(sh.top, 5.95) and mt.near(sh.height, 0.85)
+                         and sh.width > 3 * mt.EMU),
+                        ("bar", lambda sh: mt.near(sh.top, 5.95) and mt.near(sh.width, 0.06))])
+        mt.muted(flow, "dark", hooks=[("bar", lambda sh: mt.near(sh.top, 6.36) and mt.near(sh.width, 0.05))])
+        mt.metals(flow, metal_cards, theme="dark")
+        mt.muted(order, "dark", accent="yellow", src={YELLOW},      # phase 5, first real patients, stands out
+                 hooks=[("bar", lambda sh: mt.near(sh.top, 5.78) and mt.near(sh.width, 0.05))])
+        mt.muted(gov, "dark", src={CYAN, YELLOW}, src_accent={YELLOW: "yellow"},
+                 neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
+                 or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
+                 hooks=[("frame", lambda sh: mt.near(sh.top, 4.58) and mt.near(sh.height, 1.68))])
+    else:
+        # colourful black: the full IG colours, thin borders, metals on the data layers
+        for sl in (team, platform, health, flow, order, gov):
+            mt.vivid(sl)
+        mt.metals(flow, metal_cards, theme="dark")
     # built as title, team, platform, health, section, governance, flow, order, sierra, platform fit, lean team; governance before sierra
     ids = list(lst)
     for el in ids:
@@ -745,6 +753,8 @@ def main(out=OUT, theme="dark"):
             set_bg(sl, "FFFFFF")
             mt.to_light(sl)
         sierra_voice.highlight(sierra)          # the Sierra slide is the key differentiator
+    else:
+        sierra_voice.highlight(sierra, dark=True)
     for sl in prs.slides:                       # readability: nothing below 7pt
         mt.min_font(sl, 7.0)
     for line in fix_footers(prs):

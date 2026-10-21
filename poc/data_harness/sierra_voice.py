@@ -253,12 +253,13 @@ def grad_outline(cv, x, y, w, h, width=2.0, radius=0.04):
     return sp
 
 
-def highlight(slide):
-    """Mark the Sierra slide as the key differentiator (white deck)."""
+def highlight(slide, dark=False):
+    """Mark the Sierra slide as the key differentiator."""
     from build_mad_ig_deck import Canvas
     cv = Canvas(slide)
     grad_outline(cv, 10.35, 0.2, 2.53, 0.3, 1.75, 0.5)
-    cv.text(10.35, 0.2, 2.53, 0.3, "KEY DIFFERENTIATOR", size=8, bold=True, color="1A1A1A", align=PP_ALIGN.CENTER,
+    cv.text(10.35, 0.2, 2.53, 0.3, "KEY DIFFERENTIATOR", size=8, bold=True,
+            color="FFFFFF" if dark else "1A1A1A", align=PP_ALIGN.CENTER,
             anchor=MSO_ANCHOR.MIDDLE, track=150)
     gbar(cv, 0.45, 1.2, 12.43, 0.04, 0)
     top, bot = 1.3, 5.72
