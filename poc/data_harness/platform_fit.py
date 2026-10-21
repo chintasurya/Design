@@ -1,5 +1,6 @@
 """One-slide preview: Platform fit. Core benefits, and how the platform is built, scales, stays accurate, protects
-data and is controlled. Black muted IG style. Not part of the deck yet.
+data and is controlled. Black muted IG style. Slide 10 of the Agentic Harness deck (build_data_harness_deck.py); this script also
+renders it alone.
 
     python3 platform_fit.py [out.pptx]
 """
@@ -69,9 +70,9 @@ def build(prs, layout):
                                                                                          "size": 5.6})]],
                 size=7.2, anchor=MSO_ANCHOR.MIDDLE)
     sx = 1.95 + 3 * (jw + 0.12) + 0.05
-    cv.text(sx, ty, 12.88 - sx, th, [[("SHARED  ", {"bold": True, "color": CYAN, "track": 100}),
-                                      ("knowledge graph · governance · evals · approvals · change passport",
-                                       {"color": T2})]], size=6.2, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(sx, ty, 12.88 - sx, th, [[("SHARED BY ALL THREE", {"bold": True, "color": CYAN, "track": 100})],
+                                     [("knowledge graph · governance · evals · approvals · change passport",
+                                       {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
     # ---------------------------------------------------------------- build, scale, accuracy, control
     my, mh = 1.95, 3.62
     cols = [("HOW WE BUILD", "", CYAN, [

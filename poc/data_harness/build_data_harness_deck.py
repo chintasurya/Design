@@ -1,4 +1,4 @@
-"""Agentic Harness + data harness: a short deck on the IG template (10 slides).
+"""Agentic Harness + data harness: a short deck on the IG template (11 slides).
 
 1 Title
 2 One agent team: seven delivery agents and seven campaign agents
@@ -9,7 +9,8 @@
 7 How we build it: safeguards first, release last
 8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
 9 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
-10 Lean team and cost saving (lean_team.py)
+10 Platform fit: one harness for every pod and job (platform_fit.py)
+11 Lean team and cost saving (lean_team.py)
 
 Slides 6-8 come from combined_flow.py and campaign_platform_deck.py. Slides 2-4 and 6-8 use the muted styles in
 muted_theme.py: greys, one accent, thin borders, the IG gradient only on differentiators and hooks.
@@ -710,6 +711,8 @@ def main(out=OUT, theme="dark"):
     order = cpd.build_order(prs, layout)
     import sierra_voice
     sierra = sierra_voice.build(prs, layout)    # Sierra voice agent
+    import platform_fit
+    platform_fit.build(prs, layout)             # platform fit: build, scale, accuracy, data, control
     import lean_team
     lean_team.build(prs, layout)                # last slide: lean team and cost
     # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
@@ -731,11 +734,11 @@ def main(out=OUT, theme="dark"):
              neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
              or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
              hooks=[("frame", lambda sh: mt.near(sh.top, 4.58) and mt.near(sh.height, 1.68))])
-    # built as title, team, platform, health, section, governance, flow, order, sierra, lean team; governance before sierra
+    # built as title, team, platform, health, section, governance, flow, order, sierra, platform fit, lean team; governance before sierra
     ids = list(lst)
     for el in ids:
         lst.remove(el)
-    for k in (0, 1, 2, 3, 4, 6, 7, 5, 8, 9):
+    for k in (0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10):
         lst.append(ids[k])
     if white:                                   # same muted design, recoloured for a white background
         for sl in prs.slides:
