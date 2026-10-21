@@ -128,15 +128,16 @@ def build_order(prs, layout):
         cv.text(x + 0.1, 1.8, w - 0.2, 0.18, "BOXES ON THE SLIDE", size=4.8, bold=True, color=DIM, track=100,
                 anchor=MSO_ANCHOR.MIDDLE)
         cv.rect(x + 0.1, 2.0, w - 0.2, 0.26, TINT.get(c, CARD2), c, 0.75, R, 0.3)
-        cv.text(x + 0.1, 2.0, w - 0.2, 0.26, boxes, size=6.4, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+        cv.text(x + 0.1, 2.0, w - 0.2, 0.26, boxes, size=7.4, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
                 anchor=MSO_ANCHOR.MIDDLE)
+        step = min(0.62, 1.92 / len(work))          # spread the bullets over the column
         for j, line in enumerate(work):
-            y = 2.36 + j * 0.42
-            cv.rect(x + 0.12, y + 0.07, 0.06, 0.06, c, None, shape=MSO_SHAPE.OVAL)
-            cv.text(x + 0.24, y, w - 0.32, 0.4, line, size=5.8, color=SOFT)
-        cv.rect(x + 0.08, 4.38, w - 0.16, 0.64, CARD2, None, shape=R, radius=0.1)
-        cv.text(x + 0.14, 4.38, w - 0.26, 0.64, [[("EXIT  ", {"bold": True, "color": c, "size": 5.2})],
-                                                 [(exit_, {"bold": True, "color": WHITE})]], size=6.0,
+            y = 2.36 + j * step
+            cv.rect(x + 0.1, y + 0.09, 0.07, 0.07, c, None, shape=MSO_SHAPE.OVAL)
+            cv.text(x + 0.22, y, w - 0.28, step - 0.02, line, size=7.0, color=WHITE)
+        cv.rect(x + 0.08, 4.32, w - 0.16, 0.72, CARD2, None, shape=R, radius=0.1)
+        cv.text(x + 0.14, 4.32, w - 0.24, 0.72, [[("EXIT  ", {"bold": True, "color": c, "size": 5.8})],
+                                                 [(exit_, {"bold": True, "color": WHITE})]], size=7.0,
                 anchor=MSO_ANCHOR.MIDDLE, after=1)
     # markers under the phases
     x1 = 0.45 + 1 * (w + 0.08)
@@ -148,7 +149,7 @@ def build_order(prs, layout):
             color=MAGENTA, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
     pill(cv, x2 + w - 0.55, 1.2, 1.0, "HARD GATE", MAGENTA, True, h=0.16, size=5, tcolor=ON_COLOR)
     cv.rect(x3 + 0.1, 5.2, w - 0.2, 0.2, None, VIO, 1.0, R, 0.5, dash="dash")
-    cv.text(x3 + 0.1, 5.2, w - 0.2, 0.2, "STARTS ON SYNTHETIC GOLD A", size=4.6, bold=True, color=VIO,
+    cv.text(x3 + 0.1, 5.2, w - 0.2, 0.2, "SYNTHETIC GOLD A FIRST", size=4.6, bold=True, color=VIO,
             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     cv.rect(x5 + 0.1, 5.2, w - 0.2, 0.2, YELLOW, None, shape=R, radius=0.5)
     cv.text(x5 + 0.1, 5.2, w - 0.2, 0.2, "FIRST REAL PATIENTS", size=4.8, bold=True, color=BLACK,
@@ -260,7 +261,7 @@ def phi_governance(prs, layout):
         cv.rect(x, y, cw, 0.3, c, None)
         cv.text(x + 0.1, y, cw - 0.9, 0.3, [[("%d  " % (k + 1), {"bold": True}), (t, {"bold": True})]], size=7.2,
                 color=ON_COLOR if c == MAGENTA else BLACK, anchor=MSO_ANCHOR.MIDDLE)
-        pill(cv, x + cw - 0.72, y + 0.07, 0.62, "PROPOSED", ON_COLOR if c == MAGENTA else BLACK, h=0.16,
+        pill(cv, x + cw - 0.92, y + 0.07, 0.82, "PROPOSED", ON_COLOR if c == MAGENTA else BLACK, h=0.16,
              size=4.6)
         cv.text(x + 0.1, y + 0.34, cw - 0.2, 0.34, [[("Gap: ", {"bold": True, "color": WHITE}), (gap, {})]],
                 size=5.8, color=SOFT)

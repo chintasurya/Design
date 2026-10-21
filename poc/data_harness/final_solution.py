@@ -321,13 +321,13 @@ def addg_flow(cv, fx0, fx1, fy0):
     lanes = [("REVIEW", "Collibra", "people"), ("GOVERNANCE", "datarepository", "googlecloud"),
              ("COMPUTE", "datalake", "googlecloud"), ("TARGET", "dataplace", "googlecloud")]
     lh, lg, ly0 = 0.56, 0.05, fy0 + 0.3
-    nx0, pitch, nw, nh = fx0 + 1.0, 1.02, 0.9, 0.46
+    nx0, pitch, nw, nh = fx0 + 1.26, 0.98, 0.9, 0.5
     for i, (role, proj, ic) in enumerate(lanes):
         y = ly0 + i * (lh + lg)
         cv.rect(fx0, y, fx1 - fx0, lh, CARD, None)
-        cv.rect(fx0, y, 0.92, lh, CARD2, None)
+        cv.rect(fx0, y, 1.2, lh, CARD2, None)
         logo(cv, ic, fx0 + 0.06, y + (lh - 0.18) / 2, 0.18)
-        cv.text(fx0 + 0.3, y, 0.62, lh, [[(role, {"bold": True, "color": WHITE, "size": 5.4})],
+        cv.text(fx0 + 0.3, y, 0.88, lh, [[(role, {"bold": True, "color": WHITE, "size": 5.4})],
                                          [(proj, {"color": DIM, "size": 4.8, "font": "Courier New"})]],
                 size=5.4, anchor=MSO_ANCHOR.MIDDLE)
 
@@ -358,7 +358,10 @@ def addg_flow(cv, fx0, fx1, fy0):
                 YELLOW if gate_ else (VIO if nid == "R" else EDGE), 1.0, R, 0.1,
                 dash="dash" if nid in ("G", "R") else None)
         cv.text(x + 0.05, y + 0.03, nw - 0.08, 0.24, t, size=5.6, bold=True, color=WHITE, line=0.85)
-        pill(cv, x + 0.05, y + nh - 0.17, 0.1 + 0.042 * len(st), st, ST[st], h=0.13, size=4.2)
+        sw_ = min(nw - 0.1, 0.16 + 0.056 * len(st))
+        cv.rect(x + 0.05, y + nh - 0.2, sw_, 0.16, None, ST[st], 0.75, R, 0.5)
+        cv.text(x + 0.05, y + nh - 0.2, sw_, 0.16, st, size=6, bold=True, color=ST[st], align=PP_ALIGN.CENTER,
+                anchor=MSO_ANCHOR.MIDDLE)
     ly = ly0 + 4 * (lh + lg) + 0.02
     cv.text(fx0, ly, fx1 - fx0, 0.2, [[("Fail-closed: ", {"bold": True, "color": VIO}),
                                        ("rejecting a classification never removes existing protection; relaxing a "

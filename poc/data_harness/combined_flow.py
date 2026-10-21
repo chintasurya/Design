@@ -21,6 +21,7 @@ from story_slides import dark_header
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "combined_flow.pptx")
+CH1 = 0.96              # height of the band-1 data cards
 ON_COLOR = "FFFFFE"     # white text on a brand-colour bar: stays white in the light theme
 
 
@@ -50,7 +51,7 @@ def build(prs, layout):
     # ---------------------------------------------------------------- 1 govern the data (top band)
     b1, h1 = 1.28, 1.32
     band(cv, b1, h1, MAGENTA, BLACK, "1  GOVERN THE DATA IN GOOGLE CLOUD", "googlecloud", ON_COLOR)
-    cy, ch = b1 + 0.34, 0.88
+    cy, ch = b1 + 0.34, CH1
     w1 = (11.95 - 4 * 0.16) / 5
     xs1 = slots(X0, [w1] * 5)
     data = [("Sources", "Epic, athenahealth, ADSI, Strata, SFDC, SFMC engagement. Approved datasets only.", EDGE,
@@ -67,10 +68,9 @@ def build(prs, layout):
             cv.arrow(xs1[k] + w1, cy + ch / 2, xs1[k + 1], cy + ch / 2, WHITE, 1.25)
     gh = (ch - 0.06) / 2
     gx = xs1[4]
-    item(cv, gx, cy, w1, gh, "Gold B · eligibility", "Identity-linked inputs. Restricted services only.", line=YELLOW,
+    item(cv, gx, cy, w1, gh, "Gold B · eligibility", "Identity-linked; restricted services only", line=YELLOW,
          n=5, ncolor=YELLOW, bsize=5.2, tsize=6.2)
-    item(cv, gx, cy + gh + 0.06, w1, gh, "Gold A · intelligence", "Protected aggregates: e.g. Heart · Maternity · "
-         "General · more.", line=YELLOW, n=6, ncolor=YELLOW, icon="googlebigquery", bsize=5.2, tsize=6.2)
+    item(cv, gx, cy + gh + 0.06, w1, gh, "Gold A · intelligence", "Aggregates: Heart, Maternity, General, more", line=YELLOW, n=6, ncolor=YELLOW, icon="googlebigquery", bsize=5.2, tsize=6.2)
     sxr = xs1[3] + w1
     cv.arrow(sxr, cy + gh / 2, gx, cy + gh / 2, WHITE, 1.25)
     cv.arrow(sxr, cy + gh + 0.06 + gh / 2, gx, cy + gh + 0.06 + gh / 2, WHITE, 1.25)
@@ -88,8 +88,8 @@ def build(prs, layout):
     xs2 = slots(X0, [w2] * 6)
     item(cv, xs2[0], my, w2, mh, "Prompt in Codex", "“Build a post-discharge follow-up campaign for heart "
          "patients”. Or the business console.", line=CYAN, n=7, icon="openai-white", bsize=5.3, tsize=6.4)
-    item(cv, xs2[1], my, w2, mh, "Orchestrator · Strategist · Analytics", "Read the graph and Gold A; size the "
-         "audience as counts.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=5.9)
+    item(cv, xs2[1], my, w2, mh, "Planning agents", "Orchestrator, Strategist and Analytics read the graph and "
+         "Gold A; counts only.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=5.9)
     gatecard(cv, xs2[2], my, w2, mh, "G1", "Confirm brief", "Marketer + clinical approve the Campaign Opportunity "
              "Brief: size, channel, content plan.", n=9, bsize=5.2)
     item(cv, xs2[3], my, w2, mh, "Campaign Design Agent", "Invokes Journey Builder (native); builds the journey and "
@@ -99,8 +99,8 @@ def build(prs, layout):
     badge(cv, tx + 0.08, my + 0.06, 11, GREEN, 0.22)
     cv.text(tx + 0.36, my + 0.04, w2 - 0.4, 0.22, "Readiness · testing", size=6.2, bold=True, color=GREEN,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(tx + 0.08, my + 0.28, w2 - 0.14, mh - 0.3, [[("Test contacts only → failure modes (consent, STOP, "
-                                                         "links, hours) → classify + report. ", {}),
+    cv.text(tx + 0.08, my + 0.28, w2 - 0.14, mh - 0.3, [[("Test contacts only; checks consent, STOP, links, "
+                                                         "hours. ", {}),
                                                         ("Failed → 10, max 5, then an owner.",
                                                          {"bold": True, "color": MAGENTA})]], size=5.0, color=SOFT)
     gatecard(cv, xs2[5], my, w2, mh, "G3", "Approve journey", "Clinical + compliance, when every test passes. "

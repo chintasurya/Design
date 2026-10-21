@@ -243,3 +243,13 @@ def accent_dark(slide, accent):
         table = text if tags & {"rPr", "defRPr", "endParaRPr"} else line if "ln" in tags else fill
         if v in table:
             clr.set("val", table[v])
+
+
+def min_font(slide, pt=7.0):
+    """Raise every text size below `pt` to `pt`, so nothing on the slide is too small to read."""
+    floor = int(pt * 100)
+    for tag in ("rPr", "endParaRPr", "defRPr"):
+        for r in slide._element.iter(q(A, tag)):
+            sz = r.get("sz")
+            if sz and int(sz) < floor:
+                r.set("sz", str(floor))

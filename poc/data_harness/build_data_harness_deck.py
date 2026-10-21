@@ -140,7 +140,7 @@ DATA = [("Orchestrator Agent", "Coordinates opportunity analysis, approvals and 
         ("Audience Analytics", "Aggregate cohorts, overlap and reach; counts, never names", "AI-LED", GREEN),
         ("Compliance Guardian", "Investigates policy risk, prepares evidence; cannot override policy", "GUARD",
          MAGENTA),
-        ("Campaign Design", "Platform-ready specs; journeys through Marketing Cloud's native automation",
+        ("Campaign Design", "Platform-ready specs; journeys on Marketing Cloud's native tools",
          "HUMAN GATE", YELLOW),
         ("Activation Readiness", "Tests on test contacts; readiness report without raw PHI", "GUARD", MAGENTA),
         ("Measurement Agent", "Aggregated outcomes, forecasts and experiments; ROI report", "AI-LED", GREEN)]
@@ -240,7 +240,7 @@ def team_slide(prs, layout):
         cv.text(rx + 0.12, y + 0.42, rw - 0.24, 0.36, d, size=6.6, color=WHITE)
         tx = rx + 0.12
         for tg, c in tags:
-            w = 0.2 + 0.055 * len(tg)
+            w = 0.2 + 0.064 * len(tg)
             pill(cv, tx, y + 0.78, w, tg, c)
             tx += w + 0.06
         y += 1.12
@@ -411,7 +411,7 @@ def platform_slide(prs, layout):
     # core components
     by = 5.9
     cv.rect(0.45, by, 12.43, 0.95, None, WHITE, 1.25, R, 0.4)
-    cv.text(0.8, by + 0.08, 2.0, 0.2, "ASCENSION CORE COMPONENTS", size=6, bold=True, color=WHITE, track=150)
+    cv.text(0.8, by + 0.08, 2.15, 0.2, "ASCENSION CORE COMPONENTS", size=6, bold=True, color=WHITE, track=60)
     cv.text(0.8, by + 0.36, 2.0, 0.5, [[("Infrastructure", {"size": 11})], [("Runs in Ascension's cloud", {"size":
                                                                                                        6.5,
                                                                                                        "color":
@@ -522,7 +522,7 @@ def health_slide(prs, layout):
     rtx, rtw = xs["Review + Test"]
     ly_ = y2 - 0.14
     path(cv, [(rtx + 0.35, y2), (rtx + 0.35, ly_), (dvx + dvw - 0.35, ly_), (dvx + dvw - 0.35, y2)], MAGENTA, 1.75)
-    pill(cv, rtx + 0.45, ly_ - 0.09, 1.95, "5 → 4  FAIL → FIX · MAX 5, THEN OWNER", MAGENTA, True, h=0.18,
+    pill(cv, rtx + 0.4, ly_ - 0.09, 2.6, "5 → 4  FAIL → FIX · MAX 5, THEN OWNER", MAGENTA, True, h=0.18,
          tcolor=WHITE)
 
     # row 3: knowledge graph + systems
@@ -552,7 +552,7 @@ def health_slide(prs, layout):
     logo(cv, "googlecloud-grey", x + 0.08, y3 + 0.45, 0.2)
     cv.text(x + 0.33, y3 + 0.42, sw - 0.36, 0.24, "GCP data", size=7, bold=True, color=GREY_TX,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(x + 0.08, y3 + 0.66, sw - 0.12, 0.32, "not needed for Health Cloud stories", size=5.6, color=GREY_TX)
+    cv.text(x + 0.08, y3 + 0.66, sw - 0.12, 0.32, "not needed for Health Cloud", size=5.6, color=GREY_TX)
     qs = ["graph.exists", "graph.find_reuse", "graph.blast_radius", "graph.owners", "graph.context_slice"]
     xx = kx + 0.14
     cv.text(xx, y3 + 1.1, 1.3, 0.2, "AGENTS ASK", size=5.8, bold=True, color=VIO, track=150,
@@ -686,8 +686,8 @@ def main(out=OUT):
     mt.muted(flow, "dark", hooks=[("bar", lambda sh: mt.near(sh.top, 6.36) and mt.near(sh.width, 0.05))])
     w1 = (11.95 - 4 * 0.16) / 5
     xs1 = [0.6 + k * (w1 + 0.16) for k in range(5)]
-    gh = (0.88 - 0.06) / 2
-    mt.metals(flow, [("bronze", xs1[1], 1.62, w1, 0.88), ("silver", xs1[3], 1.62, w1, 0.88),
+    gh = (combined_flow.CH1 - 0.06) / 2
+    mt.metals(flow, [("bronze", xs1[1], 1.62, w1, combined_flow.CH1), ("silver", xs1[3], 1.62, w1, combined_flow.CH1),
                      ("gold", xs1[4], 1.62, w1, gh), ("gold", xs1[4], 1.62 + gh + 0.06, w1, gh)], theme="dark")
     mt.muted(order, "dark", accent="yellow", src={YELLOW},          # phase 5, first real patients, stands out
              hooks=[("bar", lambda sh: mt.near(sh.top, 5.78) and mt.near(sh.width, 0.05))])
@@ -701,6 +701,8 @@ def main(out=OUT):
         lst.remove(el)
     for k in (0, 1, 2, 3, 4, 6, 7, 5, 8, 9):
         lst.append(ids[k])
+    for sl in prs.slides:                       # readability: nothing below 7pt
+        mt.min_font(sl, 7.0)
     for line in fix_footers(prs):
         print(line)
     prs.save(out)
