@@ -1,5 +1,5 @@
-"""One-slide preview: Platform fit. Core benefits, how one agent serves many pods at once, and how the platform is
-built, measured and controlled. Black muted IG style. Not part of the deck yet.
+"""One-slide preview: Platform fit. Core benefits, and how the platform is built, scales, stays accurate, protects
+data and is controlled. Black muted IG style. Not part of the deck yet.
 
     python3 platform_fit.py [out.pptx]
 """
@@ -29,6 +29,7 @@ WALK IT
 - How we build: one definition per agent plus pod skill packs; versioned prompts, skills and model; an eval gate before any new version ships; pods onboard one at a time.
 - How it scales (concurrency): each request is its own isolated run; up to 3 runs per pod so no pod crowds out another; about 30 at once, set by model and API quotas (proposed, sized in the Phase 0 load test); extra requests wait, none are dropped.
 - How it stays accurate: cited facts only; the same eval bar for every pod, max 5 retries then an owner; load changes the wait, not the answer, because runs share no memory; measured every run.
+- How we protect data (measured): share of sensitive fields classified by DLP and approved in Collibra (target 100% before use); masking policy tags verified against the schema every run, drift flagged; negative-access tests each release prove agent identities cannot read raw PHI (target zero); every PHI access logged, releases reconciled, access reviewed each quarter.
 - How we control: no production access, guardrails, people decide at the gates, quotas and a kill switch.
 - Bottom: the core benefits beyond cost: consistency, reuse, knowledge kept, quality, auditability, safe by design."""
 
@@ -89,24 +90,32 @@ def build(prs, layout):
                 ("Load changes the wait, not the answer", "runs share no memory; two pods on one object are "
                  "sequenced"),
                 ("Measured every run", "eval score per agent and pod, first-pass approval, defects after release")]),
+            ("HOW WE PROTECT DATA", "measured", CYAN, [
+                ("Classified and approved", "share of in-scope sensitive fields classified by DLP and approved "
+                 "by a Collibra steward; target 100% before use"),
+                ("Masked and verified", "policy tags applied and checked against the schema every run; drift "
+                 "flagged"),
+                ("Zero unauthorized access", "negative-access tests each release: agent identities cannot read "
+                 "raw PHI"),
+                ("Every access audited", "PHI access logged, release reconciled, access reviewed each quarter")]),
             ("HOW WE CONTROL", "", YELLOW, [
                 ("No production access", "three identities, tool allowlist"),
                 ("Guardrails", "Model Armor in and out; no raw PHI for agents"),
                 ("People decide", "human gates H1-H4, CAB, G1-G3; change passport"),
                 ("Quotas + kill switch", "per pod and per agent")])]
-    cw = (12.43 - 3 * 0.12) / 4
+    cw = (12.43 - 4 * 0.12) / 5
     for k, (t, sub, acc, items) in enumerate(cols):
         x = 0.45 + k * (cw + 0.12)
         panel(cv, x, my, cw, mh, t, sub)
         ih = (mh - 0.28 - 0.12 - 3 * 0.08) / 4
         for j, (it, d) in enumerate(items):
             y = my + 0.38 + j * (ih + 0.08)
-            gate_ = k == 3 and j == 2
+            gate_ = t == "HOW WE CONTROL" and j == 2
             cv.rect(x + 0.12, y, cw - 0.24, ih, CARD, None)
             cv.rect(x + 0.12, y, 0.04, ih, YELLOW if gate_ else CYAN, None)
-            cv.text(x + 0.26, y + 0.04, cw - 0.44, ih - 0.08, [[(it, {"bold": True, "size": 7.4,
-                                                                    "color": YELLOW if gate_ else T1})],
-                                                               [(d, {"color": T2})]], size=6.4,
+            cv.text(x + 0.24, y + 0.04, cw - 0.4, ih - 0.08, [[(it, {"bold": True, "size": 7.2,
+                                                                   "color": YELLOW if gate_ else T1})],
+                                                              [(d, {"color": T2})]], size=6.2,
                     anchor=MSO_ANCHOR.MIDDLE, after=2)
     # ---------------------------------------------------------------- bottom: core benefits
     by, bh2 = 5.72, 1.1
