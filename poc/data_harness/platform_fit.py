@@ -10,7 +10,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
-from build_data_harness_deck import R, SRC, logo, new_slide, path
+from build_data_harness_deck import R, SRC, logo, new_slide
 from build_mad_ig_deck import CYAN, YELLOW, set_notes
 from footer import fix_footers
 from sierra_voice import CARD, CARD2, EDGE, GATE, T1, T2, T3, gbar
@@ -18,7 +18,6 @@ from story_slides import dark_header
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "platform_fit.pptx")
-GREY = "8C8C8C"
 
 NOTES = """SLIDE: Platform fit   (about 3 minutes)
 
@@ -26,10 +25,9 @@ KEY MESSAGE
 One harness serves every pod and three jobs: delivery, campaigns and the Sierra voice agent. An agent is one versioned definition; every request becomes its own isolated run, so ten pods can use the Requirements Agent at once and each gets the same quality. Load changes the wait, not the answer.
 
 ONE AGENT, MANY PODS
-- Each pod's request goes into a fair-share queue, so no pod can crowd out another.
-- The Requirements Agent is one definition, versioned and evaluated once. Each request starts its own run: its own context slice from the graph, its own pod skill pack, its own branch, its own checkpoint. Runs share no memory.
-- The Change Guardian checks whether two runs touch the same object; if they do, the second is flagged and sequenced. Evals score every run; people approve at H1.
-- Concurrency (proposed, sized in the Phase 0 load test): one run per container, autoscaled; up to 3 runs in flight per pod; a global cap set by the model and API quotas, for example 30; extra requests wait in the queue, nothing is dropped.
+- The Requirements Agent is one definition, versioned, that passed its eval set. It is the same for every pod.
+- Right now ten pods are using it: ten isolated runs, each with its own context slice from the graph, its own pod skill pack, its own branch and checkpoint. They share no memory.
+- Four questions clients ask: ten pods at once (own container per run; up to 3 per pod, about 30 overall; extra requests wait, none dropped; proposed, sized in the Phase 0 load test); same accuracy for all (one tested definition plus the pod's skills and cited facts: load changes the wait, not the answer); two pods on one object (the Change Guardian flags and sequences it); who decides (each pod's product owner at H1, after evals).
 
 BUILD, MEASURE, CONTROL
 - Build: one agent definition plus pod skill packs; versioned prompts, skills and models; a new agent version must pass its eval set before release; pods onboard one at a time.
@@ -40,11 +38,6 @@ CORE BENEFITS
 Consistency, reuse, faster onboarding of a new pod, quality on every step, auditability, and safety by design."""
 
 
-def pill_box(cv, x, y, w, h, t, line=EDGE, fill=CARD, tc=T1, size=6.2, bold=True):
-    cv.rect(x, y, w, h, fill, line, 0.75, R, 0.3)
-    cv.text(x, y, w, h, t, size=size, bold=bold, color=tc, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-
-
 def panel(cv, x, y, w, h, title, sub=""):
     cv.rect(x, y, w, h, CARD2, None, shape=R, radius=0.02)
     cv.rect(x, y, w, 0.28, "2B2B2B", None)
@@ -52,14 +45,6 @@ def panel(cv, x, y, w, h, title, sub=""):
                                            ("   " + sub, {"color": T2})] if sub else
                                           [(title, {"bold": True, "track": 120, "color": T1})]],
             size=6.4, anchor=MSO_ANCHOR.MIDDLE)
-
-
-def bullets(cv, x, y, w, items, step=0.27, size=6.1, dot=CYAN):
-    for k, (b, d) in enumerate(items):
-        yy = y + k * step
-        cv.rect(x, yy + 0.08, 0.06, 0.06, dot, None, shape=MSO_SHAPE.OVAL)
-        cv.text(x + 0.12, yy, w - 0.12, step, [[(b, {"bold": True, "color": T1}), ("  " + d, {"color": T2})]],
-                size=size, anchor=MSO_ANCHOR.TOP)
 
 
 def build(prs, layout):
@@ -91,93 +76,64 @@ def build(prs, layout):
     cv.text(sx, ty, 12.88 - sx, th, [[("SHARED  ", {"bold": True, "color": CYAN, "track": 100}),
                                       ("knowledge graph · governance · evals · approvals · change passport",
                                        {"color": T2})]], size=6.2, anchor=MSO_ANCHOR.MIDDLE)
-    # ---------------------------------------------------------------- left: one agent, many pods
+    # ---------------------------------------------------------------- left: one agent, many pods (no flow)
     lx, ly, lw, lh = 0.45, 1.95, 6.95, 3.62
-    panel(cv, lx, ly, lw, lh, "ONE AGENT, MANY PODS AT ONCE", "example: 10 pods call the Requirements Agent together")
-    pods = ["Network Services", "Clinical Transformation", "Contact Center", "Nudge / Demand", "VBC outreach",
-            "QA", "Pod 7", "Pod 8", "Pod 9", "Pod 10"]
-    px, pw, p0, pstep, ph = lx + 0.12, 1.32, ly + 0.4, 0.232, 0.19
-    for k, t in enumerate(pods):
-        pill_box(cv, px, p0 + k * pstep, pw, ph, t, size=5.4, bold=False,
-                 tc=T1 if k < 6 else T3, line=EDGE if k < 6 else "262626")
-    pods_bot = p0 + 9 * pstep + ph
-    # queue
-    qx, qw = px + pw + 0.22, 1.12
-    qy, qh = p0, pods_bot - p0
-    cv.rect(qx, qy, qw, qh, CARD, EDGE, 0.75, R, 0.06)
-    cv.text(qx + 0.08, qy + 0.06, qw - 0.14, 0.4, [[("Fair-share", {})], [("queue", {})]], size=6.8, bold=True,
-            color=T1, line=0.9)
-    for k in range(6):
-        cv.rect(qx + 0.14, qy + 0.62 + k * 0.2, qw - 0.28, 0.13, "2B2B2B", None, shape=R, radius=0.3)
-    cv.text(qx + 0.08, qy + 1.9, qw - 0.14, 0.38, "Per-pod cap, so no pod crowds out another.", size=5.5,
-            color=T2)
-    for k in range(10):
-        yy = p0 + k * pstep + ph / 2
-        cv.arrow(px + pw, yy, qx, qy + qh / 2, "4A4A4A", 0.5, head=False)
-    # agent + isolated runs
-    ax, aw = qx + qw + 0.22, 2.0
-    cv.rect(ax, p0, aw, 0.52, CARD, CYAN, 0.9, R, 0.08)
-    logo(cv, "harness", ax + 0.1, p0 + 0.08, 0.2)
-    cv.text(ax + 0.36, p0 + 0.03, aw - 0.42, 0.26, "Requirements Agent", size=7.2, bold=True, color=T1,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(ax + 0.1, p0 + 0.3, aw - 0.16, 0.2, "one definition · versioned · evaluated once", size=5.5, color=T2,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.arrow(qx + qw, qy + qh / 2, ax, p0 + 0.26, CYAN, 1.0)
-    runs = [("Run · NS-1234", "Network Services"), ("Run · VBC-88", "VBC outreach"), ("Run · CT-412", "Clinical "
-                                                                                          "Transformation")]
-    ry = p0 + 0.66
-    for k, (t, pod) in enumerate(runs):
-        y = ry + k * 0.5
-        cv.rect(ax, y, aw, 0.42, CARD, EDGE, 0.75, R, 0.1)
-        cv.text(ax + 0.1, y + 0.02, aw - 0.16, 0.2, [[(t, {"bold": True, "color": T1}), ("  " + pod,
-                                                                                       {"color": T3})]],
-                size=6.0, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(ax + 0.1, y + 0.21, aw - 0.16, 0.19, "own context slice · skill pack · branch", size=5.3,
-                color=T2, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(ax, ry + 1.5, aw, 0.18, "+ one isolated run per request, autoscaled", size=5.4, color=CYAN,
-            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    cv.arrow(ax + aw / 2, p0 + 0.52, ax + aw / 2, ry, GREY, 0.75)
-    # guard, evals, gate
-    gx = ax + aw + 0.22
-    gw = lx + lw - 0.12 - gx
-    steps = [("Change Guardian", "two runs on the same object: flagged and sequenced", EDGE, CARD, T1),
-             ("Evals on every run", "same score bar for every pod", EDGE, CARD, T1),
-             ("H1 · people approve", "product owner of that pod", YELLOW, GATE, YELLOW)]
-    for k, (t, d, ln, fl, tc) in enumerate(steps):
-        y = p0 + k * 0.6
-        cv.rect(gx, y, gw, 0.5, fl, ln, 0.75, R, 0.1)
-        if k == 2:
-            logo(cv, "people", gx + 0.08, y + 0.07, 0.18)
-        cv.text(gx + (0.32 if k == 2 else 0.1), y + 0.04, gw - 0.4, 0.22, t, size=6.6, bold=True, color=tc,
+    panel(cv, lx, ly, lw, lh, "ONE AGENT, MANY PODS AT ONCE", "example: 10 pods use the Requirements Agent together")
+    ix, iw = lx + 0.12, lw - 0.24
+    # the agent: one definition
+    ay, ah = ly + 0.38, 0.44
+    cv.rect(ix, ay, iw, ah, "06262B", CYAN, 0.9, R, 0.12)
+    logo(cv, "harness", ix + 0.12, ay + 0.11, 0.22)
+    cv.text(ix + 0.44, ay, 2.2, ah, "Requirements Agent", size=8, bold=True, color=T1, anchor=MSO_ANCHOR.MIDDLE)
+    tags = ["one definition", "version 1.4", "passed its eval set", "same for every pod"]
+    tx = ix + 2.35
+    for t in tags:
+        w = 0.2 + 0.052 * len(t)
+        cv.rect(tx, ay + 0.11, w, 0.22, CARD, CYAN, 0.6, R, 0.4)
+        cv.text(tx, ay + 0.11, w, 0.22, t, size=5.6, color=CYAN, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        tx += w + 0.07
+    # ten isolated runs, side by side
+    gy = ay + ah + 0.1
+    cv.text(ix, gy, iw, 0.18, [[("TEN ISOLATED RUNS, RIGHT NOW", {"bold": True, "color": T3, "track": 100}),
+                                ("   each with its own context, skill pack, branch and checkpoint; no shared memory",
+                                 {"color": T3})]], size=5.4, anchor=MSO_ANCHOR.MIDDLE)
+    runs = [("Network Services", "NS-1234", "RUNNING"), ("Clinical Transformation", "CT-412", "RUNNING"),
+            ("Contact Center", "CC-77", "AT H1"), ("Nudge / Demand", "ND-301", "RUNNING"),
+            ("VBC outreach", "VBC-88", "RUNNING"), ("QA", "QA-519", "RUNNING"), ("Pod 7", "P7-12", "AT H1"),
+            ("Pod 8", "P8-40", "RUNNING"), ("Pod 9", "P9-05", "RUNNING"), ("Pod 10", "P10-21", "RUNNING")]
+    tw = (iw - 4 * 0.1) / 5
+    th2 = 0.5
+    for k, (pod, sid, st) in enumerate(runs):
+        x = ix + (k % 5) * (tw + 0.1)
+        y = gy + 0.24 + (k // 5) * (th2 + 0.08)
+        gate_ = st == "AT H1"
+        cv.rect(x, y, tw, th2, CARD, YELLOW if gate_ else "2E6E78", 0.75, R, 0.1)
+        cv.text(x + 0.08, y + 0.03, tw - 0.12, 0.2, pod, size=5.9, bold=True, color=T1, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.08, y + 0.26, 0.6, 0.18, sid, size=5.4, color=T3, anchor=MSO_ANCHOR.MIDDLE,
+                font="Courier New")
+        cw2 = 0.5
+        cv.rect(x + tw - cw2 - 0.07, y + 0.27, cw2, 0.16, YELLOW if gate_ else CYAN, None, shape=R, radius=0.4)
+        cv.text(x + tw - cw2 - 0.07, y + 0.27, cw2, 0.16, st, size=4.8, bold=True, color="000000",
+                align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    # four questions a client asks, answered
+    qy = gy + 0.24 + 2 * th2 + 0.08 + 0.14
+    qh = ly + lh - 0.1 - qy
+    qa = [("Ten pods at once?", "Each request runs on its own container. Up to 3 per pod, about 30 overall; extra "
+           "requests wait their turn, none are dropped."),
+          ("Same accuracy for all?", "One tested definition, plus that pod's skill pack and cited facts. Load "
+           "changes the wait, not the answer."),
+          ("Two pods, one object?", "The Change Guardian sees the overlap in the graph, flags it and sequences "
+           "the second change."),
+          ("Who decides?", "Each pod's own product owner, at H1. Every run is scored by evals before it moves.")]
+    qw = (iw - 3 * 0.1) / 4
+    for k, (q, ans) in enumerate(qa):
+        x = ix + k * (qw + 0.1)
+        cv.rect(x, qy, qw, qh, CARD, None)
+        cv.rect(x, qy, 0.04, qh, YELLOW if k == 3 else CYAN, None)
+        cv.text(x + 0.12, qy + 0.06, qw - 0.18, 0.22, q, size=6.8, bold=True, color=YELLOW if k == 3 else CYAN,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(gx + 0.1, y + 0.25, gw - 0.16, 0.24, d, size=5.4, color=T2)
-        if k < 2:
-            cv.arrow(gx + gw / 2, y + 0.5, gx + gw / 2, y + 0.6, GREY, 0.75)
-    path(cv, [(ax + aw, ry + 0.75), (gx - 0.11, ry + 0.75), (gx - 0.11, p0 + 0.3), (gx, p0 + 0.3)], CYAN, 1.0)
-    # accuracy callout
-    cy = p0 + 3 * 0.6 + 0.02
-    cv.rect(gx, cy, gw, pods_bot - cy, "06262B", CYAN, 0.75, R, 0.08)
-    cv.text(gx + 0.1, cy, gw - 0.16, pods_bot - cy, [[("Accuracy holds at 10 pods", {"bold": True,
-                                                                                       "color": CYAN})],
-                                                     [("Runs share no memory, so load changes the wait, not the "
-                                                       "answer.", {"color": T1})]], size=5.8,
-            anchor=MSO_ANCHOR.MIDDLE, after=1)
-    # concurrency facts
-    fy = pods_bot + 0.14
-    fh = ly + lh - 0.1 - fy
-    facts = [("1 run per container", "autoscaled on Cloud Run"),
-             ("Up to 3 in flight per pod", "fair share across pods"),
-             ("Global cap ~30 runs", "set by model and API quotas"),
-             ("Queued, never dropped", "resumes from checkpoints")]
-    fw = (lw - 0.24 - 3 * 0.1) / 4
-    for k, (t, d) in enumerate(facts):
-        x = lx + 0.12 + k * (fw + 0.1)
-        cv.rect(x, fy, fw, fh, CARD, None)
-        cv.rect(x, fy, 0.04, fh, CYAN, None)
-        cv.text(x + 0.12, fy, fw - 0.16, fh, [[(t, {"bold": True, "color": T1})], [(d, {"color": T2,
-                                                                                      "size": 5.4})]],
-                size=6.4, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(lx + lw - 3.2, ly + 0.02, 3.08, 0.24, "concurrency: proposed, sized in the Phase 0 load test",
+        cv.text(x + 0.12, qy + 0.34, qw - 0.18, qh - 0.38, ans, size=6.6, color=T2)
+    cv.text(lx + lw - 3.0, ly + 0.02, 2.88, 0.24, "concurrency: proposed, sized in the Phase 0 load test",
             size=5.2, color=T3, align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
     # ---------------------------------------------------------------- right: build, measure, control
     rx, rw = 7.55, 12.88 - 7.55
