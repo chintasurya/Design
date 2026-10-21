@@ -253,3 +253,69 @@ def min_font(slide, pt=7.0):
             sz = r.get("sz")
             if sz and int(sz) < floor:
                 r.set("sz", str(floor))
+
+
+# ------------------------------------------------------------------ white version of the dark muted slides
+LIGHT_FILLS = {"000000": "FFFFFF", "0E0E0E": "F7F7F7", "141414": "F5F5F5", "161616": "F5F5F5", "1E1E1E": "EEEEEE",
+               "262626": "ECECEC", "2B2B2B": "E6E6E6", "333333": "E0E0E0", "06262B": "E0FAFE", "0A4A52": "E0FAFE",
+               "2B2508": "FFF7CC", "0B2418": "EAFBE6", "2B0716": "FFE6F0", "3A0A1E": "FFE6F0", "1A1630": "ECE9F5",
+               "0A1A24": "E6EEF2", "2A1A0C": "F8ECE0", "1F2124": "F0F1F2", "2A2310": "FBF4DC"}
+LIGHT_ACCENT_TEXT = {CYAN: "0089A0", YELLOW: "8A6D00", GREEN: "2E8F1C", "FF3D8B": "D6005A"}
+LIGHT_ACCENT_LINE = {CYAN: "00B8D4", YELLOW: "C9A100", GREEN: "2E8F1C"}
+
+
+def _sl(v):
+    import colorsys
+    r, g, b = (int(v[k:k + 2], 16) / 255 for k in (0, 2, 4))
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    return s, l
+
+
+def to_light(slide):
+    """Recolour a dark muted slide for a white background: light cards, dark text, accents darkened enough to
+    read on white. Gradients and the slide background are left to the caller."""
+    for clr in slide._element.iter(q(A, "srgbClr")):
+        tags = set()
+        n = clr.getparent()
+        while n is not None:
+            tags.add(n.tag.split("}")[-1])
+            n = n.getparent()
+        if "gradFill" in tags or "bg" in tags:
+            continue
+        v = clr.get("val").upper()
+        sat, l = _sl(v)
+        grey = sat < 0.15
+        if tags & {"rPr", "defRPr", "endParaRPr"}:
+            if v in LIGHT_ACCENT_TEXT:
+                new = LIGHT_ACCENT_TEXT[v]
+            elif grey and l > 0.85:
+                new = "1A1A1A"
+            elif grey and l > 0.6:
+                new = "4D4D4D"
+            elif grey and l > 0.45:
+                new = "6B6B6B"
+            else:
+                continue
+        elif "ln" in tags:
+            if v in LIGHT_ACCENT_LINE:
+                new = LIGHT_ACCENT_LINE[v]
+            elif grey and l > 0.85:
+                new = "595959"
+            elif grey and l > 0.6:
+                new = "8C8C8C"
+            elif grey and l < 0.3:
+                new = "D0D0D0"
+            elif grey and l < 0.5:
+                new = "BDBDBD"
+            else:
+                continue
+        else:
+            if v in LIGHT_FILLS:
+                new = LIGHT_FILLS[v]
+            elif l < 0.25:
+                new = "F2F2F2"
+            elif grey and l < 0.6:
+                new = "E6E6E6"
+            else:
+                continue
+        clr.set("val", new)

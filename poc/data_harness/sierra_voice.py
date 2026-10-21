@@ -239,3 +239,28 @@ def main(out=OUT):
 
 if __name__ == "__main__":
     main(*sys.argv[1:])
+
+
+def grad_outline(cv, x, y, w, h, width=2.0, radius=0.04):
+    """A rounded outline drawn in the IG gradient (yellow, magenta, cyan)."""
+    import muted_theme as mt
+    sp = cv.rect(x, y, w, h, None, "000000", width, R, radius)
+    ln = sp._element.spPr.find(mt.q(mt.A, "ln"))
+    for ch in list(ln):
+        if ch.tag.endswith("}solidFill") or ch.tag.endswith("}noFill"):
+            ln.remove(ch)
+    ln.insert(0, mt.grad())
+    return sp
+
+
+def highlight(slide):
+    """Mark the Sierra slide as the key differentiator (white deck)."""
+    from build_mad_ig_deck import Canvas
+    cv = Canvas(slide)
+    grad_outline(cv, 10.35, 0.2, 2.53, 0.3, 1.75, 0.5)
+    cv.text(10.35, 0.2, 2.53, 0.3, "KEY DIFFERENTIATOR", size=8, bold=True, color="1A1A1A", align=PP_ALIGN.CENTER,
+            anchor=MSO_ANCHOR.MIDDLE, track=150)
+    gbar(cv, 0.45, 1.2, 12.43, 0.04, 0)
+    top, bot = 1.3, 5.72
+    grad_outline(cv, 0.43, top + 1.28, 2.09, bot - top - 1.26, 2.25, 0.04)   # the Sierra agent card
+

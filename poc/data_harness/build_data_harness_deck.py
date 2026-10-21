@@ -34,6 +34,7 @@ from story_slides import dark_header, set_bg                       # noqa: E402
 
 SRC = os.path.join(DECK, "source", "Ascension Agentic Harness - final.pptx")
 OUT = os.path.join(HERE, "Ascension Agentic Harness - Data Harness.pptx")
+OUT_WHITE = os.path.join(HERE, "Ascension Agentic Harness - Data Harness (white).pptx")
 LOGOS = os.path.join(DECK, "assets", "logos")
 R = MSO_SHAPE.ROUNDED_RECTANGLE
 
@@ -104,6 +105,11 @@ def path(cv, pts, color, w=1.5, dash=None):
 
 
 # ================================================================== 1 title
+TITLE_NOTES = ("Open: the same Agentic Harness now does two jobs. For Health Cloud it takes a Jira story to a tested, "
+               "approved change. For Marketing Cloud it plans and prepares campaigns on governed Google Cloud data, "
+               "where agents only ever see masked data and people release the right patients.")
+
+
 def title_slide(prs):
     s = prs.slides[0]
     for sh in s.shapes:
@@ -118,9 +124,7 @@ def title_slide(prs):
                 extra.text = ""
         elif t == "AI-DRIVEN SALESFORCE DELIVERY":
             sh.text_frame.paragraphs[0].runs[0].text = "AGENTS FOR DELIVERY AND DATA"
-    set_notes(s, "Open: the same Agentic Harness now does two jobs. For Health Cloud it takes a Jira story to a "
-                 "tested, approved change. For Marketing Cloud it plans and prepares campaigns on governed Google "
-                 "Cloud data, where agents only ever see masked data and people release the right patients.")
+    set_notes(s, TITLE_NOTES)
 
 
 # ================================================================== 2 agent team
@@ -649,22 +653,54 @@ def section_slide(prs):
     return s
 
 
-def main(out=OUT):
+def white_title(prs, layout, eyebrow, title, sub, notes):
+    """A title slide on white for the white deck: IG gradient rule, cyan eyebrow, dark title."""
+    import sierra_voice
+    s = prs.slides.add_slide(layout)
+    set_bg(s, "FFFFFF")
+    cv = Canvas(s)
+    sierra_voice.gbar(cv, 0.9, 2.15, 1.8, 0.08, 0)
+    cv.text(0.9, 2.4, 11.5, 0.36, eyebrow, size=12, bold=True, color="0089A0", track=300, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(0.9, 2.85, 11.5, 1.5, title, size=40, bold=True, color="1A1A1A", anchor=MSO_ANCHOR.TOP, line=0.95)
+    cv.text(0.9, 4.45, 9.5, 0.8, sub, size=15, color="555555", anchor=MSO_ANCHOR.TOP)
+    set_notes(s, notes)
+    return s
+
+
+def main(out=OUT, theme="dark"):
     import build_mad_ig_deck as ig
     import combined_flow
     import campaign_platform_deck as cpd
     import muted_theme as mt
+    white = theme == "white"
+    if white:
+        global LOGOS
+        combined_flow.light_logos()             # dark icon variants for white slides
+        import build_data_harness_deck as bd    # this file may run as __main__: point both copies at them
+        LOGOS = bd.LOGOS
+        if out == OUT:
+            out = OUT_WHITE
     prs = Presentation(SRC)
     lst = prs.slides._sldIdLst
-    for el in list(lst)[1:]:                    # keep only the title slide
+    for el in list(lst)[1 if not white else 0:]:   # keep only the template title slide (dark deck)
         prs.part.drop_rel(el.rId)
         lst.remove(el)
     layout = next(l_ for l_ in prs.slide_layouts if l_.name == "DEFAULT")
-    title_slide(prs)
+    if white:
+        white_title(prs, layout, "AGENTS FOR DELIVERY AND DATA", "Ascension Agentic Harness",
+                    "One harness, two jobs: Health Cloud delivery from Codex, and Marketing Cloud campaigns on "
+                    "governed, masked Google Cloud data.", TITLE_NOTES)
+    else:
+        title_slide(prs)
     team = team_slide(prs, layout)
     platform = platform_slide(prs, layout)
     health = health_slide(prs, layout)
-    section_slide(prs)
+    if white:
+        white_title(prs, layout, "MARKETING CLOUD CAMPAIGNS", "HIPAA-Aligned Agentic Healthcare Campaign Platform",
+                    "Governed data in Google Cloud, agents on masked data, approved patients released to Marketing "
+                    "Cloud. Proposed target state.", SECTION_NOTES)
+    else:
+        section_slide(prs)
     gov = cpd.phi_governance(prs, layout)       # dark slides are built with the white icon variants
     frame = ig.Canvas.frame                     # thinner gradient frame on the end-to-end slide
     ig.Canvas.frame = lambda cv, x, y, w, h, inner=WHITE, t=0.045: frame(cv, x, y, w, h, inner, min(t, 0.02))
@@ -673,7 +709,7 @@ def main(out=OUT):
     set_notes(flow, cpd.FLOW_NOTES)
     order = cpd.build_order(prs, layout)
     import sierra_voice
-    sierra_voice.build(prs, layout)             # Sierra voice agent
+    sierra = sierra_voice.build(prs, layout)    # Sierra voice agent
     import lean_team
     lean_team.build(prs, layout)                # last slide: lean team and cost
     # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
@@ -701,6 +737,11 @@ def main(out=OUT):
         lst.remove(el)
     for k in (0, 1, 2, 3, 4, 6, 7, 5, 8, 9):
         lst.append(ids[k])
+    if white:                                   # same muted design, recoloured for a white background
+        for sl in prs.slides:
+            set_bg(sl, "FFFFFF")
+            mt.to_light(sl)
+        sierra_voice.highlight(sierra)          # the Sierra slide is the key differentiator
     for sl in prs.slides:                       # readability: nothing below 7pt
         mt.min_font(sl, 7.0)
     for line in fix_footers(prs):
