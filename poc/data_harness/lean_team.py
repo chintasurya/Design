@@ -27,6 +27,7 @@ Every squad of 4-5 developers becomes 1 developer directing the harness agent, p
 
 WALK IT
 - The squad: 4 developers and a QA today; with the harness, one developer directs the agent, a QA verifies, and the agent drafts code, tests and the Copado package overnight. People review, approve and own every change.
+- The pod: what changes for every pod (pilot targets, baselined per pod): a new engineer is productive in about a week instead of 4-6 weeks, because they ask the graph; agents work overnight, so delivery runs about 20 hours a day instead of office hours; every change is checked against the same standards; a new pod goes live on the platform in 2 weeks instead of about 2 months. The same team delivers 1.4-1.6x the output, or the same scope with 20-30% fewer people.
 - The build: 17 people at peak, 10 roles, 18 months, $4.79M fixed fee paid only when each gate is signed. From month 19 a run team of 4 keeps it running, about $1.24M a year with platform usage.
 - The return (target, first full year after go-live): $16M a year today, $7M with the harness, $9M saved every year, on a $5.0M investment. Paid back in under 7 months; 80% first-year return.
 - Floor we commit to: 20-25% lower net run cost per pod, measured against each pod's baseline.
@@ -71,8 +72,8 @@ def build(prs, layout):
                 "review, approve and own every change.")
     # ---------------------------------------------------------------- row 1: squad, pod, build
     ty, th = 1.3, 2.15
-    pw = (12.43 - 0.12) / 2
-    xs = [0.45 + k * (pw + 0.12) for k in range(2)]
+    pw = (12.43 - 2 * 0.12) / 3
+    xs = [0.45 + k * (pw + 0.12) for k in range(3)]
     # the squad
     x = xs[0]
     panel(cv, x, ty, pw, th, "THE SQUAD", "same scope, two people")
@@ -92,8 +93,29 @@ def build(prs, layout):
                                                      ("directs and approves. ", {}),
                                                      ("QA ", {"bold": True, "color": T1}), ("signs off.", {})]],
             size=6.0, color=T2)
-    # the build
+    # the pod: what changes for every pod (pilot targets from the operational efficiency slide)
     x = xs[1]
+    panel(cv, x, ty, pw, th, "THE POD", "what changes for every pod")
+    c0, c1, c2 = x + 0.14, x + 1.5, x + 2.6
+    label(cv, c1, ty + 0.36, 1.0, "TODAY")
+    label(cv, c2, ty + 0.36, 1.4, "WITH THE HARNESS", CYAN)
+    rows = [("New engineer productive", "4-6 weeks", "about 1 week"),
+            ("Delivery each day", "office hours", "about 20 hours"),
+            ("Changes checked", "depends on reviewer", "100%, same standards"),
+            ("New pod live", "about 2 months", "2 weeks")]
+    for k, (a, b, c) in enumerate(rows):
+        y = ty + 0.56 + k * 0.29
+        cv.rect(c0, y, pw - 0.28, 0.25, CARD, None)
+        cv.text(c0 + 0.08, y, 1.3, 0.25, a, size=6.0, bold=True, color=T1, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(c1, y, 1.08, 0.25, b, size=6.0, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(c2, y, pw - 2.5, 0.25, c, size=6.0, bold=True, color=CYAN, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(c0, ty + 1.74, pw - 0.28, 0.36, [[("Same team: ", {"bold": True, "color": T1}),
+                                              ("1.4-1.6x the output, or the same scope with 20-30% fewer people. ",
+                                               {}),
+                                              ("Pilot targets, baselined per pod.", {"color": T3})]],
+            size=5.9, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+    # the build
+    x = xs[2]
     panel(cv, x, ty, pw, th, "THE BUILD AND RUN", "fixed fee, paid by gate")
     q = (pw - 0.28 - 2 * 0.08) / 3
     for k, (b, d) in enumerate([("17", "people at peak, 10 roles"), ("18", "months, seven phases"),
