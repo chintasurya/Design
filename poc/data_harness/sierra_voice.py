@@ -1,7 +1,9 @@
 """One-slide preview: the Sierra voice agent on governed GCP knowledge, with patient actions through scoped APIs.
 
 Black, muted style (greys, cyan accent, yellow for human gates, the IG gradient only on the hook).
-Not part of the deck.
+The last slide of the Agentic Harness deck (build_data_harness_deck.py); this script also renders it alone.
+Logo: put the official Sierra logo at deck/assets/logos/sierra-white.png (or sierra.png); until then the slide
+shows the word "Sierra".
 
     python3 sierra_voice.py [out.pptx]
 """
@@ -11,9 +13,10 @@ import sys
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.util import Inches
 
 import muted_theme as mt
-from build_data_harness_deck import R, SRC, badge, card, logo, new_slide, path, pill
+from build_data_harness_deck import LOGOS, R, SRC, card, logo, new_slide, path, pill
 from build_mad_ig_deck import CYAN, YELLOW, set_notes
 from footer import fix_footers
 from story_slides import dark_header
@@ -35,6 +38,15 @@ WALK IT
 - Bottom, patient path: verify the caller first; then a scoped scheduling API returns only that patient's data and enforces the rules (cancellation window, reschedule rules, provider restrictions); bookings are written to the scheduling system of record, never a GCP copy.
 - Right, after every call: hand-off to a person when needed, masked transcripts with retention limits, outcomes as aggregates into Gold A, and test calls before every release.
 - Bottom: the six safeguards."""
+
+
+def sierra_logo():
+    """Path to the official Sierra logo (white or light version for a dark slide), if it has been added."""
+    for name in ("sierra-white.png", "sierra.png"):
+        f = os.path.join(LOGOS, name)
+        if os.path.exists(f):
+            return f
+    return None
 
 
 def gbar(cv, x, y, w, h, ang=5400000):
@@ -89,12 +101,17 @@ def build(prs, layout):
             "locations, hours, insurance.", size=6.2, color=T2)
     sy = top + 1.3
     cv.rect(lx, sy, lw, bot - sy, CARD, CYAN, 1.0, R, 0.04)
-    cv.rect(lx + 0.12, sy + 0.12, 0.3, 0.3, CYAN, None, shape=MSO_SHAPE.OVAL)
-    cv.text(lx + 0.12, sy + 0.12, 0.3, 0.3, "S", size=9, bold=True, color="000000", align=PP_ALIGN.CENTER,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(lx + 0.5, sy + 0.1, lw - 0.56, 0.34, [[("Sierra", {})], [("voice agent", {"size": 6.2, "bold": False,
-                                                                                    "color": T2})]],
-            size=8.4, bold=True, color=T1, line=0.9)
+    mark = sierra_logo()
+    if mark:                                    # the official Sierra logo, when the file is in assets/logos
+        pic = cv.s.shapes.add_picture(mark, Inches(lx + 0.12), Inches(sy + 0.12), height=Inches(0.26))
+        pic.name = "Sierra Logo"
+        cv.text(lx + 0.12, sy + 0.42, lw - 0.2, 0.18, "voice agent", size=6.2, color=T2,
+                anchor=MSO_ANCHOR.MIDDLE)
+    else:
+        cv.text(lx + 0.12, sy + 0.1, lw - 0.2, 0.34, [[("Sierra", {})], [("voice agent", {"size": 6.2,
+                                                                                         "bold": False,
+                                                                                         "color": T2})]],
+                size=8.4, bold=True, color=T1, line=0.9)
     jobs = [("Answers questions", "from approved articles only"),
             ("Verifies the caller", "before anything patient-specific"),
             ("Books, cancels, reschedules", "through the scoped API"),
