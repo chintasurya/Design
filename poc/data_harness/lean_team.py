@@ -23,11 +23,10 @@ OUT = os.path.join(HERE, "build", "lean_team.pptx")
 NOTES = """SLIDE: Lean team and cost saving   (about 2-3 minutes)
 
 KEY MESSAGE
-Every squad of 4-5 developers becomes 1 developer directing the harness agent, plus 1 QA. Pods run lean on one shared platform. $16M a year today becomes $7M: $9M back every year on a $5.0M build, paid back in under 7 months.
+Every squad of 4-5 developers becomes 1 developer directing the harness agent, plus 1 QA. $16M a year today becomes $7M: $9M back every year on a $5.0M build, paid back in under 7 months.
 
 WALK IT
 - The squad: 4 developers and a QA today; with the harness, one developer directs the agent, a QA verifies, and the agent drafts code, tests and the Copado package overnight. People review, approve and own every change.
-- The pod: today every pod carries its own full stack. With the harness: owner, lead and 2-4 engineers, on one shared platform run by a small team. 20-30% smaller for the same scope, or 1.4-1.6x the output with the same team.
 - The build: 17 people at peak, 10 roles, 18 months, $4.79M fixed fee paid only when each gate is signed. From month 19 a run team of 4 keeps it running, about $1.24M a year with platform usage.
 - The return (target, first full year after go-live): $16M a year today, $7M with the harness, $9M saved every year, on a $5.0M investment. Paid back in under 7 months; 80% first-year return.
 - Floor we commit to: 20-25% lower net run cost per pod, measured against each pod's baseline.
@@ -72,8 +71,8 @@ def build(prs, layout):
                 "review, approve and own every change.")
     # ---------------------------------------------------------------- row 1: squad, pod, build
     ty, th = 1.3, 2.15
-    pw = (12.43 - 2 * 0.12) / 3
-    xs = [0.45 + k * (pw + 0.12) for k in range(3)]
+    pw = (12.43 - 0.12) / 2
+    xs = [0.45 + k * (pw + 0.12) for k in range(2)]
     # the squad
     x = xs[0]
     panel(cv, x, ty, pw, th, "THE SQUAD", "same scope, two people")
@@ -93,22 +92,8 @@ def build(prs, layout):
                                                      ("directs and approves. ", {}),
                                                      ("QA ", {"bold": True, "color": T1}), ("signs off.", {})]],
             size=6.0, color=T2)
-    # the pod
-    x = xs[1]
-    panel(cv, x, ty, pw, th, "THE POD", "lean pods share one platform")
-    label(cv, x + 0.14, ty + 0.38, 2, "TODAY · EVERY POD, FULL STACK")
-    chip(cv, x + 0.14, ty + 0.58, pw - 0.28, 0.3, "BA · Devs · QA · Release · Support", tc=T2, size=6.2)
-    label(cv, x + 0.14, ty + 0.98, 2.4, "WITH THE HARNESS", CYAN)
-    chip(cv, x + 0.14, ty + 1.18, (pw - 0.34) * 0.55, 0.3, "Owner · Lead · 2-4 engineers", line=CYAN, size=6.0)
-    chip(cv, x + 0.2 + (pw - 0.34) * 0.55, ty + 1.18, (pw - 0.34) * 0.45, 0.3, "Shared platform", line=CYAN,
-         fill="06262B", tc=CYAN, size=6.0)
-    half = (pw - 0.34) / 2
-    for k, (b, d) in enumerate([("20-30%", "smaller team, same scope"), ("1.4-1.6x", "output, same team")]):
-        xx = x + 0.14 + k * (half + 0.06)
-        cv.text(xx, ty + 1.56, half, 0.42, [[(b, {"size": 12, "color": CYAN})], [(d, {"color": T2})]], size=6.0,
-                anchor=MSO_ANCHOR.MIDDLE)
     # the build
-    x = xs[2]
+    x = xs[1]
     panel(cv, x, ty, pw, th, "THE BUILD AND RUN", "fixed fee, paid by gate")
     q = (pw - 0.28 - 2 * 0.08) / 3
     for k, (b, d) in enumerate([("17", "people at peak, 10 roles"), ("18", "months, seven phases"),
