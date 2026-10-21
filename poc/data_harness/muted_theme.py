@@ -20,14 +20,14 @@ EMU = 914400
 BRAND = {CYAN, GREEN, MAGENTA, NAVY, YELLOW, bd.VIO, "FA8B35", "A0703C", "0A4A52", "3A0A1E", "0A2A44", "2A2A2A"}
 TINTS = set(bd.TINT.values()) | {"0B2418"}
 ACCENT_SRC = {YELLOW, CYAN}
-TH = {"dark": dict(bg="000000", card="141414", card2="1E1E1E", tint="161616", brand="2B2B2B", blue="1F5FD6",
-                   oval="2B2B2B", edge="333333", bline="4A4A4A", aline="5B8DEF", arrow="8C8C8C", soft="6B6B6B",
-                   t1="F2F2F2", t2="B3B3B3", t3="8C8C8C", tacc="6EA8FF"),
-      "white": dict(bg="FFFFFF", card="F7F7F7", card2="EFEFEF", tint="F7F7F7", brand="E9E9E9", blue="DCE8FD",
-                    oval="E3E3E3", edge="D6D6D6", bline="BDBDBD", aline="2F6FED", arrow="595959", soft="9E9E9E",
-                    t1="1A1A1A", t2="555555", t3="707070", tacc="1F5FD6")}
-ACC = {"blue": {"dark": dict(fill="1F5FD6", oval="1F5FD6", line="5B8DEF", text="6EA8FF"),
-                "white": dict(fill="DCE8FD", oval="2F6FED", line="2F6FED", text="1F5FD6")},
+TH = {"dark": dict(bg="000000", card="141414", card2="1E1E1E", tint="161616", brand="2B2B2B", blue="00D6F2",
+                   oval="2B2B2B", edge="333333", bline="4A4A4A", aline="00D6F2", arrow="8C8C8C", soft="6B6B6B",
+                   t1="F2F2F2", t2="B3B3B3", t3="8C8C8C", tacc="00D6F2"),
+      "white": dict(bg="FFFFFF", card="F7F7F7", card2="EFEFEF", tint="F7F7F7", brand="E9E9E9", blue="E0FAFE",
+                    oval="E3E3E3", edge="D6D6D6", bline="BDBDBD", aline="00B8D4", arrow="595959", soft="9E9E9E",
+                    t1="1A1A1A", t2="555555", t3="707070", tacc="0089A0")}
+ACC = {"cyan": {"dark": dict(fill="00D6F2", oval="00D6F2", line="00D6F2", text="00D6F2"),
+                "white": dict(fill="E0FAFE", oval="00D6F2", line="00B8D4", text="0089A0")},
        "yellow": {"dark": dict(fill="FFD700", oval="FFD700", line="FFD700", text="FFD700"),
                   "white": dict(fill="FFF3B0", oval="FFD700", line="C9A100", text="8A6D00")}}
 METAL = {"bronze": ("CD7F32", "F8ECE0", "2A1A0C"), "silver": ("A8A9AD", "F0F1F2", "1F2124"),
@@ -60,7 +60,7 @@ def box(shape):
     return shape.left, shape.top, shape.left + shape.width, shape.top + shape.height
 
 
-def muted(slide, theme, hooks=(), accent="blue", yellow_if=None, src=None, src_accent=None, neutral_if=None):
+def muted(slide, theme, hooks=(), accent="cyan", yellow_if=None, src=None, src_accent=None, neutral_if=None):
     """src: the original colours that become the accent (default yellow and cyan); src_accent maps one of
     them to another palette; neutral_if forces a shape's brand fill to grey."""
     t = dict(TH[theme])
@@ -116,6 +116,8 @@ def muted(slide, theme, hooks=(), accent="blue", yellow_if=None, src=None, src_a
                 c.set("val", pal[v]["line"])
             elif v in (WHITE, BLACK):
                 c.set("val", t["arrow"])
+            elif v == "E97627":                      # Tableau orange line: IG cyan
+                c.set("val", t["aline"])
             elif v == bd.EDGE:
                 c.set("val", t["edge"])
             elif v == bd.SOFT:
