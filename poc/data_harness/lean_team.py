@@ -1,5 +1,6 @@
 """One-slide preview: lean team and cost saving. Figures are the ones already in the Ascension Agentic Harness deck
-(team and build cost, commercials, ROI, business outcomes). Black muted IG style. Not part of the deck.
+(team and build cost, commercials, ROI, business outcomes). Black muted IG style. The last slide of the
+Agentic Harness deck (build_data_harness_deck.py); this script also renders it alone.
 
     python3 lean_team.py [out.pptx]
 """

@@ -1,4 +1,4 @@
-"""Agentic Harness + data harness: a short deck on the IG template (9 slides).
+"""Agentic Harness + data harness: a short deck on the IG template (10 slides).
 
 1 Title
 2 One agent team: seven delivery agents and seven campaign agents
@@ -9,6 +9,7 @@
 7 How we build it: safeguards first, release last
 8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
 9 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
+10 Lean team and cost saving (lean_team.py)
 
 Slides 6-8 come from combined_flow.py and campaign_platform_deck.py. Slides 2-4 and 6-8 use the muted styles in
 muted_theme.py: greys, one accent, thin borders, the IG gradient only on differentiators and hooks.
@@ -672,7 +673,9 @@ def main(out=OUT):
     set_notes(flow, cpd.FLOW_NOTES)
     order = cpd.build_order(prs, layout)
     import sierra_voice
-    sierra_voice.build(prs, layout)             # last slide: Sierra voice agent
+    sierra_voice.build(prs, layout)             # Sierra voice agent
+    import lean_team
+    lean_team.build(prs, layout)                # last slide: lean team and cost
     # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
     mt.accent_dark(team, (CYAN, CYAN))
     mt.muted(platform, "dark", accent="yellow",
@@ -692,11 +695,11 @@ def main(out=OUT):
              neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
              or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
              hooks=[("frame", lambda sh: mt.near(sh.top, 4.58) and mt.near(sh.height, 1.68))])
-    # built as title, team, platform, health, section, governance, flow, order, sierra; governance before sierra
+    # built as title, team, platform, health, section, governance, flow, order, sierra, lean team; governance before sierra
     ids = list(lst)
     for el in ids:
         lst.remove(el)
-    for k in (0, 1, 2, 3, 4, 6, 7, 5, 8):
+    for k in (0, 1, 2, 3, 4, 6, 7, 5, 8, 9):
         lst.append(ids[k])
     for line in fix_footers(prs):
         print(line)
