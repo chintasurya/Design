@@ -98,9 +98,12 @@ DEVELOPER_INSTRUCTIONS = """\
 You are a Salesforce developer agent. The message holds the requirement spec,
 the knowledge graph context and the current content of every relevant file.
 Do not run commands or open files: you have no tools. Answer with JSON only:
-`files` lists every file you create or change, each with its path under
-force-app/main/default/ and its COMPLETE new content (never a diff, never a
-partial file; files you leave unchanged are not listed); `summary` is at most
+`files` is your complete change set: every file you create or change, each
+with its path under force-app/main/default/ and its COMPLETE content (never a
+diff, never a partial file). Files from the org that you do not change are not
+listed; anything you leave out of the change set is dropped, so to rename a
+component return it under the new name only. Custom API names are at most 40
+characters and match their file name. `summary` is at most
 3 one-line bullets. Include the -meta.xml file for every new Apex class or
 trigger. Output is paid for per token: no comments beyond what the standards
 require, no unused code.
@@ -240,6 +243,31 @@ def component_root(path: str) -> str:
     return path
 
 
+NAMED = {".validationRule-meta.xml": "Validation rule", ".field-meta.xml": "Field", ".cls": "Apex class",
+         ".trigger": "Trigger", ".object-meta.xml": "Object"}
+
+
+def name_problems(ws: str, path: str) -> list[str]:
+    """Salesforce's own name rules, checked before a validation round trip:
+    at most 40 characters, and the file name is the component's fullName."""
+    name = os.path.basename(path)
+    for suffix, kind in NAMED.items():
+        if not name.endswith(suffix):
+            continue
+        stem = name[: -len(suffix)]
+        base = stem[:-3] if stem.endswith("__c") else stem
+        out = []
+        if len(base) > 40:
+            out.append(f"{path}: {kind} name {stem} is {len(base)} characters; the limit is 40")
+        if suffix.endswith("-meta.xml") and suffix != ".object-meta.xml":
+            with open(os.path.join(ws, path), encoding="utf-8", errors="replace") as fh:
+                m = re.search(r"<fullName>\s*([^<\s]+)\s*</fullName>", fh.read())
+            if m and m.group(1) != stem:
+                out.append(f"{path}: <fullName>{m.group(1)}</fullName> must match the file name {stem}")
+        return out
+    return []
+
+
 def node_for_path(path: str) -> tuple[Node, Edge | None] | None:
     """The graph node a deployed file stands for, plus its structural edge."""
     rel = path[len(SOURCE_ROOT) + 1:] if path.startswith(SOURCE_ROOT + "/") else path
@@ -372,6 +400,8 @@ class DeveloperAgent:
                 problems.append(f"{path}: larger than {MAX_FILE_BYTES} bytes")
             else:
                 kept.append(c)
+        for c in kept:
+            problems += name_problems(ws, c["path"])
         if len(kept) > MAX_FILES:
             problems.append(f"{len(kept)} files changed; the limit is {MAX_FILES}")
         if not kept:
@@ -437,6 +467,7 @@ class DeveloperAgent:
     def _workspace_files(self, ws: str) -> str:
         """Every source file in the workspace (retrieved from the org, or written
         by an earlier attempt), for the message."""
+        changed = {c["path"] for c in self.changes(ws)}
         parts, total = [], 0
         root = os.path.join(ws, SOURCE_ROOT)
         for dirpath, _, names in sorted(os.walk(root)):
@@ -448,7 +479,9 @@ class DeveloperAgent:
                     parts.append(f"=== {os.path.relpath(full, ws)} === (omitted: message size limit)")
                     continue
                 total += len(content)
-                parts.append(f"=== {os.path.relpath(full, ws)} ===\n{content}")
+                rel = os.path.relpath(full, ws)
+                origin = "your change set" if rel in changed else "from the org"
+                parts.append(f"=== {rel} ({origin}) ===\n{content}")
         return "\n\n".join(parts) or "(none: everything is new)"
 
     def _prompt(self, ws: str, spec: dict, errors: list[str] | None) -> str:
@@ -461,13 +494,19 @@ class DeveloperAgent:
         description = ((spec.get("ticket") or {}).get("description") or "")[:4000]
         task = (f"Implement Jira ticket {spec.get('ticket_key')}. Meet every acceptance criterion."
                 if not errors else
-                "Your previous change (the files above) failed these checks. Fix exactly these problems and "
-                "return every file you change, complete:\n- " + "\n- ".join(errors))
+                "Your change set (the files marked 'your change set' above) failed these checks. Fix exactly "
+                "these problems and return the complete change set again, every file in full:\n- "
+                + "\n- ".join(errors))
         return ("SPEC:\n" + json.dumps(brief, separators=(",", ":"))
                 + ("\n\nJIRA DESCRIPTION:\n" + description if description else "")
                 + "\n\nKNOWLEDGE GRAPH:\n" + ("\n".join(f"- {line}" for line in context["related"][:25]) or "- none")
                 + "\n\nFILES:\n" + self._workspace_files(ws)
                 + "\n\nTASK:\n" + task)
+
+    def _reset(self, ws: str) -> None:
+        """Back to the baseline: what was retrieved from the org, nothing else."""
+        self._git(ws, "reset", "-q", "--hard", "HEAD")
+        self._git(ws, "clean", "-fdq", "--", SOURCE_ROOT)
 
     @staticmethod
     def _write_answer(ws: str, answer: dict) -> list[str]:
@@ -533,6 +572,8 @@ class DeveloperAgent:
                 except json.JSONDecodeError:
                     answer = {}
                 summary = answer.get("summary") or summary
+                if answer.get("files"):
+                    self._reset(ws)  # the answer is the whole change set: a renamed file leaves nothing behind
                 write_problems = self._write_answer(ws, answer)
             kept, problems = self.guard(ws, self.changes(ws))
             problems = write_problems + problems

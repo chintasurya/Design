@@ -386,6 +386,15 @@ def requirement_hash(ticket: dict) -> str:
     return hashlib.sha256(" ".join(text.split()).encode()).hexdigest()[:16]
 
 
+def ticket_keys(message: str, project_key: str) -> list[str]:
+    """Ticket keys as people type them: KAN-7, but also "KAN -7", "kan 7", "Kan- 7"."""
+    found = TICKET_KEY.findall(message.upper())
+    if project_key:
+        loose = re.compile(rf"\b{re.escape(project_key)}\s*[-_]?\s*(\d+)\b", re.I)
+        found += [f"{project_key.upper()}-{n}" for n in loose.findall(message)]
+    return list(dict.fromkeys(found))[:3]
+
+
 def model_ticket(t: dict) -> dict:
     """What the model needs from a ticket. The acceptance criteria are already in
     the description, so they are not sent twice; url, assignee and dates not at all."""
@@ -502,7 +511,7 @@ class CodexRequirementAgent:
 
     # -- the turn --------------------------------------------------------------
     def chat(self, message: str, history: list[dict], last_ticket: str | None, ctx: RunContext) -> dict:
-        keys = list(dict.fromkeys(TICKET_KEY.findall(message.upper())))[:3]
+        keys = ticket_keys(message, self.jira.project_key)
         wants_analysis = bool(ANALYSIS.search(message))
         # only "analyze KAN-x" itself may reuse a stored spec; a new question about it may not
         spec_request = bool(keys) and bool(SPEC_REQUEST.search(message))
