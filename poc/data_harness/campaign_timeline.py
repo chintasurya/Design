@@ -62,7 +62,7 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind, unit="d"):
         cv.rect(x, yy, w, row_h - 0.05, CARD if k % 2 == 0 else "101010", None)
         if kind == "manual":
             t, d, a, b, data = r
-            col = MAGENTA if data else "5A5A5A"
+            col = MAGENTA if data else "9E9E9E"     # mid grey: readable on black and on white
         else:
             t, d, a, b, col = r
         cv.text(x + 0.1, yy, label_w - 0.14, row_h - 0.05, [[(t, {"bold": True, "color": T1})],
@@ -74,7 +74,7 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind, unit="d"):
             cv.rect(x0, yy + 0.09, max(x1 - x0, 0.3), row_h - 0.23, col, None, shape=R, radius=0.3)
             lab = "%g%s" % (b - a, unit)
             cv.text(x0, yy + 0.09, max(x1 - x0, 0.3), row_h - 0.23, lab, size=7, bold=True,
-                    color="FFFFFE" if col in (MAGENTA, "5A5A5A") else "000000", align=PP_ALIGN.CENTER,
+                    color="FFFFFE" if col == MAGENTA else "000000", align=PP_ALIGN.CENTER,
                     anchor=MSO_ANCHOR.MIDDLE)
         else:
             cv.rect(x0, yy + 0.09, 0.62, row_h - 0.23, None, MAGENTA, 0.9, R, 0.3)
@@ -83,10 +83,10 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind, unit="d"):
     return bx, bw
 
 
-def axis(cv, bx, bw, y, ticks, scale, per_day=1):
-    for t in ticks:
+def axis(cv, bx, bw, y, ticks, scale, labels=None):
+    for t, lab in zip(ticks, labels or ["Day %d" % t for t in ticks]):
         xx = bx + bw * t / scale
-        cv.text(xx - 0.3, y, 0.6, 0.16, "Day %d" % (t / per_day), size=7, color=T3, align=PP_ALIGN.CENTER,
+        cv.text(xx - 0.3, y, 0.6, 0.16, lab, size=7, color=T3, align=PP_ALIGN.CENTER,
                 anchor=MSO_ANCHOR.MIDDLE)
 
 
