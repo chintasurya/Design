@@ -131,8 +131,11 @@ def title_slide(prs):
 # ================================================================== 2 agent team
 DELIVERY = [("Orchestrator", "Classifies the task, gathers context, routes the chain, enforces gates", "COORDINATES",
              CYAN),
-            ("Requirements Agent", "Jira story and Confluence design into a clear brief", "HUMAN GATE", YELLOW),
-            ("Architect Agent", "Impact, reuse and risk from the graph; the change plan", "HUMAN GATE", YELLOW),
+            ("Requirements Agent", "User stories and functional decomposition from the Jira story", "HUMAN GATE",
+             YELLOW),
+            ("Architect Agent", [[("Impact and reuse from the graph; ", {}),
+                                  ("Change Guardian", {"bold": True, "color": CYAN}),
+                                  (" flags cross-pod risk", {})]], "HUMAN GATE", YELLOW),
             ("Developer Agent", "Builds to Ascension standards in DEV; journeys for Marketing Cloud", "AI-LED",
              GREEN),
             ("Review Agent", "Quality, security and Ascension coding standards", "HUMAN GATE", YELLOW),
@@ -156,11 +159,12 @@ KEY MESSAGE
 The seven delivery agents are unchanged and serve every pod. Seven campaign agents are added for Marketing Cloud campaigns on governed Google Cloud data. They work on aggregated, masked data only; deterministic services, not agents, resolve identity, evaluate eligibility, enforce policy and release patient data. People approve at every gate.
 
 WALK IT
-- Left: what the agents read. The engineering sources (Jira, Confluence, Salesforce, Git, Copado, Drive) for every pod. For Marketing Cloud pods, governed Google Cloud data: Gold A aggregates and masked views only.
+- Left: agent sources. Agents read from and write to these systems, always through the tool gateway and never in production. The engineering sources (Jira, Confluence, Salesforce, Git, Copado, Drive) for every pod. For Marketing Cloud pods, governed Google Cloud data: Gold A aggregates and masked views only.
 - Middle: the seven delivery agents, then the seven campaign agents:
   Orchestrator (coordinates analysis, approvals and execution), Campaign Strategist (campaign opportunities from Gold A), Audience Analytics (cohorts, overlap and reach as counts), Compliance Guardian (policy risk and evidence; cannot override policy), Campaign Design (platform-ready specs, journeys with Marketing Cloud's native automation), Activation Readiness (tests on test contacts, readiness without raw PHI), Measurement (aggregated outcomes, forecasts, ROI).
 - Right: what changes per pod. Health Cloud pods use the delivery agents; Marketing Cloud pods use the delivery and the campaign agents.
-- Bottom: two governed paths. The delivery path is unchanged; the campaign path builds and tests first, then a masked pre-send review, then release through the gateway."""
+- Bottom: two governed paths, with who does each step. Delivery: the Developer Agent builds, the Release Agent moves it through Copado, Review and Test Agents run the quality gates; business users sign UAT and the change board approves at CAB. Campaigns: the Orchestrator takes the prompt, Strategist and Analytics plan on Gold A, Design and Readiness build and test, the SME and tech lead review before send, and the policy service releases.
+- The Change Guardian sits with the Architect Agent: it flags any change that affects another pod before anything is built."""
 
 
 def team_slide(prs, layout):
@@ -172,7 +176,7 @@ def team_slide(prs, layout):
     top, bot = 1.28, 5.95
     # left: what agents read
     lx, lw = 0.45, 2.75
-    bar(cv, lx, top, lw, "WHAT AGENTS READ", "", NAVY, WHITE)
+    bar(cv, lx, top, lw, "AGENT SOURCES", "read + write via the gateway", NAVY, WHITE)
     cv.rect(lx, top + 0.3, lw, bot - top - 0.3, CARD, EDGE, 0.75)
     srcs = [("jira", "Jira", "stories, criteria, history"), ("confluence", "Confluence", "designs, business rules"),
             ("salesforce", "Salesforce", "objects, Flows, Apex, journeys"), ("git", "Git", "Apex, LWC, metadata"),
@@ -254,23 +258,27 @@ def team_slide(prs, layout):
             size=6.6, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
 
     # bottom: two governed paths
-    by = 6.08
-    paths = [("DELIVERY PATH", ["AI build", "Copado", "Quality gates", "DEV", "SIT", "UAT", "Human approval", "CAB",
-                                "PROD"], CYAN),
-             ("CAMPAIGN PATH", ["Prompt in Codex", "Gold A insights", "Build + test", "Pre-send review",
-                                "Gateway release", "Journey runs"], MAGENTA)]
+    by, ph = 6.02, 0.38
+    paths = [("DELIVERY PATH", [("AI build", "Developer Agent"), ("Copado", "Release Agent"),
+                                ("Quality gates", "Review + Test Agents"), ("DEV", "Release Agent"),
+                                ("SIT", "Test Agent"), ("UAT", "business users"), ("CAB", "change board"),
+                                ("PROD", "owning team")], CYAN),
+             ("CAMPAIGN PATH", [("Prompt in Codex", "Orchestrator"), ("Gold A insights", "Strategist + Analytics"),
+                                ("Build + test", "Design + Readiness"), ("Pre-send review", "SME + tech lead"),
+                                ("Gateway release", "policy service"), ("Journey runs", "Marketing Cloud")], MAGENTA)]
     for k, (lab, steps, col) in enumerate(paths):
-        yy = by + k * 0.4
-        cv.text(0.45, yy, 1.3, 0.32, lab, size=6.4, bold=True, color=col, track=120, anchor=MSO_ANCHOR.MIDDLE)
+        yy = by + k * (ph + 0.06)
+        cv.text(0.45, yy, 1.3, ph, lab, size=6.4, bold=True, color=col, track=120, anchor=MSO_ANCHOR.MIDDLE)
         x = 1.8
         sw = (12.88 - 1.8 - (len(steps) - 1) * 0.08) / len(steps)
-        for j, st in enumerate(steps):
-            gate = st in ("Human approval", "CAB", "UAT", "Pre-send review")
-            cv.rect(x, yy, sw, 0.32, TINT[YELLOW] if gate else CARD, YELLOW if gate else col, 0.9, R, 0.3)
-            cv.text(x, yy, sw, 0.32, st, size=6.6, bold=gate, color=YELLOW if gate else WHITE,
-                    align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        for j, (st, who) in enumerate(steps):
+            gate = st in ("CAB", "UAT", "Pre-send review")
+            cv.rect(x, yy, sw, ph, TINT[YELLOW] if gate else CARD, YELLOW if gate else col, 0.9, R, 0.3)
+            cv.text(x, yy, sw, ph, [[(st, {"bold": True, "color": YELLOW if gate else WHITE})],
+                                    [(who, {"color": YELLOW if gate else SOFT})]], size=7,
+                    align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, line=0.9)
             if j < len(steps) - 1:
-                cv.arrow(x + sw, yy + 0.16, x + sw + 0.08, yy + 0.16, DIM, 0.75)
+                cv.arrow(x + sw, yy + ph / 2, x + sw + 0.08, yy + ph / 2, DIM, 0.75)
             x += sw + 0.08
     set_notes(s, TEAM_NOTES)
     return s
@@ -389,10 +397,13 @@ def platform_slide(prs, layout):
            ("Observability + change passport", False)]
     y = fy + 0.78
     for t, nw in gov:
-        cv.text(gx + 0.14, y, gw - 0.6, 0.34, t, size=7.4, bold=True, color=MAGENTA if nw else WHITE,
-                anchor=MSO_ANCHOR.MIDDLE)
+        key = t == "Change Guardian"
+        cv.text(gx + 0.14, y, gw - 0.6, 0.34, t, size=8.6 if key else 7.4, bold=True,
+                color=CYAN if key else (MAGENTA if nw else WHITE), anchor=MSO_ANCHOR.MIDDLE)
         if nw:
             new_tag(gx + gw - 0.48, y + 0.1)
+        if key:
+            pill(cv, gx + gw - 0.86, y + 0.09, 0.76, "WE BUILD IT", CYAN, True, h=0.17, size=5)
         y += 0.38
 
     # differentiators
@@ -400,7 +411,8 @@ def platform_slide(prs, layout):
     cv.text(dx, 1.8, dw, 0.26, "Differentiators", size=11, bold=True, color=MAGENTA, anchor=MSO_ANCHOR.MIDDLE)
     diffs = [("Grounded in the org and its data", "Agents read a cited graph of the delivery estate, and masked "
               "aggregates for campaigns.", "Ask before build."),
-             ("No pod breaks another", "The Change Guardian checks every change against who owns and uses it.",
+             ("No pod breaks another", [[("The ", {}), ("Change Guardian", {"bold": True, "color": CYAN}),
+                                         (" checks every change against who owns and uses it.", {})]],
               "Governed by design."),
              ("Minimum-data agent access", "Agents get aggregates and masked views, never raw PHI; patient "
               "data leaves only through the gateway.", "Private by design.")]
@@ -482,7 +494,8 @@ def health_slide(prs, layout):
 
     # row 2: the chain
     y2, h2 = 2.4, 1.5
-    chain = [("a", "Requirements", "Brief from the Jira story + Confluence design; open questions flagged.", 2),
+    chain = [("a", "Requirements", "User stories and functional decomposition from the Jira story; open questions "
+              "flagged.", 2),
              ("g", "H1", "product owner"),
              ("a", "Architect", "Reuse and impact from the graph; Change Guardian names affected pods.", 3),
              ("g", "H2", "architect + pod owners"),
