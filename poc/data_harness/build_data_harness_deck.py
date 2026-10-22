@@ -1,19 +1,20 @@
-"""Agentic Harness + data harness: a short deck on the IG template (11 slides).
+"""Agentic Harness + data harness: a short deck on the IG template (12 slides).
 
 1 Title
 2 One agent team: seven delivery agents and seven campaign agents
 3 The platform, now with the data harness
 4 Health Cloud: a story from Codex to production (GCP patient data not needed, shown grey)
 5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
-6 Marketing campaigns end to end, from governed data to a tested, approved campaign
-7 How we build it: safeguards first, release last
-8 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
-9 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
-10 Platform fit: one harness for every pod and job (platform_fit.py)
-11 Lean team and cost saving (lean_team.py)
+6 Marketing campaigns end to end, from governed data to a tested, approved campaign (combined_flow.py)
+7 Launching a campaign: ~90 days manual vs ~10-12 days on the data harness (campaign_timeline.py)
+8 How we build it: safeguards first, release last (campaign_platform_deck.py)
+9 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
+10 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
+11 Platform fit: one harness for every pod and job (platform_fit.py)
+12 Lean squads and three-year savings (lean_team.py)
 
-Slides 6-8 come from combined_flow.py and campaign_platform_deck.py. Slides 2-4 and 6-8 use the muted styles in
-muted_theme.py: greys, one accent, thin borders, the IG gradient only on differentiators and hooks.
+Black deck: the original colourful design in IG colours (muted_theme.vivid). White deck (theme "white"): the
+muted styles in muted_theme.py, recoloured for white.
 
     python3 build_data_harness_deck.py [out.pptx]
 """
@@ -722,12 +723,14 @@ def main(out=OUT, theme="dark"):
     ig.Canvas.frame = frame
     set_notes(flow, cpd.FLOW_NOTES)
     order = cpd.build_order(prs, layout)
+    import campaign_timeline
+    timeline = campaign_timeline.build(prs, layout)    # campaign: ~90 days manual vs ~10-12 on the data harness
     import sierra_voice
     sierra = sierra_voice.build(prs, layout)    # Sierra voice agent
     import platform_fit
     platform_fit.build(prs, layout, colorful=not white)   # platform fit: build, scale, accuracy, data, control
     import lean_team
-    lean_team.build(prs, layout)                # last slide: lean team and cost
+    lean = lean_team.build(prs, layout)         # last slide: lean squads and savings
     w1 = (11.95 - 4 * 0.16) / 5
     xs1 = [0.6 + k * (w1 + 0.16) for k in range(5)]
     gh = (combined_flow.CH1 - 0.06) / 2
@@ -746,6 +749,7 @@ def main(out=OUT, theme="dark"):
         mt.metals(flow, metal_cards, theme="dark")
         mt.muted(order, "dark", accent="yellow", src={YELLOW},      # phase 5, first real patients, stands out
                  hooks=[("bar", lambda sh: mt.near(sh.top, 5.78) and mt.near(sh.width, 0.05))])
+        mt.muted(lean, "dark")                  # the timeline keeps its colours: they carry meaning
         mt.muted(gov, "dark", src={CYAN, YELLOW}, src_accent={YELLOW: "yellow"},
                  neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
                  or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
@@ -755,11 +759,12 @@ def main(out=OUT, theme="dark"):
         for sl in (team, platform, health, flow, order, gov):
             mt.vivid(sl)
         mt.metals(flow, metal_cards, theme="dark")
-    # built as title, team, platform, health, section, governance, flow, order, sierra, platform fit, lean team; governance before sierra
+    # built as title, team, platform, health, section, governance, flow, order, timeline, sierra, platform fit,
+    # lean squads; shown with the timeline after the flow and governance before sierra
     ids = list(lst)
     for el in ids:
         lst.remove(el)
-    for k in (0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10):
+    for k in (0, 1, 2, 3, 4, 6, 8, 7, 5, 9, 10, 11):
         lst.append(ids[k])
     if white:                                   # same muted design, recoloured for a white background
         for sl in prs.slides:

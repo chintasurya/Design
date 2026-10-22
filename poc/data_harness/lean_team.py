@@ -1,6 +1,13 @@
-"""One-slide preview: lean team and cost saving. Figures are the ones already in the Ascension Agentic Harness deck
-(team and build cost, commercials, ROI, business outcomes). Black muted IG style. The last slide of the
-Agentic Harness deck (build_data_harness_deck.py); this script also renders it alone.
+"""Lean team and savings, redesigned: today's squad and the lean squad, what changes per pod (Health Cloud,
+Marketing Cloud, Sierra), build and run, then Year 1, 2 and 3 and a three-year band. No pricing shown.
+
+Savings model (rescaled to the real squad):
+  today        PM / outcome owner, tech lead / SEM, 2-3 developers, 1-2 QA     = 5-7 people (6 on average)
+  with harness PM / outcome owner, 1 engineer (dev + QA), tech lead shared by 2-3 squads, harness agent
+               = about 2.4 people, so people cost falls to 40% of today
+  run cost     run team + platform $1.24M a year, model and token allowance $0.4M a year (to confirm)
+  ramp         60% of the saving in year 1, 90% in year 2, 100% in year 3, as pods go live
+  all pods     $16M a year today (as provided)  ->  $8.0M at full run rate: about $8M saved a year
 
     python3 lean_team.py [out.pptx]
 """
@@ -11,160 +18,174 @@ from pptx import Presentation
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
 from build_data_harness_deck import R, SRC, logo, new_slide
-from build_mad_ig_deck import CYAN, YELLOW, set_notes
+from build_mad_ig_deck import CYAN, MAGENTA, YELLOW, set_notes
 from footer import fix_footers
-from platform_fit import panel
-from sierra_voice import CARD, EDGE, T1, T2, T3, gbar
+from sierra_voice import CARD, EDGE, T1, T2, T3
 from story_slides import dark_header
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "lean_team.pptx")
+TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716"}
 
-NOTES = """SLIDE: Lean team and cost saving   (about 2-3 minutes)
+TODAY = 16.0
+PEOPLE_SHARE = 2.4 / 6
+RUN = 1.24 + 0.4
+STEADY = TODAY * PEOPLE_SHARE + RUN
+SAVE = TODAY - STEADY
+RAMP = (0.6, 0.9, 1.0)
+YEARS = [(TODAY - SAVE * r, SAVE * r) for r in RAMP]
+
+NOTES = """SLIDE: Lean squads and what they save   (about 3 minutes)
 
 KEY MESSAGE
-Every squad of 4-5 developers becomes 1 developer directing the harness agent, plus 1 QA. $16M a year today becomes $7M: $9M back every year on a $5.0M build, paid back in under 7 months.
+Today a squad is 5-7 people. With the factory it is a PM, one engineer who directs the harness agent and verifies its work, and a tech lead shared across two or three squads. Across all pods, $16M a year today falls to about $8M at full run rate: about $20M saved over three years.
 
-WALK IT
-- The squad: 4 developers and a QA today; with the harness, one developer directs the agent, a QA verifies, and the agent drafts code, tests and the Copado package overnight. People review, approve and own every change.
-- The pod: what changes for every pod (pilot targets, baselined per pod): a new engineer is productive in about a week instead of 4-6 weeks, because they ask the graph; agents work overnight, so delivery runs about 20 hours a day instead of office hours; every change is checked against the same standards; a new pod goes live on the platform in 2 weeks instead of about 2 months.
-- The build: 17 people at peak, 10 roles, 18 months, $4.79M fixed fee paid only when each gate is signed. From month 19 a run team of 4 keeps it running, about $1.24M a year with platform usage.
-- The return (target, first full year after go-live): $16M a year today, $7M with the harness, $9M saved every year, on a $5.0M investment. Paid back in under 7 months; 80% first-year return.
-- Floor we commit to: 20-25% lower net run cost per pod, measured against each pod's baseline.
+TOP
+- Today's squad: PM / outcome owner, tech lead / SEM, 2-3 developers, 1-2 QA.
+- With the harness: the PM keeps ownership; one engineer (dev + QA) directs the agent and verifies; the tech lead / SEM is shared across 2-3 squads and still approves the code at H3. The agent drafts code, tests and the Copado package.
+- Why a human still checks quality: the agent writes requirements, code and tests from the same understanding, so a person must confirm we built the right thing, sign UAT, and own it at CAB.
+- What changes per pod: Health Cloud pods take a story to UAT in about 2 days instead of about 2 weeks; Marketing Cloud pods build campaigns on governed data that is already ready; the Sierra pod answers from governed articles and books through scoped APIs.
+- Build and run: 17 people at peak over 18 months, then a run team of 4.
 
-KEEP IT HONEST
-- Baseline every pod first. Year 1 delivers about 60-70% of steady state while pods onboard.
-- Approvals, UAT and CAB stay human and take the same time.
-- These figures cover delivery. The campaign data platform and the Sierra voice agent are sized separately, after Phase 0.
-- Rates are assumed for sizing; replace with the Insight Global rate card before sharing."""
+YEARS
+Year 1 saves about $4.8M (pods go live through the year), year 2 about $7.2M, year 3 about $8.0M at full run rate.
+
+HOW THE NUMBERS ARE BUILT
+People cost falls to 40% of today (2.4 of 6 people per squad). Run cost: run team and platform $1.24M a year, plus a model and token allowance of about $0.4M a year, to confirm against Ascension's Codex limits. Ramp 60%, 90%, 100%. All are planning estimates, confirmed against each pod's Phase 0 baseline."""
 
 
-def chip(cv, x, y, w, h, t, line=EDGE, fill=CARD, tc=T1, icon=None, size=6.4):
+def box(cv, x, y, w, h, title, color):
+    cv.rect(x, y, w, h, TINTS[color], color, 0.75, R, 0.03)
+    cv.rect(x, y, w, 0.28, color, None)
+    cv.text(x + 0.12, y, w - 0.24, 0.28, title, size=7, bold=True, track=120,
+            color="FFFFFE" if color == MAGENTA else "000000", anchor=MSO_ANCHOR.MIDDLE)
+
+
+def chip(cv, x, y, w, h, t, line, fill=CARD, tc=T1, icon=None):
     cv.rect(x, y, w, h, fill, line, 0.75, R, 0.25)
     tx, tw = x, w
     if icon:
-        logo(cv, icon, x + 0.08, y + (h - 0.18) / 2, 0.18)
-        tx, tw = x + 0.24, w - 0.28
-    cv.text(tx, y, tw, h, t, size=size, bold=True, color=tc, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        logo(cv, icon, x + 0.06, y + (h - 0.16) / 2, 0.16)
+        tx, tw = x + 0.2, w - 0.22
+    cv.text(tx, y, tw, h, t, size=7, bold=True, color=tc, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
-def label(cv, x, y, w, t, color=T3):
-    cv.text(x, y, w, 0.18, t, size=5.4, bold=True, color=color, track=100, anchor=MSO_ANCHOR.MIDDLE)
-
-
-def stat(cv, x, y, w, h, big, small, note=None, color=T1, hook=False):
-    if hook:
-        cv.frame(x, y, w, h, CARD, 0.02)
-    else:
-        cv.rect(x, y, w, h, CARD, None)
-    y += max(0.0, (h - 1.05) / 2)                 # centre the figure in a tall tile
-    cv.text(x + 0.14, y + 0.08, w - 0.24, 0.5, big, size=22, color=color, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(x + 0.14, y + 0.6, w - 0.24, 0.22, small, size=7, bold=True, color=T1, anchor=MSO_ANCHOR.MIDDLE)
-    if note:
-        cv.text(x + 0.14, y + 0.82, w - 0.24, 0.22, note, size=6, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+def money(v):
+    return "$%.1fM" % v
 
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · LEAN TEAM AND COST",
-                "Lean teams on one platform: $9M back every year on a $5.0M build",
-                "Every squad of 4-5 developers becomes 1 developer directing the harness agent, plus 1 QA. People "
-                "review, approve and own every change.")
-    # ---------------------------------------------------------------- row 1: squad, pod, build
-    ty, th = 1.3, 2.15
-    pw = (12.43 - 2 * 0.12) / 3
-    xs = [0.45 + k * (pw + 0.12) for k in range(3)]
-    # the squad
-    x = xs[0]
-    panel(cv, x, ty, pw, th, "THE SQUAD", "same scope, two people")
-    label(cv, x + 0.14, ty + 0.38, 1.5, "TODAY")
-    cw = (pw - 0.28 - 4 * 0.06) / 5
-    for k, t in enumerate(["Dev", "Dev", "Dev", "Dev", "QA"]):
-        chip(cv, x + 0.14 + k * (cw + 0.06), ty + 0.58, cw, 0.3, t, tc=T2)
-    label(cv, x + 0.14, ty + 0.98, 1.5, "WITH THE HARNESS", CYAN)
-    w3 = (pw - 0.28 - 2 * 0.06) / 3
-    chip(cv, x + 0.14, ty + 1.18, w3, 0.3, "Developer", line=CYAN)
-    chip(cv, x + 0.14 + w3 + 0.06, ty + 1.18, w3, 0.3, "Harness agent", line=CYAN, fill="06262B", tc=CYAN,
-         icon="harness", size=6.0)
-    chip(cv, x + 0.14 + 2 * (w3 + 0.06), ty + 1.18, w3, 0.3, "QA", line=CYAN)
-    cv.text(x + 0.14, ty + 1.56, pw - 0.28, 0.42, [[("Agent ", {"bold": True, "color": CYAN}),
-                                                     ("drafts code, tests and the Copado package overnight. ", {}),
-                                                     ("Developer ", {"bold": True, "color": T1}),
-                                                     ("directs and approves. ", {}),
-                                                     ("QA ", {"bold": True, "color": T1}), ("signs off.", {})]],
-            size=6.0, color=T2)
-    # the pod: what changes for every pod (pilot targets from the operational efficiency slide)
-    x = xs[1]
-    panel(cv, x, ty, pw, th, "THE POD", "what changes for every pod")
-    c0, c1, c2 = x + 0.14, x + 1.5, x + 2.6
-    label(cv, c1, ty + 0.36, 1.0, "TODAY")
-    label(cv, c2, ty + 0.36, 1.4, "WITH THE HARNESS", CYAN)
-    rows = [("New engineer productive", "4-6 weeks", "about 1 week"),
-            ("Delivery each day", "office hours", "about 20 hours"),
-            ("Changes checked", "depends on reviewer", "100%, same standards"),
-            ("New pod live", "about 2 months", "2 weeks")]
-    for k, (a, b, c) in enumerate(rows):
-        y = ty + 0.56 + k * 0.29
-        cv.rect(c0, y, pw - 0.28, 0.25, CARD, None)
-        cv.text(c0 + 0.08, y, 1.3, 0.25, a, size=6.0, bold=True, color=T1, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(c1, y, 1.08, 0.25, b, size=6.0, color=T2, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(c2, y, pw - 2.5, 0.25, c, size=6.0, bold=True, color=CYAN, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(c0, ty + 1.74, pw - 0.28, 0.36, "Pilot targets, baselined per pod.", size=5.9, color=T3,
+    dark_header(cv, "ASCENSION AGENTIC HARNESS · LEAN SQUADS",
+                "Lean squads on one platform: about $20M back over three years",
+                "A squad of 5-7 becomes a PM and one engineer directing the harness agent, with a shared tech lead. "
+                "People still approve and own every change.")
+    top, th = 1.28, 2.0
+    # ---------------------------------------------------------------- 1 the squad
+    x1, w1 = 0.45, 4.6
+    box(cv, x1, top, w1, th, "THE SQUAD  ·  TODAY → WITH THE HARNESS", CYAN)
+    ix = x1 + 0.12
+    cv.text(ix, top + 0.34, 2, 0.18, "TODAY · 5-7 PEOPLE", size=7, bold=True, color=T3, track=80,
             anchor=MSO_ANCHOR.MIDDLE)
-    # the build
-    x = xs[2]
-    panel(cv, x, ty, pw, th, "THE BUILD AND RUN", "fixed fee, paid by gate")
-    q = (pw - 0.28 - 2 * 0.08) / 3
-    for k, (b, d) in enumerate([("17", "people at peak, 10 roles"), ("18", "months, seven phases"),
-                                ("$4.79M", "fixed fee, paid as each gate is signed")]):
-        xx = x + 0.14 + k * (q + 0.08)
-        cv.rect(xx, ty + 0.4, q, 0.98, CARD, None)
-        cv.text(xx + 0.1, ty + 0.44, q - 0.14, 0.44, b, size=16, color=T1, anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(xx + 0.1, ty + 0.88, q - 0.14, 0.46, d, size=5.9, color=T2)
-    cv.text(x + 0.14, ty + 1.48, pw - 0.28, 0.5, [[("From month 19 ", {"bold": True, "color": T1}),
-                                                    ("a run team of 4 keeps the graph, agents and evals current: "
-                                                     "about $1.24M a year with platform usage.", {})]], size=6.0,
-            color=T2)
-    # ---------------------------------------------------------------- row 2: the money
-    my = ty + th + 0.15
-    mh = 2.15
-    panel(cv, 0.45, my, 12.43, mh, "THE RETURN", "target · first full year after go-live")
-    lw = 8.3
-    sw = (lw - 0.14 - 3 * 0.1) / 4
-    tiles = [("$16M", "a year today", "as provided by Ascension", T1, False),
-             ("$7M", "a year with the harness", "agents and run team included", T1, False),
-             ("$9M", "saved every year", "from go-live", CYAN, True),
-             ("$5.0M", "invested once", "$4.79M build + $0.23M usage", T1, False)]
-    th3 = mh - 0.52
-    for k, (b, sm, n, c, hook) in enumerate(tiles):
-        stat(cv, 0.45 + 0.14 + k * (sw + 0.1), my + 0.38, sw, th3, b, sm, n, color=c, hook=hook)
-    rx = 0.45 + 0.14 + lw + 0.1
-    rw = 12.88 - 0.14 - rx
-    ch = (th3 - 0.1) / 2
-    cards = [("Paid back in under 7 months", "80% first-year return; 1.8x the investment back in year one", CYAN),
-             ("Floor we commit to", "20-25% lower net run cost per pod, against its own baseline", YELLOW)]
-    for k, (t, d, c) in enumerate(cards):
-        y = my + 0.38 + k * (ch + 0.1)
-        cv.rect(rx, y, rw, ch, CARD, None)
-        gbar(cv, rx, y, 0.05, ch)
-        cv.text(rx + 0.18, y, rw - 0.26, ch, [[(t, {"bold": True, "size": 8, "color": c})], [(d, {"color": T2})]],
-                size=6.4, anchor=MSO_ANCHOR.MIDDLE, after=2)
-    # ---------------------------------------------------------------- bottom: keep it honest
-    by, bh = my + mh + 0.15, 0.7
-    cv.text(0.45, by, 1.3, bh, [[("KEEP IT HONEST", {"bold": True, "color": T1, "track": 120})],
-                                [("how the numbers hold", {"color": T3, "size": 5.2})]], size=6.4,
-            anchor=MSO_ANCHOR.MIDDLE, after=1)
-    notes = [("Baseline every pod first", "savings counted against each pod's own numbers"),
-             ("Year 1 at 60-70%", "of steady state while pods onboard"),
-             ("Approvals stay human", "UAT and CAB take the same time"),
-             ("Delivery only", "campaign data platform and Sierra sized after Phase 0")]
-    w = (12.88 - 1.8 - 3 * 0.1) / 4
-    for k, (t, d) in enumerate(notes):
-        x = 1.8 + k * (w + 0.1)
-        cv.rect(x, by, w, bh, CARD, None)
-        cv.rect(x, by, 0.04, bh, CYAN, None)
-        cv.text(x + 0.14, by, w - 0.2, bh, [[(t, {"bold": True, "size": 7, "color": T1})], [(d, {"color": T2})]],
-                size=6.0, anchor=MSO_ANCHOR.MIDDLE, after=1)
+    today = [("PM / owner", 0.82), ("Tech lead / SEM", 1.0), ("Dev ×2-3", 0.82), ("QA ×1-2", 0.74)]
+    x = ix
+    for t, w in today:
+        chip(cv, x, top + 0.54, w, 0.32, t, EDGE, tc=T2)
+        x += w + 0.06
+    cv.text(ix, top + 0.98, 3, 0.18, "WITH THE HARNESS · ~2.4 PEOPLE", size=7, bold=True, color=CYAN, track=80,
+            anchor=MSO_ANCHOR.MIDDLE)
+    lean = [("PM / owner", 0.82, None, CARD, T1), ("Engineer · dev + QA", 1.22, None, CARD, T1),
+            ("Harness agent", 1.08, "harness", "06262B", CYAN), ("Tech lead · shared", 1.0, None, CARD, T2)]
+    x = ix
+    for t, w, ic, fl, tc in lean:
+        chip(cv, x, top + 1.18, w, 0.32, t, CYAN, fl, tc, ic)
+        x += w + 0.06
+    cv.text(ix, top + 1.56, w1 - 0.24, 0.4, [[("Agent ", {"bold": True, "color": CYAN}),
+                                              ("drafts code, tests and the Copado package. ", {}),
+                                              ("Engineer ", {"bold": True, "color": T1}),
+                                              ("directs it and verifies. ", {}),
+                                              ("Tech lead ", {"bold": True, "color": T1}),
+                                              ("approves at H3 for 2-3 squads.", {})]], size=7, color=T2)
+    # ---------------------------------------------------------------- 2 what changes per pod
+    x2 = x1 + w1 + 0.12
+    w2 = 4.6
+    box(cv, x2, top, w2, th, "WHAT CHANGES FOR EVERY POD", MAGENTA)
+    pods = [("salesforce", "Health Cloud pods", "Jira story to UAT in about 2 days, not about 2 weeks"),
+            ("salesforce", "Marketing Cloud pods", "campaigns build on governed data that is already ready; "
+                                                     "no data preparation per campaign"),
+            (None, "Sierra pod", "answers from governed articles; bookings through scoped APIs, caller "
+                                 "verified first")]
+    for k, (ic, t, d) in enumerate(pods):
+        y = top + 0.38 + k * 0.53
+        cv.rect(x2 + 0.12, y, w2 - 0.24, 0.47, CARD, None)
+        cv.rect(x2 + 0.12, y, 0.05, 0.47, MAGENTA, None)
+        tx = x2 + 0.26
+        if ic:
+            logo(cv, ic, tx, y + 0.06, 0.18)
+            tx += 0.24
+        cv.text(tx, y + 0.03, x2 + w2 - tx - 0.16, 0.2, t, size=7.4, bold=True, color=T1,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x2 + 0.26, y + 0.23, w2 - 0.44, 0.24, d, size=7, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+    # ---------------------------------------------------------------- 3 build and run
+    x3 = x2 + w2 + 0.12
+    w3 = 12.88 - x3
+    box(cv, x3, top, w3, th, "BUILD AND RUN", YELLOW)
+    stats = [("17", "people at peak, 10 roles"), ("18", "months to every pod live"), ("4", "run team from month 19")]
+    sw = (w3 - 0.24 - 2 * 0.08) / 3
+    for k, (b, d) in enumerate(stats):
+        x = x3 + 0.12 + k * (sw + 0.08)
+        cv.rect(x, top + 0.38, sw, 1.0, CARD, None)
+        cv.text(x + 0.08, top + 0.42, sw - 0.12, 0.42, b, size=18, color=YELLOW, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.08, top + 0.86, sw - 0.12, 0.48, d, size=7, color=T2)
+    cv.text(x3 + 0.12, top + 1.46, w3 - 0.24, 0.5, "The run team keeps the graph, agents, rules and evals current "
+            "once every pod is live.", size=7, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+    # ---------------------------------------------------------------- years
+    yy, yh = top + th + 0.16, 1.92
+    yw = (12.43 - 2 * 0.16) / 3
+    caps = ["Pods go live through the year.", "Every pod on the harness for the full year.",
+            "Full run rate: agents carry the delivery, people steer."]
+    for k, ((after, saved), cap) in enumerate(zip(YEARS, caps)):
+        x = 0.45 + k * (yw + 0.16)
+        cv.rect(x, yy, yw, yh, CARD, EDGE, 0.75, R, 0.03)
+        cv.text(x + 0.16, yy + 0.08, 2, 0.28, "Year %d" % (k + 1), size=11, bold=True, color=T1,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.16, yy + 0.4, 1.4, 0.16, "TODAY", size=7, bold=True, color=T3, track=100,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 1.75, yy + 0.4, 2, 0.16, "WITH THE HARNESS", size=7, bold=True, color=CYAN, track=100,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.16, yy + 0.56, 1.4, 0.36, money(TODAY), size=18, color=T3, anchor=MSO_ANCHOR.MIDDLE)
+        cv.arrow(x + 1.2, yy + 0.74, x + 1.6, yy + 0.74, T1, 1.25)
+        cv.text(x + 1.75, yy + 0.56, 2, 0.36, money(after), size=18, color=T1, anchor=MSO_ANCHOR.MIDDLE)
+        fx, fy, fw, fh = cv.frame(x + 0.16, yy + 1.0, yw - 0.32, 0.56, "1A1A1A", 0.03)
+        cv.text(fx + 0.12, fy, 2, fh, [[("SAVES", {"bold": True, "color": YELLOW, "track": 120})],
+                                       [("%d%% of the year's spend" % round(100 * saved / TODAY),
+                                         {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(fx + fw - 1.5, fy, 1.4, fh, money(saved), size=22, color=T1, align=PP_ALIGN.RIGHT,
+                anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x + 0.16, yy + 1.6, yw - 0.32, 0.28, cap, size=7, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+    # ---------------------------------------------------------------- three-year band
+    by, bh = yy + yh + 0.14, 0.86
+    cv.rect(0.45, by, 12.43, bh, "0A0A0A", EDGE, 0.75, R, 0.03)
+    cv.text(0.6, by + 0.04, 4, 0.2, "THREE YEARS, ALL PODS", size=7, bold=True, color=YELLOW, track=120,
+            anchor=MSO_ANCHOR.MIDDLE)
+    total_after = sum(a for a, _ in YEARS)
+    total_saved = sum(v for _, v in YEARS)
+    cells = [("Spend today", money(3 * TODAY), "$16M a year × 3", T1),
+             ("With the harness", money(total_after), "people, run team and model usage included", T1),
+             ("Saved over 3 years", money(total_saved), "%d%% of three years' spend" % round(100 * total_saved /
+                                                                                        (3 * TODAY)), CYAN),
+             ("At full run rate", "%d%% lower" % round(100 * SAVE / TODAY), "about %s saved every year" %
+              money(SAVE), YELLOW)]
+    cw = 12.13 / 4
+    for k, (t, b, d, c) in enumerate(cells):
+        x = 0.6 + k * cw
+        cv.text(x, by + 0.24, cw - 0.1, 0.16, t, size=7, color=T2, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x, by + 0.4, cw - 0.1, 0.3, b, size=15, color=c, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(x, by + 0.68, cw - 0.1, 0.16, d, size=7, color=T3, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(0.45, by + bh + 0.04, 12.43, 0.2, "Planning estimates: people cost falls to 40% (2.4 of 6 per squad); "
+            "run team and platform $1.24M a year; model and token allowance $0.4M a year, to confirm against Codex "
+            "limits; ramp 60% / 90% / 100%. Confirmed against each pod's Phase 0 baseline.", size=7, color=T3,
+            anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, NOTES)
     return s
 
