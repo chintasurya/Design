@@ -94,7 +94,18 @@ def permission_set_xml(existing: str | None, grant: list[str]) -> str:
     from the org when there is one, so nothing it already grants is lost."""
     if existing and "</PermissionSet>" in existing:
         add = "".join(_field_permission(a) for a in grant if f"<field>{a}</field>" not in existing)
-        return existing.replace("</PermissionSet>", add + "</PermissionSet>", 1)
+        if not add:
+            return existing
+        # Salesforce wants each element group together, groups in alphabetical
+        # order: new access goes right after the existing fieldPermissions, or
+        # before the first element that sorts after it (never simply at the end).
+        last = existing.rfind("</fieldPermissions>")
+        if last >= 0:
+            at = existing.index("\n", last) + 1
+        else:
+            later = [m for m in re.finditer(r"^    <([A-Za-z]+)[ />]", existing, re.M) if m.group(1) > "fieldPermissions"]
+            at = later[0].start() if later else existing.rindex("</PermissionSet>")
+        return existing[:at] + add + existing[at:]
     return ('<?xml version="1.0" encoding="UTF-8"?>\n'
             f'<PermissionSet xmlns="{NS}">\n'
             + _tag("description", "Access to what the Agentic Harness developer agent builds.")

@@ -160,7 +160,7 @@ def test_develop_validates_then_waits_then_deploys_and_records(tmp_path):
 
 
 def test_validation_errors_go_back_to_codex_and_the_loop_is_bounded(tmp_path):
-    runner = codex_writes([GOOD, {CLS + "AccountRisk.cls": "public with sharing class AccountRisk {}"}])
+    runner = codex_writes([GOOD, {**GOOD, CLS + "AccountRisk.cls": "public with sharing class AccountRisk {}"}])
     agent, _, _ = developer(tmp_path, runner, [FAILURE, SUCCESS])
     c, store, rid = ctx()
     agent.develop(rid, SPEC, c)
@@ -274,6 +274,18 @@ def test_new_field_access_is_merged_into_the_existing_permission_set():
                 "<field>Account.Old__c</field></fieldPermissions>\n</PermissionSet>\n")
     merged = permission_set_xml(existing, ["Account.Old__c", "Account.New__c"])
     assert merged.count("<field>Account.Old__c</field>") == 1 and "<field>Account.New__c</field>" in merged
+    # the shape the org returns: fieldPermissions, then label; new access must not land after label
+    org = ('<?xml version="1.0" encoding="UTF-8"?>\n<PermissionSet xmlns="x">\n    <description>d</description>\n'
+           "    <fieldPermissions>\n        <field>Opportunity.NextStepDate__c</field>\n    </fieldPermissions>\n"
+           "    <hasActivationRequired>false</hasActivationRequired>\n    <label>Harness Agent Access</label>\n"
+           "</PermissionSet>\n")
+    merged = permission_set_xml(org, ["Account.CustomerSince__c"])
+    assert merged.index("Account.CustomerSince__c") < merged.index("<hasActivationRequired>")
+    assert merged.index("Opportunity.NextStepDate__c") < merged.index("Account.CustomerSince__c")
+    bare = org.replace("    <fieldPermissions>\n        <field>Opportunity.NextStepDate__c</field>\n"
+                       "    </fieldPermissions>\n", "")
+    merged = permission_set_xml(bare, ["Account.CustomerSince__c"])
+    assert merged.index("<description>") < merged.index("Account.CustomerSince__c") < merged.index("<hasActivationRequired>")
 
 
 def test_code_is_one_codex_call_per_attempt_with_no_tools_and_the_files_in_the_message(tmp_path):
@@ -285,7 +297,8 @@ def test_code_is_one_codex_call_per_attempt_with_no_tools_and_the_files_in_the_m
     first, fix = runner.calls
     assert first["sandbox"] == "read-only" and first["extra_args"] == LEAN_NO_TOOLS and first["output_schema"]
     assert "public class AccountService {}" in runner.attempts[0]  # the retrieved file is in the message
-    assert "AccountRiskTest.cls ===" in runner.attempts[1]  # the fix sees its own earlier files
+    assert "AccountRiskTest.cls (your change set) ===" in runner.attempts[1]  # the fix sees its own files
+    assert "AccountService.cls (from the org) ===" in runner.attempts[1]
     assert store.get(rid)["usage"]["calls"] == 2
 
 
@@ -332,3 +345,46 @@ def test_the_schemas_sent_to_codex_are_valid_strict_schemas():
     check(CODE_OUTPUT_SCHEMA)
     comp = CODEX_OUTPUT_SCHEMA["properties"]["spec"]["anyOf"][0]["properties"]["components"]["items"]
     assert "description" in comp["properties"]  # the property survives, only annotations go
+
+
+VR = "force-app/main/default/objects/Opportunity/validationRules/"
+
+
+def vr(name):
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">'
+            f"<fullName>{name}</fullName><active>true</active><description>No past close dates.</description>"
+            "<errorConditionFormula>CloseDate &lt; TODAY()</errorConditionFormula>"
+            "<errorMessage>Close Date cannot be in the past.</errorMessage></ValidationRule>")
+
+
+def test_a_rename_on_a_fix_attempt_leaves_no_stale_file_and_long_names_never_reach_the_org(tmp_path):
+    long = "Close_Date_Cannot_Be_Past_For_Open_Opportunity"  # 46 characters: KAN-7's first run
+    runner = codex_writes([{VR + f"{long}.validationRule-meta.xml": vr(long)},
+                           {VR + "CloseDateNotInPast.validationRule-meta.xml": vr("CloseDateNotInPast")}])
+    agent, cli, _ = developer(tmp_path, runner, [SUCCESS])
+    c, store, rid = ctx()
+    spec = {**SPEC, "components": [{"action": "create", "type": "ValidationRule", "api_name": "Opportunity.x",
+                                    "description": "d", "exists_in_org": False, "evidence": "", "field": None}]}
+    result = agent.develop(rid, spec, c)
+    assert f"{long} is 46 characters; the limit is 40" in runner.attempts[1]
+    assert [f["path"] for f in result["files"]] == [VR + "CloseDateNotInPast.validationRule-meta.xml"]
+    assert len([cmd for cmd in cli.commands if cmd[1:3] == ["project", "deploy"]]) == 1  # one validation only
+    assert not os.path.exists(os.path.join(agent.workspace(rid), VR + f"{long}.validationRule-meta.xml"))
+
+
+def test_a_mismatched_full_name_is_caught_before_validation(tmp_path):
+    from app.agents.developer import name_problems
+    ws = str(tmp_path)
+    os.makedirs(os.path.join(ws, VR))
+    with open(os.path.join(ws, VR + "CloseDateNotInPast.validationRule-meta.xml"), "w") as fh:
+        fh.write(vr("Close_Date_Cannot_Be_Past"))
+    assert "must match the file name CloseDateNotInPast" in name_problems(
+        ws, VR + "CloseDateNotInPast.validationRule-meta.xml")[0]
+
+
+def test_ticket_keys_are_read_the_way_people_type_them():
+    from app.agents.requirement import ticket_keys
+    assert ticket_keys("Analyze KAN -7", "KAN") == ["KAN-7"]
+    assert ticket_keys("analyze kan 7 and Kan- 8", "KAN") == ["KAN-7", "KAN-8"]
+    assert ticket_keys("analyze KAN-16", "KAN") == ["KAN-16"]
+    assert ticket_keys("what does Kanban mean", "KAN") == []
