@@ -19,6 +19,7 @@ from story_slides import dark_header
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "campaign_timeline.pptx")
 TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716"}
+GREY = "5A5A5A"         # today's non-data bars; the white deck sets a mid grey
 
 MANUAL = [("Discovery & PRD", "scope, audience, KPIs, holdout design", 0, 10, True),
           ("ADSI data readiness", "BigQuery tables, mapping, EUID, consent", 10, 20, True),
@@ -62,7 +63,7 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind, unit="d"):
         cv.rect(x, yy, w, row_h - 0.05, CARD if k % 2 == 0 else "101010", None)
         if kind == "manual":
             t, d, a, b, data = r
-            col = MAGENTA if data else "9E9E9E"     # mid grey: readable on black and on white
+            col = MAGENTA if data else GREY
         else:
             t, d, a, b, col = r
         cv.text(x + 0.1, yy, label_w - 0.14, row_h - 0.05, [[(t, {"bold": True, "color": T1})],
@@ -74,7 +75,7 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind, unit="d"):
             cv.rect(x0, yy + 0.09, max(x1 - x0, 0.3), row_h - 0.23, col, None, shape=R, radius=0.3)
             lab = "%g%s" % (b - a, unit)
             cv.text(x0, yy + 0.09, max(x1 - x0, 0.3), row_h - 0.23, lab, size=7, bold=True,
-                    color="FFFFFE" if col == MAGENTA else "000000", align=PP_ALIGN.CENTER,
+                    color="FFFFFE" if col in (MAGENTA, "5A5A5A") else "000000", align=PP_ALIGN.CENTER,
                     anchor=MSO_ANCHOR.MIDDLE)
         else:
             cv.rect(x0, yy + 0.09, 0.62, row_h - 0.23, None, MAGENTA, 0.9, R, 0.3)
@@ -92,7 +93,7 @@ def axis(cv, bx, bw, y, ticks, scale, labels=None):
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · NUDGE POD · DATA HARNESS + MARKETING CLOUD",
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · NUDGE POD · DATA HARNESS + MARKETING CLOUD",
                 "Launching a campaign: ~90 days manual vs ~10-12 days on the data harness",
                 "Data readiness, ingestion and segmentation are done once by the data harness, not per campaign. "
                 "Campaign agents build and test; people approve; legal review sets the pace.")
@@ -146,8 +147,8 @@ def build(prs, layout):
         cv.text(x + 0.18, sy, 1.2, sh, b, size=18, color=(CYAN, MAGENTA, T1, YELLOW)[k], anchor=MSO_ANCHOR.MIDDLE)
         cv.text(x + 1.4, sy, w - 1.5, sh, [[(t, {"bold": True, "color": T1})], [(d, {"color": T2})]], size=7,
                 anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(0.45, sy + sh + 0.04, 12.43, 0.2, "Today: CHF post-discharge nudge manual steps and SFMC standards, as "
-            "in the Agentic Harness deck. With the data harness: pilot targets, measured on the CHF campaign against "
+    cv.text(0.45, sy + sh + 0.04, 12.43, 0.2, "Today: CHF post-discharge nudge manual steps and SFMC standards. "
+            "With the data harness: pilot targets, measured on the CHF campaign against "
             "today's baseline.", size=7, color=T3, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, NOTES)
     return s

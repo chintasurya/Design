@@ -65,10 +65,10 @@ def badge(cv, x, y, n, color=CYAN, size=0.22):
             anchor=MSO_ANCHOR.MIDDLE)
 
 
-def pill(cv, x, y, w, t, color, filled=False, h=0.18, size=5.6, tcolor=None):
+def pill(cv, x, y, w, t, color, filled=False, h=0.18, size=5.6, tcolor=None, track=80):
     cv.rect(x, y, w, h, color if filled else None, color, 0.75, R, 0.5)
     cv.text(x, y, w, h, t, size=size, bold=True, color=tcolor or (BLACK if filled else color),
-            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=track)
 
 
 def card(cv, x, y, w, h, title, body=None, line=EDGE, fill=CARD, n=None, ncolor=CYAN, tag=None, lw=1.0,
@@ -108,7 +108,7 @@ def path(cv, pts, color, w=1.5, dash=None):
 
 
 # ================================================================== 1 title
-TITLE_NOTES = ("Open: the same Agentic Harness now does two jobs. For Health Cloud it takes a Jira story to a tested, "
+TITLE_NOTES = ("Open: the same Agentic Factory now does two jobs. For Health Cloud it takes a Jira story to a tested, "
                "approved change. For Marketing Cloud it plans and prepares campaigns on governed Google Cloud data, "
                "where agents only ever see masked data and people release the right patients.")
 
@@ -119,9 +119,14 @@ def title_slide(prs):
         if not sh.has_text_frame:
             continue
         t = sh.text_frame.text
-        if t.startswith("An Agentic Harness"):
+        if t.lower().startswith("ascension agentic"):
             r = sh.text_frame.paragraphs[0].runs
-            r[0].text = ("One harness, two jobs: Health Cloud delivery from Codex, and Marketing Cloud campaigns "
+            r[0].text = "Ascension AGENTIC FACTORY"
+            for extra in r[1:]:
+                extra.text = ""
+        elif t.startswith("An Agentic Harness"):
+            r = sh.text_frame.paragraphs[0].runs
+            r[0].text = ("One factory, two jobs: Health Cloud delivery from Codex, and Marketing Cloud campaigns "
                          "on governed, masked Google Cloud data.")
             for extra in r[1:]:
                 extra.text = ""
@@ -140,7 +145,7 @@ DELIVERY = [("Orchestrator", "Classifies the task, gathers context, routes the c
                                   (" flags cross-pod risk", {})]], "HUMAN GATE", YELLOW),
             ("Developer Agent", "Builds to Ascension standards in DEV; journeys for Marketing Cloud", "AI-LED",
              GREEN),
-            ("Review Agent", "Quality, security and Ascension coding standards", "HUMAN GATE", YELLOW),
+            ("Review Agent", "Quality, security, standards; failures go back to their cause", "HUMAN GATE", YELLOW),
             ("Test Agent", "Unit, regression and performance tests; Zephyr to Copado", "HUMAN GATE", YELLOW),
             ("Release Agent", "Packages and promotes through Copado to lower environments", "AI-LED", GREEN)]
 DATA = [("Orchestrator Agent", "Coordinates opportunity analysis, approvals and execution steps", "COORDINATES",
@@ -171,7 +176,7 @@ WALK IT
 
 def team_slide(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · AGENT TEAM",
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · AGENT TEAM",
                 "One agent team: seven delivery agents and seven campaign agents",
                 "Delivery agents build and release changes for every pod. Campaign agents plan, design and test on "
                 "masked data; deterministic services release patients. People approve at every gate.")
@@ -251,12 +256,13 @@ def team_slide(prs, layout):
         cv.text(rx + 0.12, y + 0.42, rw - 0.24, 0.36, d, size=6.6, color=WHITE)
         tx = rx + 0.12
         for tg, c in tags:
-            w = 0.2 + 0.064 * len(tg)
-            pill(cv, tx, y + 0.78, w, tg, c)
+            w = 0.2 + 0.058 * len(tg)
+            pill(cv, tx, y + 0.78, w, tg, c, size=7, track=0)
             tx += w + 0.06
         y += 1.12
     cv.rect(rx + 0.1, bot - 0.62, rw - 0.2, 0.5, TINT[MAGENTA], None, shape=R, radius=0.1)
-    cv.text(rx + 0.2, bot - 0.62, rw - 0.4, 0.5, "A new pod adds its sources and skills, not new agents.",
+    cv.text(rx + 0.2, bot - 0.62, rw - 0.4, 0.5, "A new pod adds its sources and skills; new agents plug into the same framework when new work "
+            "needs them.",
             size=6.6, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
 
     # bottom: two governed paths
@@ -290,7 +296,7 @@ def team_slide(prs, layout):
 PLATFORM_NOTES = """SLIDE: The platform, now with the data harness   (about 2 minutes)
 
 KEY MESSAGE
-Codex is the engine; the Agentic Harness is everything around it. For campaigns it adds a masked data context (Gold A), Collibra masking, a Compliance Guardian with a deterministic policy engine, and a masked pre-send review. Agents get the minimum data they need, never raw PHI.
+Codex is the engine and the harness runs the agents; the Agentic Factory is all of it, harness, data harness, governance and people. For campaigns it adds a masked data context (Gold A), Collibra masking, a Compliance Guardian with a deterministic policy engine, and a masked pre-send review. Agents get the minimum data they need, never raw PHI.
 
 WALK IT
 - Surface: where people work. Codex (a Jira number for a delivery story, or a campaign prompt), the Salesforce LWC console, the approval page, masked Tableau dashboards and the pre-send report, and Jira.
@@ -302,10 +308,10 @@ WALK IT
 
 def platform_slide(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · PLATFORM",
-                "Agentic Harness platform, now with the data harness",
-                "Codex is the engine; the harness is everything around it. New: a masked data context, Collibra "
-                "masking, a Compliance Guardian with a policy engine, and a masked pre-send review.")
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · PLATFORM",
+                "Agentic Factory platform, now with the data harness",
+                "Codex is the engine; the harness runs the agents; the factory is all of it. New: a masked data "
+                "context, Collibra masking, a Compliance Guardian and a masked pre-send review.")
     chips = [("7 delivery agents", VIO), ("7 campaign agents", MAGENTA), ("9-step workflow", VIO),
              ("Campaign run", MAGENTA), ("Pod skill packs", VIO)]
     x = 1.6
@@ -317,9 +323,6 @@ def platform_slide(prs, layout):
     fy, fh = 1.78, 3.98
     cv.rect(0.45, fy, 9.15, fh, None, YELLOW, 1.0, R, 0.03, dash="sysDot")
 
-    def new_tag(x, y):
-        pill(cv, x, y, 0.36, "NEW", CYAN, True, h=0.15, size=5)
-
     # surface
     sx, sw = 0.6, 1.85
     cv.rect(sx, fy + 0.14, sw, fh - 0.28, None, YELLOW, 1.25, R, 0.05)
@@ -327,7 +330,7 @@ def platform_slide(prs, layout):
     cv.text(sx + 0.48, fy + 0.2, sw - 0.56, 0.42, [[("Harness", {})], [("Surface", {})]], size=10, color=WHITE,
             line=0.9)
     surf = [("openai-white", "Codex", "a Jira number, or a campaign ask"),
-            ("salesforce", "Salesforce LWC", "the Agentic Harness console"),
+            ("salesforce", "Salesforce LWC", "the Agentic Factory console"),
             ("people", "Approval page", "SSO · H1-H4 · G1-G3"), ("tableau", "Tableau review", "masked dashboards, pre-send report"),
             ("jira", "Jira", "status of every step")]
     y = fy + 0.75
@@ -335,8 +338,6 @@ def platform_slide(prs, layout):
         logo(cv, ic, sx + 0.12, y + 0.01, 0.2)
         cv.text(sx + 0.4, y, sw - 0.48, 0.2, t, size=8, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(sx + 0.4, y + 0.2, sw - 0.48, 0.3, d, size=6.3, color=SOFT)
-        if t == "Tableau review":
-            new_tag(sx + sw - 0.46, y + 0.03)
         y += 0.6
 
     # runtime / registry / context
@@ -352,15 +353,13 @@ def platform_slide(prs, layout):
             cv.text(ix, y + 0.08, iw - 0.05, 0.2, t, size=7.4, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
                     anchor=MSO_ANCHOR.MIDDLE)
             cv.text(ix, y + 0.3, iw - 0.05, 0.4, d, size=6, color=SOFT, align=PP_ALIGN.CENTER)
-            if new and k in new:
-                new_tag(ix + (iw - 0.41) / 2, y + h - 0.22)
 
     block(fy + 0.14, 0.9, "Runtime", "Runs every story or campaign as a durable workflow.",
           [("Orchestration", "Cloud Workflows"), ("Dispatcher", "one agent task per step"),
            ("State + memory", "Firestore checkpoints")])
     block(fy + 1.12, 0.95, "Registry", "What agents may use.",
           [("Tools", "MCP gateway tools"), ("Skills", "Health, Marketing, QA, campaign"),
-           ("Templates", "briefs, designs, journeys")], new=[1, 2])
+           ("Templates", "briefs, designs, journeys")])
     cy, ch = fy + 2.15, 1.69
     cv.rect(mx, cy, mw, ch, None, YELLOW, 1.25, R, 0.05)
     cv.text(mx + 0.12, cy + 0.06, 1.3, 0.26, "Context", size=10, bold=True, color=WHITE, anchor=MSO_ANCHOR.MIDDLE)
@@ -373,7 +372,6 @@ def platform_slide(prs, layout):
         cv.text(ix, cy + 0.08, iw - 0.05, 0.2, t, size=7.4, bold=True, color=MAGENTA if k == 2 else WHITE,
                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         cv.text(ix, cy + 0.3, iw - 0.05, 0.36, d, size=6, color=SOFT, align=PP_ALIGN.CENTER)
-    new_tag(mx + 1.4 + 2 * iw + (iw - 0.41) / 2, cy + 0.62)
     cv.text(mx + 0.12, cy + 0.88, 1.0, 0.16, "SOURCES", size=5.8, bold=True, color=YELLOW, track=150)
     srcs = ["Jira", "Confluence", "Salesforce", "Git", "Copado", "Google Drive", "GCP · BigQuery (masked)"]
     xx, yy = mx + 0.12, cy + 1.08
@@ -400,12 +398,8 @@ def platform_slide(prs, layout):
     y = fy + 0.78
     for t, nw in gov:
         key = t == "Change Guardian"
-        cv.text(gx + 0.14, y, gw - 0.6, 0.34, t, size=8.6 if key else 7.4, bold=True,
+        cv.text(gx + 0.14, y, gw - 0.2, 0.34, t, size=7.4, bold=True,
                 color=CYAN if key else (MAGENTA if nw else WHITE), anchor=MSO_ANCHOR.MIDDLE)
-        if nw:
-            new_tag(gx + gw - 0.48, y + 0.1)
-        if key:
-            pill(cv, gx + gw - 0.86, y + 0.09, 0.76, "WE BUILD IT", CYAN, True, h=0.17, size=5)
         y += 0.38
 
     # differentiators
@@ -464,7 +458,7 @@ WALK IT
 2 The Requirements Agent reads Jira and Confluence and the knowledge graph; the product owner approves the brief (H1).
 3 The Architect Agent checks what already exists, its impact and its owners; the Change Guardian names affected pods; the architect and pod owners approve (H2).
 4 The Developer Agent builds in the DEV sandbox on its own branch.
-5 The Review and Test Agents check code, security and sharing, and run the tests; a failed check goes back to the Developer Agent, at most five times, then to a named owner; the tech lead approves (H3).
+5 The Review and Test Agents check code, security and sharing, and run the tests. A failed check goes back to the step that caused it: a code defect to the Developer Agent, a design gap to the Architect Agent, a requirement gap to the Requirements Agent. At most five times, then a named owner. The tech lead approves (H3).
 6 The Release Agent promotes through Copado to SIT and UAT; business signs UAT (H4); CAB approves; the owning team deploys to production. No agent holds a production credential.
 Every step is scored by evals and recorded in the change passport.
 BOTTOM ROW: the Change Guardian reviews every pod's metadata for the change and flags anything that would block deployment (a dependency, a conflict with another pod's work, a missing component) before release; people approve at H1-H4 and CAB, as today; the change passport records every step, approval and test."""
@@ -472,10 +466,9 @@ BOTTOM ROW: the Change Guardian reviews every pod's metadata for the change and 
 
 def health_slide(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · HEALTH CLOUD FLOW",
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · HEALTH CLOUD FLOW",
                 "Health Cloud: one story from Codex to production",
-                "Example: NS-1234, an HFN validation rule for Texas CIN. Delivery needs the engineering context, not "
-                "patient data, so the GCP data source stays out (grey).")
+                "Seven agents, four approval gates, one change passport.")
     # row 1: the run frame
     y1 = 1.3
     cv.rect(0.45, y1, 3.05, 0.78, BLACK, CYAN, 1.25, R, 0.1)
@@ -535,16 +528,20 @@ def health_slide(prs, layout):
     for k1, k2 in zip(keys, keys[1:]):
         x1 = xs[k1][0] + xs[k1][1]
         cv.arrow(x1, y2 + (h2 - 0.28) / 2, x1 + 0.1, y2 + (h2 - 0.28) / 2, WHITE, 1.0)
-    # 1 -> 2: the Codex ask starts the Requirements Agent
+    # 1 -> 2: run orchestration starts the Requirements Agent
     rqx, rqw = xs["Requirements"]
-    cv.arrow(rqx + rqw / 2, y1 + 0.78, rqx + rqw / 2, y2, CYAN, 1.75)
-    # bounded retry: a failed check in 5 goes back to 4, over the top
-    dvx, dvw = xs["Developer"]
+    oy = y1 + 0.86
+    path(cv, [(4.0, y1 + 0.78), (4.0, oy), (rqx + 0.5, oy), (rqx + 0.5, y2)], CYAN, 1.75)
+    # a failed check in 5 goes back to the step that caused it: code to 4, design to 3, requirement to 2
     rtx, rtw = xs["Review + Test"]
-    ly_ = y2 - 0.14
-    path(cv, [(rtx + 0.35, y2), (rtx + 0.35, ly_), (dvx + dvw - 0.35, ly_), (dvx + dvw - 0.35, y2)], MAGENTA, 1.75)
-    pill(cv, rtx + 0.4, ly_ - 0.09, 2.6, "5 → 4  FAIL → FIX · MAX 5, THEN OWNER", MAGENTA, True, h=0.18,
-         tcolor=WHITE)
+    ly_ = y2 - 0.1
+    drops = [xs[k][0] + xs[k][1] - 0.35 for k in ("Developer", "Architect", "Requirements")]
+    cv.arrow(rtx + 0.35, y2, rtx + 0.35, ly_, MAGENTA, 1.75, head=False)
+    cv.arrow(rtx + 0.35, ly_, drops[-1], ly_, MAGENTA, 1.75, head=False)
+    for dx_ in drops:
+        cv.arrow(dx_, ly_, dx_, y2, MAGENTA, 1.75)
+    pill(cv, rtx + 0.47, ly_ - 0.09, 12.85 - rtx - 0.47, "FAIL → ITS CAUSE: CODE 4 · DESIGN 3 · REQUIREMENT 2 · "
+         "MAX 5, THEN OWNER", MAGENTA, True, h=0.18, tcolor=WHITE)
 
     # row 3: knowledge graph + systems
     y3 = 4.05
@@ -659,7 +656,7 @@ def section_slide(prs):
             runs[0].font.size = Pt(36)
             for r in runs[1:]:
                 r.text = ""
-        elif paras and paras[0].runs and (t.startswith("One harness") or t.startswith("An Agentic")):
+        elif paras and paras[0].runs and (t.startswith("One factory") or t.startswith("An Agentic")):
             paras[0].runs[0].text = ("Governed data in Google Cloud, agents on masked data, approved patients "
                                      "released to Marketing Cloud. Proposed target state.")
             for r in paras[0].runs[1:]:
@@ -704,8 +701,8 @@ def main(out=OUT, theme="dark"):
         lst.remove(el)
     layout = next(l_ for l_ in prs.slide_layouts if l_.name == "DEFAULT")
     if white:
-        white_title(prs, layout, "AGENTS FOR DELIVERY AND DATA", "Ascension Agentic Harness",
-                    "One harness, two jobs: Health Cloud delivery from Codex, and Marketing Cloud campaigns on "
+        white_title(prs, layout, "AGENTS FOR DELIVERY AND DATA", "Ascension Agentic Factory",
+                    "One factory, two jobs: Health Cloud delivery from Codex, and Marketing Cloud campaigns on "
                     "governed, masked Google Cloud data.", TITLE_NOTES)
     else:
         title_slide(prs)
@@ -713,6 +710,8 @@ def main(out=OUT, theme="dark"):
     platform = platform_slide(prs, layout)
     health = health_slide(prs, layout)
     import hc_timeline
+    import campaign_timeline
+    campaign_timeline.GREY = "9E9E9E" if white else "5A5A5A"
     hc_timeline.build(prs, layout)              # Health Cloud: ~2 weeks manual vs ~2 days on the harness
     if white:
         white_title(prs, layout, "MARKETING CLOUD CAMPAIGNS", "HIPAA-Aligned Agentic Healthcare Campaign Platform",
@@ -728,6 +727,7 @@ def main(out=OUT, theme="dark"):
     set_notes(flow, cpd.FLOW_NOTES)
     order = cpd.build_order(prs, layout)
     import campaign_timeline
+    campaign_timeline.GREY = "9E9E9E" if white else "5A5A5A"     # today's bars: readable on white and on black
     timeline = campaign_timeline.build(prs, layout)    # campaign: ~90 days manual vs ~10-12 on the data harness
     import sierra_voice
     sierra = sierra_voice.build(prs, layout)    # Sierra voice agent

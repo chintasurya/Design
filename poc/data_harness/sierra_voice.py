@@ -257,10 +257,6 @@ def highlight(slide, dark=False):
     """Mark the Sierra slide as the key differentiator."""
     from build_mad_ig_deck import Canvas
     cv = Canvas(slide)
-    grad_outline(cv, 10.35, 0.2, 2.53, 0.3, 1.75, 0.5)
-    cv.text(10.35, 0.2, 2.53, 0.3, "KEY DIFFERENTIATOR", size=8, bold=True,
-            color="FFFFFF" if dark else "1A1A1A", align=PP_ALIGN.CENTER,
-            anchor=MSO_ANCHOR.MIDDLE, track=150)
     gbar(cv, 0.45, 1.2, 12.43, 0.04, 0)
     top, bot = 1.3, 5.72
     grad_outline(cv, 0.43, top + 1.28, 2.09, bot - top - 1.26, 2.25, 0.04)   # the Sierra agent card

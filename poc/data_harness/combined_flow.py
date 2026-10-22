@@ -81,7 +81,7 @@ def build(prs, layout):
          tcolor=ON_COLOR)
     # ---------------------------------------------------------------- 2 prompt, plan, build + test (centre band)
     b2, h2 = 2.9, 1.75
-    band(cv, b2, h2, VIO, TINT[VIO], "2  PROMPT IN CODEX, PLAN, BUILD + TEST · MASKED DATA ONLY", "harness",
+    band(cv, b2, h2, VIO, TINT[VIO], "2  AGENTIC HARNESS · PROMPT IN CODEX, PLAN, BUILD + TEST · MASKED DATA ONLY · RUNS IN GOOGLE CLOUD", "harness",
          ON_COLOR)
     my, mh = b2 + 0.32, 0.78
     w2 = (11.95 - 5 * 0.16) / 6
@@ -90,8 +90,8 @@ def build(prs, layout):
          "patients”. Or the business console.", line=CYAN, n=7, icon="openai-white", bsize=5.3, tsize=6.4)
     item(cv, xs2[1], my, w2, mh, "Planning agents", "Orchestrator, Strategist and Analytics read the graph and "
          "Gold A; counts only.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=5.9)
-    gatecard(cv, xs2[2], my, w2, mh, "G1", "Confirm brief", "Marketer + clinical approve the Campaign Opportunity "
-             "Brief: size, channel, content plan.", n=9, bsize=5.2)
+    gatecard(cv, xs2[2], my, w2, mh, "G1", "Confirm brief", "People only, no agent: marketer + clinical approve "
+             "the brief: size, channel, content plan.", n=9, bsize=5.2)
     item(cv, xs2[3], my, w2, mh, "Campaign Design Agent", "Invokes Journey Builder (native); builds the journey and "
          "data extension, paused; seeds risks.", line=VIO, n=10, ncolor=VIO, bsize=5.2, tsize=6.2)
     tx = xs2[4]
@@ -99,18 +99,22 @@ def build(prs, layout):
     badge(cv, tx + 0.08, my + 0.06, 11, GREEN, 0.22)
     cv.text(tx + 0.36, my + 0.04, w2 - 0.4, 0.22, "Readiness · testing", size=6.2, bold=True, color=GREEN,
             anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(tx + 0.08, my + 0.28, w2 - 0.14, mh - 0.3, [[("Test contacts only; checks consent, STOP, links, "
-                                                         "hours. ", {}),
-                                                        ("Failed → 10, max 5, then an owner.",
+    cv.text(tx + 0.08, my + 0.28, w2 - 0.14, mh - 0.3, [[("Test contacts only: consent, STOP, links, hours. ",
+                                                         {}),
+                                                        ("Fail → its cause: journey 10, rule 8 or the data.",
                                                          {"bold": True, "color": MAGENTA})]], size=5.0, color=SOFT)
     gatecard(cv, xs2[5], my, w2, mh, "G3", "Approve journey", "Clinical + compliance, when every test passes. "
              "The journey then waits, active.", n=12, bsize=5.2)
     for k in range(5):
         cv.arrow(xs2[k] + w2, my + mh / 2, xs2[k + 1], my + mh / 2, WHITE, 1.25)
-    # failed tests: 11 back to 10, under the row
+    # failed tests go back to their cause, under the row: the journey (10), the rule (8) or the data (band 1,
+    # up the left margin)
     lp = my + mh + 0.05
-    path(cv, [(tx + w2 / 2, my + mh), (tx + w2 / 2, lp), (xs2[3] + w2 / 2, lp), (xs2[3] + w2 / 2, my + mh)],
-         MAGENTA, 1.5)
+    cv.arrow(tx + w2 / 2, my + mh, tx + w2 / 2, lp, MAGENTA, 1.5, head=False)
+    cv.arrow(tx + w2 / 2, lp, 0.5, lp, MAGENTA, 1.5, head=False)
+    for k in (3, 1):                                       # right edge: clear of the graph and Tableau arrows
+        cv.arrow(xs2[k] + w2 - 0.3, lp, xs2[k] + w2 - 0.3, my + mh, MAGENTA, 1.5)
+    path(cv, [(0.5, lp), (0.5, cy + ch - 0.18), (X0, cy + ch - 0.18)], MAGENTA, 1.5)
     # context + oversight row
     sy, sh = my + mh + 0.12, 0.47
     cv.text(xs2[0], sy, w2, sh, [[("CONTEXT + OVERSIGHT", {"bold": True, "color": DIM, "track": 100})],
