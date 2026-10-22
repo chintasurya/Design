@@ -1,4 +1,4 @@
-"""Agentic Harness + data harness: a short deck on the IG template (13 slides).
+"""Agentic Factory + data harness: a short deck on the IG template (13 slides).
 
 1 Title
 2 One agent team: seven delivery agents and seven campaign agents
@@ -36,8 +36,8 @@ from footer import fix_footers                                     # noqa: E402
 from story_slides import dark_header, set_bg                       # noqa: E402
 
 SRC = os.path.join(DECK, "source", "Ascension Agentic Harness - final.pptx")
-OUT = os.path.join(HERE, "Ascension Agentic Harness - Data Harness.pptx")
-OUT_WHITE = os.path.join(HERE, "Ascension Agentic Harness - Data Harness (white).pptx")
+OUT = os.path.join(HERE, "Ascension Agentic Factory - Data Harness.pptx")
+OUT_WHITE = os.path.join(HERE, "Ascension Agentic Factory - Data Harness (white).pptx")
 LOGOS = os.path.join(DECK, "assets", "logos")
 R = MSO_SHAPE.ROUNDED_RECTANGLE
 
