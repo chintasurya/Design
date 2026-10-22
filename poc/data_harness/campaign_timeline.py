@@ -54,7 +54,7 @@ BE HONEST
 Content and legal approval does not shrink much; it becomes the critical path. The ~10-12 days is a pilot target, measured on the CHF campaign against today's baseline."""
 
 
-def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind):
+def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind, unit="d"):
     bx = x + label_w
     bw = w - label_w - 0.1
     for k, r in enumerate(rows):
@@ -71,8 +71,8 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind):
         x0 = bx + bw * a / scale
         x1 = bx + bw * b / scale
         if b > a:
-            cv.rect(x0, yy + 0.09, max(x1 - x0, 0.06), row_h - 0.23, col, None, shape=R, radius=0.3)
-            lab = "%dd" % (b - a)
+            cv.rect(x0, yy + 0.09, max(x1 - x0, 0.3), row_h - 0.23, col, None, shape=R, radius=0.3)
+            lab = "%g%s" % (b - a, unit)
             cv.text(x0, yy + 0.09, max(x1 - x0, 0.3), row_h - 0.23, lab, size=7, bold=True,
                     color="FFFFFE" if col in (MAGENTA, "5A5A5A") else "000000", align=PP_ALIGN.CENTER,
                     anchor=MSO_ANCHOR.MIDDLE)
@@ -83,10 +83,10 @@ def gantt(cv, x, y, w, rows, scale, row_h, label_w, kind):
     return bx, bw
 
 
-def axis(cv, bx, bw, y, ticks, scale):
+def axis(cv, bx, bw, y, ticks, scale, per_day=1):
     for t in ticks:
         xx = bx + bw * t / scale
-        cv.text(xx - 0.3, y, 0.6, 0.16, "Day %d" % t, size=7, color=T3, align=PP_ALIGN.CENTER,
+        cv.text(xx - 0.3, y, 0.6, 0.16, "Day %d" % (t / per_day), size=7, color=T3, align=PP_ALIGN.CENTER,
                 anchor=MSO_ANCHOR.MIDDLE)
 
 

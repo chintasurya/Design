@@ -1,17 +1,18 @@
-"""Agentic Harness + data harness: a short deck on the IG template (12 slides).
+"""Agentic Harness + data harness: a short deck on the IG template (13 slides).
 
 1 Title
 2 One agent team: seven delivery agents and seven campaign agents
 3 The platform, now with the data harness
 4 Health Cloud: a story from Codex to production (GCP patient data not needed, shown grey)
-5 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
-6 Marketing campaigns end to end, from governed data to a tested, approved campaign (combined_flow.py)
-7 Launching a campaign: ~90 days manual vs ~10-12 days on the data harness (campaign_timeline.py)
-8 How we build it: safeguards first, release last (campaign_platform_deck.py)
-9 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
-10 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
-11 Platform fit: one harness for every pod and job (platform_fit.py)
-12 Lean squads and three-year savings (lean_team.py)
+5 A Health Cloud change: ~2 weeks manual vs ~2 days on the Agentic Harness (hc_timeline.py)
+6 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
+7 Marketing campaigns end to end, from governed data to a tested, approved campaign (combined_flow.py)
+8 Launching a campaign: ~90 days manual vs ~10-12 days on the data harness (campaign_timeline.py)
+9 How we build it: safeguards first, release last (campaign_platform_deck.py)
+10 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
+11 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
+12 Platform fit: one harness for every pod and job (platform_fit.py)
+13 Lean squads and three-year savings (lean_team.py)
 
 Black deck: the original colourful design in IG colours (muted_theme.vivid). White deck (theme "white"): the
 muted styles in muted_theme.py, recoloured for white.
@@ -465,7 +466,8 @@ WALK IT
 4 The Developer Agent builds in the DEV sandbox on its own branch.
 5 The Review and Test Agents check code, security and sharing, and run the tests; a failed check goes back to the Developer Agent, at most five times, then to a named owner; the tech lead approves (H3).
 6 The Release Agent promotes through Copado to SIT and UAT; business signs UAT (H4); CAB approves; the owning team deploys to production. No agent holds a production credential.
-Every step is scored by evals and recorded in the change passport."""
+Every step is scored by evals and recorded in the change passport.
+BOTTOM ROW: the Change Guardian reviews every pod's metadata for the change and flags anything that would block deployment (a dependency, a conflict with another pod's work, a missing component) before release; people approve at H1-H4 and CAB, as today; the change passport records every step, approval and test."""
 
 
 def health_slide(prs, layout):
@@ -614,7 +616,7 @@ def health_slide(prs, layout):
 
     # bottom line
     by = 5.95
-    cells = [("~2 weeks → ~2 days", "per Health Cloud task, story to UAT"),
+    cells = [("Change Guardian", "reviews every pod's metadata; flags deployment blockers before release"),
              ("People approve", "H1, H2, H3, H4 and CAB, as today"),
              ("Change passport", "every step, approval and test recorded")]
     cw_ = (12.43 - 2 * 0.15) / 3
@@ -710,6 +712,8 @@ def main(out=OUT, theme="dark"):
     team = team_slide(prs, layout)
     platform = platform_slide(prs, layout)
     health = health_slide(prs, layout)
+    import hc_timeline
+    hc_timeline.build(prs, layout)              # Health Cloud: ~2 weeks manual vs ~2 days on the harness
     if white:
         white_title(prs, layout, "MARKETING CLOUD CAMPAIGNS", "HIPAA-Aligned Agentic Healthcare Campaign Platform",
                     "Governed data in Google Cloud, agents on masked data, approved patients released to Marketing "
@@ -749,7 +753,7 @@ def main(out=OUT, theme="dark"):
         mt.metals(flow, metal_cards, theme="dark")
         mt.muted(order, "dark", accent="yellow", src={YELLOW},      # phase 5, first real patients, stands out
                  hooks=[("bar", lambda sh: mt.near(sh.top, 5.78) and mt.near(sh.width, 0.05))])
-        mt.muted(lean, "dark")                  # the timeline keeps its colours: they carry meaning
+        mt.muted(lean, "dark")                  # the timelines keep their colours: they carry meaning
         mt.muted(gov, "dark", src={CYAN, YELLOW}, src_accent={YELLOW: "yellow"},
                  neutral_if=lambda sh: (mt.near(sh.top, 4.58) and mt.near(sh.height, 0.3))
                  or (4.58 * mt.EMU < sh.top < 6.26 * mt.EMU and sh.width < 0.1 * mt.EMU),
@@ -759,12 +763,12 @@ def main(out=OUT, theme="dark"):
         for sl in (team, platform, health, flow, order, gov):
             mt.vivid(sl)
         mt.metals(flow, metal_cards, theme="dark")
-    # built as title, team, platform, health, section, governance, flow, order, timeline, sierra, platform fit,
-    # lean squads; shown with the timeline after the flow and governance before sierra
+    # built as title, team, platform, health, health timeline, section, governance, flow, order, timeline, sierra,
+    # platform fit, lean squads; shown with the timeline after the flow and governance before sierra
     ids = list(lst)
     for el in ids:
         lst.remove(el)
-    for k in (0, 1, 2, 3, 4, 6, 8, 7, 5, 9, 10, 11):
+    for k in (0, 1, 2, 3, 4, 5, 7, 9, 8, 6, 10, 11, 12):
         lst.append(ids[k])
     if white:                                   # same muted design, recoloured for a white background
         for sl in prs.slides:
