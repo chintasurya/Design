@@ -43,15 +43,15 @@ HARNESS = [("Requirements Agent", "Jira + Confluence into a brief", 0, 3, CYAN, 
            ("UAT + production · H4 · CAB", "business signs UAT; CAB; the owning team deploys", 18, 26, YELLOW,
             "H4")]
 
-NOTES = """SLIDE: A Health Cloud change: ~2 weeks manual vs ~2 days on the Agentic Harness   (about 2 minutes)
+NOTES = """SLIDE: A Health Cloud change: ~2 weeks manual vs ~2 days on the Agentic Factory   (about 2 minutes)
 
 KEY MESSAGE
-A typical Health Cloud task on the Network Services pod takes about two weeks today, from Jira story to UAT sign-off. On the Agentic Harness the same task goes from story to production in about two days. People still approve at every gate.
+A typical Health Cloud task on the Network Services pod takes about two weeks today, from Jira story to UAT sign-off. On the Agentic Factory the same task goes from story to production in about two days. People still approve at every gate.
 
 LEFT · TODAY
 Nine steps, one hand-off at a time, inside office hours: about 10 working days. About four and a half of them (magenta) go on understanding the story, finding the impact by hand and writing tests by hand: that is what the harness takes out.
 
-RIGHT · WITH THE AGENTIC HARNESS
+RIGHT · WITH THE AGENTIC FACTORY
 The same seven delivery agents as every pod, with Health Cloud skills; about 26 working hours over two days.
 Day 1: the Requirements Agent turns the story into a brief in about 3 hours and the product owner approves (H1); the Architect Agent reads impact and reuse from the knowledge graph in about 5 hours, the Change Guardian names affected pods, and the architect and pod owners approve (H2). The Developer Agent builds in DEV in about 4 hours; the Review and Test Agents check code, security and sharing and run the tests in about 4 hours, and the tech lead approves (H3); the Release Agent promotes through Copado to SIT and UAT in about 2 hours.
 Day 2: about 8 hours of business UAT (H4), CAB approval and the owning team's deployment to production.
@@ -67,8 +67,8 @@ BE READY FOR
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · NETWORK SERVICES POD · HEALTH CLOUD",
-                "A Health Cloud change: ~2 weeks manual vs ~2 days on the Agentic Harness",
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · NETWORK SERVICES POD · HEALTH CLOUD",
+                "A Health Cloud change: ~2 weeks manual vs ~2 days on the Agentic Factory",
                 "Any Health Cloud task. The same seven delivery agents with Health Cloud skills: day 1 takes the story "
                 "to UAT, day 2 is UAT and production. People approve at every gate.")
     top, ph = 1.28, 4.36
@@ -91,7 +91,7 @@ def build(prs, layout):
     rx = lx + lw + 0.14
     rw = 12.88 - rx
     fx, fy, fw, fh = cv.frame(rx, top, rw, ph, "0A0A0A", 0.02)
-    cv.text(fx + 0.14, fy + 0.04, 4, 0.2, "WITH THE AGENTIC HARNESS · 7 DELIVERY AGENTS", size=7, bold=True,
+    cv.text(fx + 0.14, fy + 0.04, 4, 0.2, "WITH THE AGENTIC FACTORY · 7 DELIVERY AGENTS", size=7, bold=True,
             color=CYAN, track=120, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(fx + 0.14, fy + 0.24, 2.2, 0.42, "~2 days", size=20, color=CYAN, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(fx + 2.3, fy + 0.28, fw - 2.44, 0.36, "~26 working hours: day 1 story to UAT, day 2 UAT and "
@@ -122,7 +122,7 @@ def build(prs, layout):
     # ---------------------------------------------------------------- results
     sy, sh = top + ph + 0.12, 0.74
     stats = [("~80%", "faster per task", "~10 working days to ~2 days, now to production"),
-             ("2-4 days", "measured so far", "agent-assisted today; the harness takes it to ~2"),
+             ("2-4 days", "measured so far", "agent-assisted today; the factory takes it to ~2"),
              ("7", "delivery agents", "the same for every pod, with Health Cloud skills"),
              ("4 gates", "people still approve", "H1 brief, H2 design, H3 code, H4 UAT; plus CAB")]
     w = (12.43 - 3 * 0.12) / 4
@@ -135,7 +135,7 @@ def build(prs, layout):
                 anchor=MSO_ANCHOR.MIDDLE)
     cv.text(0.45, sy + sh + 0.04, 12.43, 0.2, "Today: a typical Health Cloud task on the Network Services pod, Jira "
             "story to UAT sign-off. Measured: agent-assisted delivery at Ascension, 1-2 weeks to 2-4 days. ~2 days to "
-            "production is the harness target, confirmed against the Phase 0 baseline.", size=7, color=T3, anchor=MSO_ANCHOR.MIDDLE)
+            "production is the factory target, confirmed against the Phase 0 baseline.", size=7, color=T3, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, NOTES)
     return s
 

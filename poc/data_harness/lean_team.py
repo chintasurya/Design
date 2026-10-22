@@ -38,11 +38,11 @@ YEARS = [(TODAY - SAVE * r, SAVE * r) for r in RAMP]
 NOTES = """SLIDE: Lean squads and what they save   (about 3 minutes)
 
 KEY MESSAGE
-Today a squad is 5-7 people. With the factory it is a PM, one engineer who directs the harness agent and verifies its work, and a tech lead shared across two or three squads. Across all pods, $16M a year today falls to about $8M at full run rate: about $20M saved over three years.
+Today a squad is 5-7 people. With the factory it is a PM / tech lead, a dev / QA who directs the harness agent and verifies its work, and a PM / TL shared across two or three squads. Across all pods, $16M a year today falls to about $8M at full run rate: about $20M saved over three years.
 
 TOP
 - Today's squad: PM / outcome owner, tech lead / SEM, 2-3 developers, 1-2 QA.
-- With the harness: the PM keeps ownership; one engineer (dev + QA) directs the agent and verifies; the tech lead / SEM is shared across 2-3 squads and still approves the code at H3. The agent drafts code, tests and the Copado package.
+- With the factory: the PM / tech lead owns the change and approves the code at H3; one dev / QA directs the agent and verifies; one more PM / TL is shared across 2-3 squads. The agent drafts code, tests and the Copado package.
 - Why a human still checks quality: the agent writes requirements, code and tests from the same understanding, so a person must confirm we built the right thing, sign UAT, and own it at CAB.
 - What changes per pod: Health Cloud pods take a story to UAT in about 2 days instead of about 2 weeks; Marketing Cloud pods build campaigns on governed data that is already ready; the Sierra pod answers from governed articles and books through scoped APIs.
 - Build and run: 17 people at peak over 18 months, then a run team of 4.
@@ -76,14 +76,14 @@ def money(v):
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · LEAN SQUADS",
-                "Lean squads on one platform: about $20M back over three years",
-                "A squad of 5-7 becomes a PM and one engineer directing the harness agent, with a shared tech lead. "
-                "People still approve and own every change.")
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · LEAN SQUADS",
+                "Lean squads on one platform",
+                "A squad of 5-7 becomes a PM / tech lead and a dev / QA directing the harness agent, with a PM / TL "
+                "shared across squads. People still approve and own every change.")
     top, th = 1.28, 2.0
     # ---------------------------------------------------------------- 1 the squad
     x1, w1 = 0.45, 4.6
-    box(cv, x1, top, w1, th, "THE SQUAD  ·  TODAY → WITH THE HARNESS", CYAN)
+    box(cv, x1, top, w1, th, "THE SQUAD  ·  TODAY → WITH THE FACTORY", CYAN)
     ix = x1 + 0.12
     cv.text(ix, top + 0.34, 2, 0.18, "TODAY · 5-7 PEOPLE", size=7, bold=True, color=T3, track=80,
             anchor=MSO_ANCHOR.MIDDLE)
@@ -92,20 +92,21 @@ def build(prs, layout):
     for t, w in today:
         chip(cv, x, top + 0.54, w, 0.32, t, EDGE, tc=T2)
         x += w + 0.06
-    cv.text(ix, top + 0.98, 3, 0.18, "WITH THE HARNESS · ~2.4 PEOPLE", size=7, bold=True, color=CYAN, track=80,
+    cv.text(ix, top + 0.98, 3, 0.18, "WITH THE FACTORY · ~2.4 PEOPLE", size=7, bold=True, color=CYAN, track=80,
             anchor=MSO_ANCHOR.MIDDLE)
-    lean = [("PM / owner", 0.82, None, CARD, T1), ("Engineer · dev + QA", 1.22, None, CARD, T1),
-            ("Harness agent", 1.08, "harness", "06262B", CYAN), ("Tech lead · shared", 1.0, None, CARD, T2)]
+    lean = [("PM / Tech Lead", 0.98, None, CARD, T1), ("Dev / QA", 0.98, None, CARD, T1),
+            ("Harness agent", 1.08, "harness", "06262B", CYAN), ("PM / TL · shared", 1.06, None, CARD, T2)]
     x = ix
     for t, w, ic, fl, tc in lean:
         chip(cv, x, top + 1.18, w, 0.32, t, CYAN, fl, tc, ic)
         x += w + 0.06
     cv.text(ix, top + 1.56, w1 - 0.24, 0.4, [[("Agent ", {"bold": True, "color": CYAN}),
                                               ("drafts code, tests and the Copado package. ", {}),
-                                              ("Engineer ", {"bold": True, "color": T1}),
+                                              ("Dev / QA ", {"bold": True, "color": T1}),
                                               ("directs it and verifies. ", {}),
-                                              ("Tech lead ", {"bold": True, "color": T1}),
-                                              ("approves at H3 for 2-3 squads.", {})]], size=7, color=T2)
+                                              ("PM / TL ", {"bold": True, "color": T1}),
+                                              ("owns it and approves at H3; one more is shared by 2-3 squads.",
+                                               {})]], size=7, color=T2)
     # ---------------------------------------------------------------- 2 what changes per pod
     x2 = x1 + w1 + 0.12
     w2 = 4.6
@@ -142,7 +143,7 @@ def build(prs, layout):
     # ---------------------------------------------------------------- years
     yy, yh = top + th + 0.16, 1.92
     yw = (12.43 - 2 * 0.16) / 3
-    caps = ["Pods go live through the year.", "Every pod on the harness for the full year.",
+    caps = ["Pods go live through the year.", "Every pod on the factory for the full year.",
             "Full run rate: agents carry the delivery, people steer."]
     for k, ((after, saved), cap) in enumerate(zip(YEARS, caps)):
         x = 0.45 + k * (yw + 0.16)
@@ -151,7 +152,7 @@ def build(prs, layout):
                 anchor=MSO_ANCHOR.MIDDLE)
         cv.text(x + 0.16, yy + 0.4, 1.4, 0.16, "TODAY", size=7, bold=True, color=T3, track=100,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(x + 1.75, yy + 0.4, 2, 0.16, "WITH THE HARNESS", size=7, bold=True, color=CYAN, track=100,
+        cv.text(x + 1.75, yy + 0.4, 2, 0.16, "WITH THE FACTORY", size=7, bold=True, color=CYAN, track=100,
                 anchor=MSO_ANCHOR.MIDDLE)
         cv.text(x + 0.16, yy + 0.56, 1.4, 0.36, money(TODAY), size=18, color=T3, anchor=MSO_ANCHOR.MIDDLE)
         cv.arrow(x + 1.2, yy + 0.74, x + 1.6, yy + 0.74, T1, 1.25)
@@ -171,7 +172,7 @@ def build(prs, layout):
     total_after = sum(a for a, _ in YEARS)
     total_saved = sum(v for _, v in YEARS)
     cells = [("Spend today", money(3 * TODAY), "$16M a year × 3", T1),
-             ("With the harness", money(total_after), "people, run team and model usage included", T1),
+             ("With the factory", money(total_after), "people, run team and model usage included", T1),
              ("Saved over 3 years", money(total_saved), "%d%% of three years' spend" % round(100 * total_saved /
                                                                                         (3 * TODAY)), CYAN),
              ("At full run rate", "%d%% lower" % round(100 * SAVE / TODAY), "about %s saved every year" %

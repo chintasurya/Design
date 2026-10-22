@@ -24,10 +24,10 @@ TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716"}
 NOTES = """SLIDE: Platform fit   (about 2-3 minutes)
 
 KEY MESSAGE
-One harness serves every pod and three jobs: delivery, campaigns and the Sierra voice agent. Each agent is built once, scales across pods without losing accuracy, and stays under the same controls.
+One factory serves every pod and three jobs: delivery, campaigns and the Sierra voice agent. Each agent is built once, scales across pods without losing accuracy, and stays under the same controls.
 
 WALK IT
-- Top: one harness, three jobs, sharing the knowledge graph, governance, evals, approvals and the change passport.
+- Top: one factory, three jobs, sharing the knowledge graph, governance, evals, approvals and the change passport.
 - How we build: one definition per agent plus pod skill packs; versioned prompts, skills and model; an eval gate before any new version ships; pods onboard one at a time.
 - How it scales (concurrency): each request is its own isolated run; fair share for every pod, a per-pod cap set in config so no pod crowds out another; scales with demand within model and API quotas, sized in the Phase 0 load test; extra requests wait, none are dropped. If asked for numbers: our starting design is a few runs per pod and a few dozen overall, both settings.
 - How it stays accurate: cited facts only; the same eval bar for every pod, max 5 retries then an owner; load changes the wait, not the answer, because runs share no memory; measured every run.
@@ -48,13 +48,13 @@ def panel(cv, x, y, w, h, title, sub=""):
 def build(prs, layout, colorful=False):
     """colorful: IG cyan, yellow and magenta per job and per column (black deck); else muted greys."""
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION AGENTIC HARNESS · PLATFORM FIT",
-                "Platform fit: one harness for every pod, every job",
+    dark_header(cv, "ASCENSION AGENTIC FACTORY · PLATFORM FIT",
+                "Platform fit: one factory for every pod, every job",
                 "Delivery, campaigns and the Sierra voice agent share one graph, one governance layer and one approval "
                 "flow. Each agent is built once and serves every pod at once.")
     # ---------------------------------------------------------------- top: three jobs, one platform
     ty, th = 1.3, 0.5
-    cv.text(0.45, ty, 1.5, th, [[("ONE HARNESS", {"bold": True, "track": 120, "color": T1})],
+    cv.text(0.45, ty, 1.5, th, [[("ONE FACTORY", {"bold": True, "track": 120, "color": T1})],
                                 [("three jobs", {"color": T3, "size": 5.4})]], size=6.4, anchor=MSO_ANCHOR.MIDDLE,
             after=1)
     jobs = [("openai-white", "Delivery", "Codex to production · every pod"),
@@ -79,7 +79,8 @@ def build(prs, layout, colorful=False):
     # ---------------------------------------------------------------- build, scale, accuracy, control
     my, mh = 1.95, 3.62
     cols = [("HOW WE BUILD", "", CYAN, [
-                ("One definition per agent", "plus a skill pack per pod; a new pod adds skills, not agents"),
+                ("One definition per agent", "plus a skill pack per pod; new agents plug into the same framework when "
+                 "new work needs them"),
                 ("Versioned", "prompts, skills and model pinned in config; roll back in one step"),
                 ("Eval gate", "a new agent version ships only if it passes its eval set"),
                 ("Pod by pod", "onboard one pod, measure it, then the next")]),
@@ -138,7 +139,7 @@ def build(prs, layout, colorful=False):
                                  [("beyond cost", {"color": T3, "size": 5.4})]], size=6.4,
             anchor=MSO_ANCHOR.MIDDLE, after=1)
     benefits = [("Consistency", "Same standards and checks in every pod, every time."),
-                ("Reuse", "Build once; a new pod adds skills, not agents."),
+                ("Reuse", "Build once; a new pod adds skills, and new agents plug in when needed."),
                 ("Knowledge kept", "The graph keeps what people know when they move on."),
                 ("Quality", "Every step scored before it moves."),
                 ("Auditability", "Every step, approval and test recorded."),
