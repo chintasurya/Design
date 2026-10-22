@@ -309,3 +309,24 @@ def test_an_analysis_made_before_storage_existed_is_found_in_its_run(chatgpt_api
     run = client.get(f"/v1/runs/{r['runId']}", headers=ALICE).json()
     assert prompts == [] and run["result"]["reply"].startswith("Old analysis.")
     assert "spec:kan-7" in svc.graphs.graph().nodes  # written to the graph on first reuse
+
+
+def test_build_kan_x_reuses_the_analysis_and_asks_for_development(chatgpt_api):
+    from app.agents.requirement import is_build_command, ticket_keys
+    for typed in ("build kan 16", "Build KAN-16", "BUILD Kan16", "build Kan -16", "develop kan-16"):
+        assert is_build_command(typed) and ticket_keys(typed, "KAN") == ["KAN-16"], typed
+    assert not is_build_command("what could break if we build KAN-16 on Account?")
+    client, svc, spawner, prompts, _ = chatgpt_api
+    client.post("/v1/codex/connect", json={}, headers=ALICE)
+    approve(spawner, svc.sessions, "alice@example.com")
+    first = client.post("/v1/requirements/chat", json={"message": "build kan 7"}, headers=ALICE).json()
+    run = client.get(f"/v1/runs/{first['runId']}", headers=ALICE).json()
+    assert run["result"]["build"] is True and run["result"]["spec"]["ticket_key"] == "KAN-7"
+    assert any(s["name"].startswith("Build requested") for s in run["steps"])
+    calls = len(prompts)
+    again = client.post("/v1/requirements/chat", json={"message": "BUILD Kan-7"}, headers=ALICE).json()
+    run = client.get(f"/v1/runs/{again['runId']}", headers=ALICE).json()
+    assert len(prompts) == calls and run["usage"]["total_tokens"] == 0  # the stored analysis, no model call
+    assert run["result"]["build"] is True
+    plain = client.post("/v1/requirements/chat", json={"message": "analyze KAN-7"}, headers=ALICE).json()
+    assert client.get(f"/v1/runs/{plain['runId']}", headers=ALICE).json()["result"]["build"] is False

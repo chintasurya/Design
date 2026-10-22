@@ -379,6 +379,7 @@ export default class AgentConsole extends LightningElement {
                             this.spec = run.result.spec;
                             this.developAnyway = false;
                             this.devRun = undefined;
+                            if (run.result.build) this.buildFromChat();
                         }
                     } else {
                         this.pushAgent(`The Requirement agent stopped: ${run.error || run.status}`, true);
@@ -390,6 +391,20 @@ export default class AgentConsole extends LightningElement {
         } finally {
             this.sending = false;
         }
+    }
+
+    // "build KAN-16" in the chat: develop straight away when the spec is ready.
+    // Deployment still waits for the Approve button.
+    buildFromChat() {
+        const key = this.spec.ticket_key;
+        if (!this.specReady) {
+            const open = (this.spec.open_questions || []).slice(0, 3).map((q) => `- ${q}`).join('\n');
+            this.pushAgent(`${key} is not ready for development yet, so I did not start building.` +
+                (open ? `\nOpen questions:\n${open}` : '') + '\nAnswer them, or tick "Develop anyway" and press Develop.');
+            return;
+        }
+        this.pushAgent(`Building ${key}: the Developer agent has started. You approve before anything is deployed.`);
+        this.handleDevelop();
     }
 
     // ------------------------------------------------------------------- spec

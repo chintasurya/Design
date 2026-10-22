@@ -372,6 +372,7 @@ ANALYSIS = re.compile(r"\b(analy[sz]\w*|spec|prepare|refine|develop\w*|build|imp
                       r"impact|break\w*|risk\w*|estimat\w*|approach|ready|review|reuse|exist\w*|how\b)", re.I)
 LISTING = re.compile(r"\b(list|show|open|my|all)\b.*\btickets?\b|\btickets?\b.*\b(open|list)\b", re.I)
 SPEC_REQUEST = re.compile(r"\b(analy[sz]\w*|spec|prepare|refine)\b", re.I)
+BUILD = re.compile(r"\b(build|develop|implement|deliver)\b", re.I)
 FORCE = re.compile(r"\b(again|refresh|re-?analy[sz]e|fresh)\b", re.I)
 LINK_WORDS = {"TICKET_MENTIONS": "Mentions", "TICKET_IMPLEMENTED_BY": "Built by the Developer agent",
               "TICKET_ANALYSED_AS": "Analysed by the Requirement agent",
@@ -384,6 +385,13 @@ def requirement_hash(ticket: dict) -> str:
     text = "\n".join([ticket.get("summary") or "", ticket.get("description") or "",
                       *(ticket.get("acceptance_criteria") or [])])
     return hashlib.sha256(" ".join(text.split()).encode()).hexdigest()[:16]
+
+
+def is_build_command(message: str) -> bool:
+    """"build KAN-16", "Develop kan 16", "please implement KAN16": a short order
+    to build a ticket, not a question that happens to contain the word."""
+    words = re.findall(r"[A-Za-z0-9]+", message)
+    return bool(BUILD.search(message)) and len(words) <= 7 and "?" not in message
 
 
 def ticket_keys(message: str, project_key: str) -> list[str]:
@@ -514,7 +522,7 @@ class CodexRequirementAgent:
         keys = ticket_keys(message, self.jira.project_key)
         wants_analysis = bool(ANALYSIS.search(message))
         # only "analyze KAN-x" itself may reuse a stored spec; a new question about it may not
-        spec_request = bool(keys) and bool(SPEC_REQUEST.search(message))
+        spec_request = bool(keys) and (bool(SPEC_REQUEST.search(message)) or is_build_command(message))
 
         if keys and not wants_analysis:                      # 1. read a ticket: no model
             tickets = self._tickets(keys, ctx)
