@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from . import config
 from .agents.developer import DeveloperAgent, SalesforceCli
-from .agents.requirement import CodexRequirementAgent, RequirementAgent, requirement_hash
+from .agents.requirement import CodexRequirementAgent, RequirementAgent, is_build_command, requirement_hash
 from .codex import CodexConnection, CodexNotConnectedError, run_codex
 from .codex_sessions import CodexSessions, MemoryVault, SecretManagerVault
 from .config import secret
@@ -256,7 +256,13 @@ def job_requirement(svc: "Services", run: dict, ctx: RunContext) -> dict:
     svc.runs.set_conversation(conversation_id, {
         "history": history,
         "last_spec_ticket": (out["spec"] or {}).get("ticket_key") or convo.get("last_spec_ticket")})
-    return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id}
+    # "build KAN-16": the console starts the Developer agent on this spec when it is ready
+    build = is_build_command(message) and bool(out["spec"])
+    if build:
+        ctx.step("Build requested: handing the spec to the Developer agent"
+                 if (out["spec"] or {}).get("ready_for_development") else
+                 "Build requested, but the spec is not ready for development")
+    return {"reply": out["reply"], "spec": out["spec"], "conversationId": conversation_id, "build": build}
 
 
 def job_developer(svc: "Services", run: dict, ctx: RunContext) -> dict | None:
