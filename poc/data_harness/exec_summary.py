@@ -1,8 +1,8 @@
 """Two-slide executive summary for the Ascension Agentic Factory, in the IG proposal style: white page, spaced
 section headings, prose and bullets; slide 2 ends in a black timeline band.
 
-1 Our understanding · Results & value · Why Insight Global
-2 Solution overview · Key considerations · Solution timeline (the build phases of the full deck)
+1 Our understanding · Results & value · Why Insight Global, in business terms
+2 Solution overview · Key considerations · Solution timeline, pilot to scale
 
     python3 exec_summary.py
 """
@@ -50,13 +50,13 @@ def page_head(cv):
 NOTES_1 = """SLIDE: Executive summary (1 of 2)   (about 2 minutes)
 
 OUR UNDERSTANDING
-Ascension wants faster Salesforce delivery and faster Marketing Cloud campaigns without loosening control of patient data. Today a Health Cloud change takes about two weeks and a campaign about 90 days; much of that is manual research, impact analysis, test writing, and data preparation repeated for every campaign. The Agentic Factory brings AI agents to Health Cloud delivery, Marketing Cloud campaigns and the Sierra voice agent on one governed platform. We start with one Health Cloud pod and one campaign, then add pods one at a time.
+Ascension wants to use AI to reach patients sooner, serve them better and run its digital operations at lower cost, without putting patient data at risk. Today a patient-outreach campaign takes about 90 days to launch, a change to care-team tools in Salesforce takes about two weeks, and routine patient calls depend on staff. The Ascension Agentic Factory brings AI to all three on one secure, HIPAA-aligned platform. We start with post-discharge follow-up for heart-failure patients and the Network Services team, then add programs and teams.
 
 RESULTS & VALUE
-About 2 days per Health Cloud change instead of about 2 weeks; about 10-12 days per campaign instead of about 90; squads of about 2.4 people instead of 5-7; about $19.9M saved over three years. All are pilot targets and planning estimates, confirmed against the Phase 0 baseline.
+Campaigns in about 10-12 days instead of about 90; care-team changes in about 2 days instead of about 2 weeks; consent checked before every message; routine calls answered by the voice agent with a hand-off to staff; about $19.9M saved over three years. The figures are pilot targets and planning estimates, confirmed against today's baseline.
 
 WHY INSIGHT GLOBAL
-It runs on what Ascension already owns; agent-assisted delivery is already measured at Ascension (1-2 weeks to 2-4 days); safety is designed in; the Change Guardian protects every pod; and the rollout is measured and incremental."""
+Healthcare-ready and HIPAA-aligned by design; already proven at Ascension (agent-assisted delivery took changes from 1-2 weeks to 2-4 days); built on Ascension's existing Salesforce, Google Cloud and Codex; outcome-led and delivered in small releases."""
 
 
 def slide_1(prs, layout):
@@ -66,40 +66,39 @@ def slide_1(prs, layout):
     page_head(cv)
     heading(cv, 0.45, 1.22, 8, "OUR UNDERSTANDING")
     cv.text(0.45, 1.58, 12.43, 1.5, [
-        "Ascension is seeking to speed up Salesforce delivery and Marketing Cloud campaigns while keeping patient "
-        "data governed. Today a Health Cloud change takes about two weeks and a campaign about 90 days, much of it "
-        "manual research, impact analysis, test writing and data preparation repeated for every campaign. The "
-        "Agentic Factory brings AI agents to Health Cloud delivery, Marketing Cloud campaigns and the Sierra voice "
-        "agent, on one governed platform.",
-        "The initial focus will be one Health Cloud pod (Network Services) and one campaign (the CHF post-discharge "
-        "nudge), followed by a pod-by-pod rollout, using a measured pilot and incremental releases."],
+        "Ascension is seeking to use AI to reach patients sooner, serve them better and run its digital operations "
+        "at lower cost, without putting patient data at risk. Today a patient-outreach campaign takes about 90 days "
+        "to launch, a change to care-team tools in Salesforce takes about two weeks, and routine patient calls depend "
+        "on staff. The Ascension Agentic Factory brings AI to all three, on one secure, HIPAA-aligned platform.",
+        "The initial focus will be post-discharge follow-up for heart-failure patients and the Network Services "
+        "team, followed by more patient programs and teams, using a measured pilot and incremental releases."],
         size=BODY, color=INK, after=10, line=1.08)
     # results & value (left) | why Insight Global (right)
     top = 3.25
     lx, lw = 0.45, 6.75
     heading(cv, lx, top, lw, "RESULTS & VALUE")
-    cv.text(lx, top + 0.38, lw, 1.0, "The solution addresses slow, manual delivery, data preparation rebuilt for "
-            "every campaign, and the risk of one pod's change breaking another. Success will be measured by cycle "
-            "time, first-pass approval, defects after release and zero unauthorized access to patient data.",
-            size=BODY, color=INK, line=1.08)
-    bullets(cv, lx, top + 1.5, lw, 1.9, [
-        "Health Cloud change: ~2 weeks to ~2 days, story to production",
-        "Campaign launch: ~90 days to ~10-12 days",
-        "Leaner squads: 5-7 people to about 2.4",
-        "About $19.9M saved over three years",
-        "Agents never see raw PHI; people approve every gate",
-        "A reusable foundation: new pods add skills, not rebuilds"])
+    cv.text(lx, top + 0.38, lw, 1.0, "The solution addresses slow launches of patient programs, manual work "
+            "repeated for every campaign and change, routine calls that tie up staff, and the risk that comes with "
+            "patient data. Success will be measured by time to launch, patients reached, cost per change and zero "
+            "unauthorized access to patient data.", size=BODY, color=INK, line=1.08)
+    bullets(cv, lx, top + 1.5, lw, 2.1, [
+        "Launch patient-outreach campaigns in ~10-12 days, not ~90",
+        "Deliver care-team tool changes in ~2 days, not ~2 weeks",
+        "Reach the right patients, with consent checked before every message",
+        "Handle routine patient calls with the voice agent; staff take the rest",
+        "Save about $19.9M over three years",
+        "Build a scalable AI foundation for future programs"])
     # dotted divider
     cv.arrow(7.55, top + 0.05, 7.55, 6.85, RULE, 2.0, dash="sysDot", head=False)
     rx, rw = 7.9, 4.98
     heading(cv, rx, top, rw, "WHY INSIGHT GLOBAL")
     bullets(cv, rx, top + 0.42, rw, 3.0, [
-        "Built on what Ascension already runs: Codex, Salesforce, Google Cloud, Collibra, Copado",
-        "Agent-assisted delivery already measured at Ascension: 1-2 weeks to 2-4 days",
-        "HIPAA-aligned by design: no raw PHI for agents, no production credentials",
-        "Change Guardian: no pod breaks another",
-        "Outcome-led pilot with measurable success criteria",
-        "Incremental, pod-by-pod rollout, not a big-bang launch"], gap=5)
+        "Healthcare-ready: HIPAA-aligned by design; AI never sees raw patient data",
+        "Proven at Ascension: agent-assisted delivery already took changes from 1-2 weeks to 2-4 days",
+        "Built on Ascension's existing Salesforce, Google Cloud and Codex investments",
+        "Outcome-led delivery with measurable success criteria",
+        "Iterative MVP approach: early value, not a big-bang launch",
+        "People stay in control: every AI recommendation is approved"], gap=5)
     set_notes(s, NOTES_1)
     return s
 
@@ -108,21 +107,20 @@ def slide_1(prs, layout):
 NOTES_2 = """SLIDE: Executive summary (2 of 2)   (about 2 minutes)
 
 SOLUTION OVERVIEW
-Insight Global designs and implements the Ascension Agentic Factory: seven delivery agents and seven campaign agents, an engineering knowledge graph of Ascension's Salesforce estate, and a data harness in Google Cloud that governs patient data through Bronze, Silver and Gold layers with DLP and Collibra. Agents plan, build and test on masked data; people approve at every gate; patients reach Marketing Cloud only through a policy-checked activation gateway.
+Insight Global designs and implements an AI solution for three parts of Ascension's business: patient-outreach campaigns in Marketing Cloud, changes to care-team tools in Salesforce Health Cloud, and the voice agent that answers patients and manages appointments. AI agents do the research, building and testing; Ascension's people approve every step; patient data stays in Ascension's Google Cloud, governed and masked.
 
 KEY CONSIDERATIONS
-No raw PHI for agents, and masking alone is not HIPAA compliance; people approve every gate; existing platforms and data are reused; everything is proven on synthetic data before any real patient; releases are incremental; outcomes are measured.
+Patient safety and HIPAA come first; people stay in control; existing investments are reused; everything is proven on test data before any real patient; releases are small and frequent; outcomes are measured.
 
 SOLUTION TIMELINE
-The seven build phases of the full deck, in order: discovery and baseline; the data foundation; PHI governance (its exit is a hard gate: zero unauthorized access in tests); agentic intelligence; build and test on synthetic data; governed activation with the first real CHF audience; then measure against the baseline and scale pod by pod. Phases 1 and 2 run partly in parallel. Durations are set in Phase 0. The Network Services Health Cloud pilot runs alongside, on the same agents and knowledge graph."""
+Six steps: agree goals and measure today; set up the secure data foundation; ready the AI agents on Ascension's own systems and rules; build and test the first campaign on test data; reach the first real patients; then measure and scale to more programs, teams and the voice agent. Durations are agreed in discovery. Care-team changes for the Network Services team start once the agents are ready."""
 
-PHASES = [("Phase 0 · Discovery & baseline", "owners, architecture, today's measures"),
-          ("Phase 1 · Data foundation", "Bronze, Silver, Gold in Google Cloud"),
-          ("Phase 2 · PHI governance", "DLP, Collibra; zero unauthorized access"),
-          ("Phase 3 · Agentic intelligence", "knowledge graph, agents, first brief"),
-          ("Phase 4 · Build & test", "tested; no real patient yet"),
-          ("Phase 5 · Governed activation", "the first real CHF audience"),
-          ("Phase 6 · Measure & scale", "vs the baseline; pod by pod")]
+PHASES = [("Discovery & baseline", "goals, owners, today's measures"),
+          ("Secure data foundation", "patient data governed in Google Cloud"),
+          ("AI agents ready", "trained on Ascension's systems and rules"),
+          ("First campaign built & tested", "heart-failure follow-up, on test data"),
+          ("First patients reached", "live, with consent checked"),
+          ("Measure & scale", "more programs, teams, the voice agent")]
 
 
 def slide_2(prs, layout):
@@ -134,25 +132,27 @@ def slide_2(prs, layout):
     page_head(cv)
     lx, lw = 0.45, 6.6
     heading(cv, lx, 1.45, lw, "SOLUTION OVERVIEW")
-    cv.text(lx, 1.83, lw, 2.4, "Insight Global will design and implement the Ascension Agentic Factory: seven "
-            "delivery agents and seven campaign agents, an engineering knowledge graph of Ascension's Salesforce "
-            "estate, and a data harness in Google Cloud that governs patient data through Bronze, Silver and Gold "
-            "layers with DLP and Collibra. Agents plan, build and test on masked data; people approve at every "
-            "gate; patients reach Marketing Cloud only through a policy-checked activation gateway. Delivery "
-            "follows a measured pilot, then pod by pod.", size=11.5, color=INK, line=1.08)
+    cv.text(lx, 1.83, lw, 2.3, "Insight Global will design and implement an AI solution for three parts of "
+            "Ascension's business: patient-outreach campaigns in Marketing Cloud, faster changes to care-team tools in "
+            "Salesforce Health Cloud, and a voice agent that answers patients and manages their appointments. AI "
+            "agents do the research, building and testing; Ascension's people approve every step; patient data stays "
+            "in Ascension's Google Cloud, governed and masked. Delivery follows a measured pilot, providing early "
+            "value while establishing a scalable foundation for every team.", size=11.5, color=INK, line=1.08)
     rx, rw = 7.55, 5.33
     heading(cv, rx, 1.45, rw, "KEY CONSIDERATIONS")
-    bullets(cv, rx, 1.85, rw, 2.4, [
-        "Agents never see raw PHI; masking alone is not HIPAA compliance",
-        "People approve every gate: H1-H4 and CAB, G1-G3",
-        "Existing platforms and data reused: Codex, Salesforce, Google Cloud, Collibra, Copado",
-        "Proven on synthetic data before any real patient",
+    bullets(cv, rx, 1.85, rw, 2.3, [
+        "Patient safety and HIPAA first: consent checked before every message",
+        "People stay in control: every AI recommendation is approved",
+        "Existing Salesforce, Google Cloud and Codex investments reused",
+        "Proven on test data before any real patient",
         "Incremental releases, not a big-bang launch",
-        "Measurable speed, quality and safety outcomes"], size=11.5, gap=3)
+        "Measurable outcomes: speed, reach, cost and safety"], size=11.5, gap=3)
     # ---------------------------------------------------------------- timeline band
     cv.text(0.45, band + 0.22, 12.4, 0.34, [[("SOLUTION TIMELINE – ", {"color": "FFFFFF"}),
-                                            ("Phased pilot", {"color": CYAN})]], size=14, track=300,
+                                            ("Pilot to scale", {"color": CYAN})]], size=14, track=300,
             anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(0.45, band + 0.58, 12.4, 0.22, "Durations are agreed in discovery. Care-team changes for the Network "
+            "Services team start once the AI agents are ready.", size=8.5, color="8C8C8C", anchor=MSO_ANCHOR.MIDDLE)
     ly = band + 1.7
     gbar(cv, 0, ly, 13.333, 0.04, 0)
     n = len(PHASES)
@@ -163,15 +163,12 @@ def slide_2(prs, layout):
         dy0, dy1 = (ly - 0.36, ly - 0.08) if up else (ly + 0.12, ly + 0.4)
         cv.arrow(xx, dy0, xx, dy1, "FFFFFF", 1.5, dash="sysDot", head=False)
         cv.rect(xx - 0.08, ly - 0.06, 0.16, 0.16, "FFFFFF", None, shape=MSO_SHAPE.OVAL)
-        tw = 2.05 if k >= n - 3 else 2.55         # the last labels share the right end
+        tw = 2.4
         tx = xx - 0.05 if k < n - 1 else xx - tw + 0.05
         ty = ly - 0.95 if up else ly + 0.45
         cv.text(tx, ty, tw, 0.55, [[(t, {"color": "FFFFFF"})], [(d, {"color": "B3B3B3", "size": 9.5})]],
                 size=10.5, anchor=MSO_ANCHOR.BOTTOM if up else MSO_ANCHOR.TOP,
                 align=PP_ALIGN.RIGHT if k == n - 1 else None, after=1)
-    cv.text(0.45, band + 0.58, 12.4, 0.22, "Phases 1 and 2 run partly in parallel. Durations are set in Phase 0. The "
-            "Network Services Health Cloud pilot runs alongside, on the same agents and knowledge graph.", size=8.5,
-            color="8C8C8C", anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, NOTES_2)
     return s
 
