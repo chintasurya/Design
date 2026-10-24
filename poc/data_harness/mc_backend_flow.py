@@ -22,19 +22,19 @@ TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716", T1: "1A1A1A"}
 
 LANES = [("people", "People", "Codex · approval page", YELLOW),
          ("harness", "Agents", "Orchestrator, Strategist, Analytics, Design, Readiness", CYAN),
-         ("googlecloudspanner", "Knowledge graph", "semantic layer: definitions, counts, rules · Spanner Graph", CYAN),
          ("googlebigquery", "Gold A · BigQuery", "aggregates + masked views; Collibra policy tags", YELLOW),
+         ("googlecloudspanner", "Knowledge graph", "semantic layer: definitions, counts, rules · Spanner Graph", CYAN),
          ("googlecloud", "Gold B · eligibility", "restricted; a deterministic service", MAGENTA),
          (None, "Policy engine", "+ activation gateway", MAGENTA),
          ("salesforce", "Marketing Cloud", "journey + data extension", T1)]
 
 # (kind, from lane, to lane, label, colour); kinds: msg, ret (dashed return), gate, self
-ROWS = [("msg", 3, 2, "0  Kept current: aggregates and definitions only, never patient records", YELLOW),
+ROWS = [("msg", 2, 3, "0  Kept current: aggregates and definitions only, never patient records", YELLOW),
         ("msg", 0, 1, "1  “Build a post-discharge campaign for heart-failure patients”", CYAN),
-        ("msg", 1, 2, "2  What is a heart-failure patient? Which data, which rules?", CYAN),
-        ("ret", 2, 1, "3  Definition, Gold A table and consent rule, each with its source", T2),
-        ("msg", 1, 3, "4  Count the cohort by channel and region", CYAN),
-        ("ret", 3, 1, "5  Counts only, never names; masked rows stay in BigQuery", T2),
+        ("msg", 1, 3, "2  What is a heart-failure patient? Which data, which rules?", CYAN),
+        ("ret", 3, 1, "3  Definition, Gold A table and consent rule, each with its source", T2),
+        ("msg", 1, 2, "4  Count the cohort by channel and region", CYAN),
+        ("ret", 2, 1, "5  Counts only, never names; masked rows stay in BigQuery", T2),
         ("ret", 1, 0, "6  Opportunity Brief + masked Tableau dashboard", T2),
         ("gate", 0, 0, "G1 · marketer + clinical approve the brief", YELLOW),
         ("msg", 1, 6, "7  Build the journey and data extension, paused: no patients yet", CYAN),
@@ -47,7 +47,7 @@ ROWS = [("msg", 3, 2, "0  Kept current: aggregates and definitions only, never p
         ("msg", 4, 5, "12  Eligible patients, minimum fields", MAGENTA),
         ("msg", 5, 6, "13  Release after G2 + G3: time-limited, Compliance Passport", MAGENTA),
         ("self", 6, 6, "14  Journey sends; consent re-checked at send", T1),
-        ("ret", 6, 3, "15  Results back as aggregates, for measurement", T2)]
+        ("ret", 6, 2, "15  Results back as aggregates, for measurement", T2)]
 
 NOTES = """PREVIEW: what happens behind "create a campaign" in Codex   (about 2 minutes)
 
@@ -76,7 +76,7 @@ def build(prs, layout):
     cx = [x0 + lw * (i + 0.5) for i in range(len(LANES))]
     hy, hh = 1.28, 0.62
     top, bot = hy + hh, 6.42
-    # trust boundary between Gold A and Gold B
+    # trust boundary between the knowledge graph and Gold B
     tb = x0 + lw * 4
     cv.arrow(tb, hy - 0.04, tb, bot + 0.06, MAGENTA, 1.25, dash="dash", head=False)
     # lane headers + lifelines
