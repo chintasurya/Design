@@ -22,18 +22,19 @@ TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716", T1: "1A1A1A"}
 
 LANES = [("people", "People", "Codex · approval page", YELLOW),
          ("harness", "Agents", "Orchestrator, Strategist, Analytics, Design, Readiness", CYAN),
-         ("googlecloudspanner", "Knowledge graph", "with the semantic layer · Spanner Graph", CYAN),
-         ("googlebigquery", "Gold A · BigQuery", "masked aggregates; Collibra policy tags", YELLOW),
+         ("googlecloudspanner", "Knowledge graph", "semantic layer: definitions, counts, rules · Spanner Graph", CYAN),
+         ("googlebigquery", "Gold A · BigQuery", "aggregates + masked views; Collibra policy tags", YELLOW),
          ("googlecloud", "Gold B · eligibility", "restricted; a deterministic service", MAGENTA),
          (None, "Policy engine", "+ activation gateway", MAGENTA),
          ("salesforce", "Marketing Cloud", "journey + data extension", T1)]
 
 # (kind, from lane, to lane, label, colour); kinds: msg, ret (dashed return), gate, self
-ROWS = [("msg", 0, 1, "1  “Build a post-discharge campaign for heart-failure patients”", CYAN),
+ROWS = [("msg", 3, 2, "0  Kept current: aggregates and definitions only, never patient records", YELLOW),
+        ("msg", 0, 1, "1  “Build a post-discharge campaign for heart-failure patients”", CYAN),
         ("msg", 1, 2, "2  What is a heart-failure patient? Which data, which rules?", CYAN),
         ("ret", 2, 1, "3  Definition, Gold A table and consent rule, each with its source", T2),
         ("msg", 1, 3, "4  Count the cohort by channel and region", CYAN),
-        ("ret", 3, 1, "5  Counts only, never names: policy tags mask PHI", T2),
+        ("ret", 3, 1, "5  Counts only, never names; masked rows stay in BigQuery", T2),
         ("ret", 1, 0, "6  Opportunity Brief + masked Tableau dashboard", T2),
         ("gate", 0, 0, "G1 · marketer + clinical approve the brief", YELLOW),
         ("msg", 1, 6, "7  Build the journey and data extension, paused: no patients yet", CYAN),
@@ -54,6 +55,7 @@ KEY MESSAGE
 Agents work only with definitions and counts. Patient-level data moves only through deterministic services, and only after people approve.
 
 WALK IT (top to bottom)
+0 Before any request, Gold A keeps the knowledge graph current with aggregates and definitions only: what the data means and how much there is, never who the patients are. Masked Gold A rows are still PHI, so they stay in BigQuery.
 1 The marketer asks in Codex. 2-3 The agents ask the knowledge graph what a heart-failure patient is; the semantic layer answers with the definition, the Gold A table and the consent rule, each cited. 4-5 They count the cohort in Gold A; masked views return counts, never names. 6 The Opportunity Brief and a masked Tableau dashboard go to people, who approve it (G1).
 7-8 The Campaign Design Agent builds the journey and data extension, paused, and the Readiness Agent tests on test contacts; clinical and compliance approve (G3).
 9-11 The eligibility service, not an agent, applies the rule on Gold B (consent, contact, STOP, deceased, duplicates) and sends a masked pre-send report; the SME and tech lead approve (G2).
