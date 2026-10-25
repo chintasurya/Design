@@ -53,7 +53,7 @@ KEY MESSAGE
 The business user works in one place, Codex. Agents decide what campaign and what cohort, from definitions and counts. Two engines we build in Google Cloud decide exactly which patients, and release only the minimum fields to Marketing Cloud after people approve.
 
 WALK IT
-1 Govern the data in Google Cloud: sources into Bronze; DLP classifies and a Collibra steward approves the masking; Silver resolves identity across systems (EUID) and holds the consent of record; Gold splits into Gold A (insight: aggregates, small groups suppressed, for agents) and Gold B (restricted: patient, contact and consent, for the engines only).
+1 Govern the data in Google Cloud: before anything is ingested, a Collibra steward approves each dataset, DLP classifies the PHI and the policy tags are set; approved extracts land in Bronze, where DLP re-scans; Silver resolves identity across systems (EUID) and holds the consent of record; Gold splits into Gold A (insight: aggregates, small groups suppressed, for agents) and Gold B (restricted: patient, contact and consent, for the engines only).
 2 Governed intelligence, side by side on Gold A: the semantic layer (Kyvos or built in-house) gives one meaning to patient, discharge, cohort, consent, engagement and KPI; the knowledge graph in Spanner holds concepts, cohort rules, campaigns, templates, lineage and owners, with no patient nodes.
 3 Codex: the user sets the goal; the agent returns the campaign and cohort JSON, the campaign contract, approved at G1; the Design and Readiness agents build and test the journey on test contacts, approved by clinical and compliance at G3; the engines return a summary only, approved at G2. Approvals come from the approval service with named roles and a signed token; Codex shows them and never grants them.
 4 The Cohort Resolution Engine checks the JSON and the G1 + G3 token, builds a parameterized query from approved concepts (agents never write SQL), queries Gold B inside the protected boundary, applies consent, STOP, suppression, deceased, duplicate and contactability rules, and returns counts and exclusions only. After G2 the Activation Engine checks the G2 token, purpose, rule version and minimum fields and pushes the approved records to a Marketing Cloud data extension for this run only; the journey re-checks consent at send.
@@ -75,8 +75,9 @@ def slide_a(prs, layout):
     w = (12.43 - 0.24 - 4 * 0.16) / 5
     xs = [0.57 + k * (w + 0.16) for k in range(5)]
     chip(cv, xs[0], iy, w, ih, "Sources", "Epic, athenahealth, ADSI, Salesforce, SFMC", EDGE)
-    chip(cv, xs[1], iy, w, ih, "Bronze", "approved raw extracts, lineage; restricted", EDGE)
-    chip(cv, xs[2], iy, w, ih, "DLP + Collibra", "classify PHI; steward approves; policy tags mask", MAGENTA)
+    chip(cv, xs[1], iy, w, ih, "DLP + Collibra", "approve datasets, classify PHI, set policy tags before "
+         "ingest", MAGENTA)
+    chip(cv, xs[2], iy, w, ih, "Bronze", "approved raw extracts, lineage; restricted; DLP re-scans", EDGE)
     chip(cv, xs[3], iy, w, ih, "Silver", "identity resolution (EUID); consent of record", EDGE)
     gh = (ih - 0.05) / 2
     chip(cv, xs[4], iy, w, gh, "Gold A · insight", "aggregates → agents", YELLOW, 7)
