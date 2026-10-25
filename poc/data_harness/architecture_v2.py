@@ -57,7 +57,7 @@ WALK IT
 2 Codex, middle: the goal; the cohort JSON with its refresh policy, approved at G1; the journey built and tested on test contacts, approved at G3; the first run's counts, approved at G2; then ongoing status. Approvals come from the approval service with named roles.
 3 Cohort resolution and activation, right: the Cohort Resolution Engine checks the JSON and token and builds a controlled query; Gold B finds the matching patients inside the protected boundary; eligibility checks apply consent, STOP, suppression, deceased, duplicates and contactability; a summary with no PHI goes back to Codex; after G2 the Campaign Activation Engine checks the G2 token, purpose, rule version and fields and loads the Marketing Cloud data extension.
 4 Continuous cohort refresh: every day the data refreshes and its freshness is checked; the refresh trigger runs after it, or skips the run if the data is stale; the incremental resolver applies the approved rule to new and changed patients and re-checks consent; delta activation adds the newly eligible and exit sync removes anyone who opted out, died or no longer qualifies. Each run's results show in Codex.
-Bottom: Journey Builder runs day 1 to day 30 for each patient who enters, re-checking consent at send; engagement and outcomes go into Gold B and are aggregated into Gold A for the next refresh. Re-approval only when the cohort logic, purpose, fields, destination, consent policy, a semantic definition or the campaign status changes, or the approval expires."""
+Marketing Cloud execution, bottom strip: a pseudonymous, stable contact key mapped only in Gold B; records loaded by REST upsert or encrypted SFTP, with exits flagged; Journey Builder with a daily entry schedule, a re-entry rule, exit criteria and a goal, running day 1 to day 30; consent synced both ways within minutes (SMS STOP and email unsubscribes back to the consent of record, opt-outs from elsewhere into SFMC suppression); channel rules (TCPA, STOP/HELP keywords, quiet hours in the patient's time zone, CAN-SPAM, sender authentication); approved templates with no condition or PHI in subject lines, SMS text or URLs; a daily tracking extract into Gold B, with bounces updating contactability; and a dedicated business unit with SSO, retention policies, encryption and the BAA confirmed for each SFMC service used. Re-approval only when the cohort logic, purpose, fields, destination, consent policy, a semantic definition or the campaign status changes, or the approval expires."""
 
 
 def slide_a(prs, layout):
@@ -165,22 +165,36 @@ def slide_a(prs, layout):
     cv.arrow(gx0, r1 + chh / 2, cxs[0], r1 + chh / 2, CYAN, 1.25)                    # cohort JSON + token
     cv.arrow(cxs[0], r2 + chh / 2, gx0, r2 + chh / 2, T2, 1.25, dash="dash")         # summary only
     cv.arrow(bx, sy[4] + sh / 2, gx0, sy[4] + sh / 2, T2, 1.25, dash="dash")         # daily status
-    # ---------------------------------------------------------------- bottom bands
-    jy = bot + 0.13
-    cv.rect(0.45, jy, 12.43, 0.56, "06262B", CYAN, 1.0, R, 0.08)
-    cv.text(0.6, jy + 0.04, 12.13, 0.24, [[("Journey Builder ", {"bold": True, "color": T1}),
-                                           ("manages day 1 → day 5 → … → day 30 messaging for each patient who "
-                                            "enters; consent re-checked at send.", {"color": T1})]], size=8,
-            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(0.6, jy + 0.28, 12.13, 0.22, "Engagement + outcomes → Gold B → aggregated into Gold A → next daily "
-            "refresh and agent analysis", size=7.5, color=CYAN, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    ay_ = jy + 0.64
-    cv.rect(0.45, ay_, 12.43, 0.46, "2B2508", YELLOW, 1.0, R, 0.08)
-    cv.text(0.6, ay_, 12.13, 0.46, [[("RE-APPROVAL REQUIRED ", {"bold": True, "color": YELLOW}),
-                                     ("only when cohort logic, purpose, permitted fields, destination, consent "
-                                      "policy, a semantic definition or campaign status changes, or the approval "
-                                      "expires. Opt-outs apply at once; spike alerts pause a run; every run is "
-                                      "reconciled.", {"color": T1})]], size=7.5, align=PP_ALIGN.CENTER,
+    # ---------------------------------------------------------------- Marketing Cloud execution
+    jy, jh = bot + 0.13, 0.76
+    cv.rect(0.45, jy, 12.43, jh, "06262B", CYAN, 1.0, R, 0.06)
+    cv.text(0.6, jy, 1.3, jh, [[("MARKETING CLOUD", {"bold": True, "color": CYAN, "track": 80})],
+                               [("EXECUTION", {"bold": True, "color": CYAN, "track": 80})],
+                               [("inside SFMC", {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
+    mc = [("Contact key", "pseudonymous, stable; mapped only in Gold B"),
+          ("Load method", "REST upsert or encrypted SFTP; flags exits"),
+          ("Journey", "daily entry, re-entry rule, exit + goal; day 1 → 30"),
+          ("Consent sync", "two-way in minutes: STOP, unsubscribes"),
+          ("Channel rules", "TCPA, STOP/HELP, quiet hours; CAN-SPAM, DMARC"),
+          ("Content", "approved templates; no condition or PHI in text, URLs"),
+          ("Tracking back", "daily extract → Gold B; bounces → contactability"),
+          ("Security", "own BU, SSO, retention, encryption; BAA confirmed")]
+    tw = (12.88 - 0.1 - 1.95 - 7 * 0.08) / 8
+    for k, (t, d) in enumerate(mc):
+        x = 1.95 + k * (tw + 0.08)
+        cv.rect(x, jy + 0.08, tw, jh - 0.16, CARD, None)
+        cv.rect(x, jy + 0.08, 0.04, jh - 0.16, CYAN, None)
+        cv.text(x + 0.1, jy + 0.1, tw - 0.14, jh - 0.2, [[(t, {"bold": True, "color": T1, "size": 7.5})],
+                                                        [(d, {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE,
+                after=1, line=0.92)
+    # ---------------------------------------------------------------- re-approval
+    ay_ = jy + jh + 0.07
+    cv.rect(0.45, ay_, 12.43, 0.4, "2B2508", YELLOW, 1.0, R, 0.08)
+    cv.text(0.6, ay_, 12.13, 0.4, [[("RE-APPROVAL REQUIRED ", {"bold": True, "color": YELLOW}),
+                                    ("only when cohort logic, purpose, permitted fields, destination, consent "
+                                     "policy, a semantic definition or campaign status changes, or the approval "
+                                     "expires. Opt-outs apply at once; spike alerts pause a run; every run is "
+                                     "reconciled.", {"color": T1})]], size=7.5, align=PP_ALIGN.CENTER,
             anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, NOTES_A)
     return s
