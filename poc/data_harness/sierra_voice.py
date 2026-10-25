@@ -36,8 +36,9 @@ WALK IT
 - Left: the caller talks to the Sierra voice agent.
 - Top, knowledge path (no PHI): articles live in GCP with an owner, version, review date and approval; DLP and Collibra scan them for PHI; only approved articles are indexed and synced to Sierra when they change.
 - Bottom, patient path: verify the caller first; then a scoped scheduling API returns only that patient's data and enforces the rules (cancellation window, reschedule rules, provider restrictions); bookings are written to the scheduling system of record, never a GCP copy.
-- Right, after every call: hand-off to a person when needed, masked transcripts with retention limits, outcomes as aggregates into Gold A, and test calls before every release.
-- Bottom: the six safeguards."""
+- Right, after every call: hand-off to a person when needed, masked transcripts with retention limits, opt-outs said on the call update the consent of record at once, outcomes go per call into Gold B and as aggregates into Gold A, and test calls before every release.
+- The knowledge base uses the same semantic layer and knowledge graph as campaigns, so Sierra and every campaign use one vocabulary for locations, visit types and services.
+- Bottom: the seven safeguards."""
 
 
 def sierra_logo():
@@ -139,7 +140,8 @@ def build(prs, layout):
          "is published.", line=EDGE, fill=CARD, tsize=6.6, bsize=5.9, tcolor=T1, bcolor=T2)
     gate(cv, xs[2], cy, cw, ch, "Owner approves", "Clinical content gets a clinical reviewer. Conflicting "
          "versions retired.")
-    card(cv, xs[3], cy, cw, ch, "Approved KB index", "Synced to Sierra on every change, so no stale answer.",
+    card(cv, xs[3], cy, cw, ch, "Approved KB index", "Same semantic layer and knowledge graph as campaigns; "
+         "synced to Sierra on every change.",
          line=CYAN, fill=CARD, tsize=6.6, bsize=5.9, tcolor=T1, bcolor=T2)
     for k in range(3):
         cv.arrow(xs[k] + cw, cy + ch / 2, xs[k + 1], cy + ch / 2, "8C8C8C", 1.0)
@@ -188,19 +190,20 @@ def build(prs, layout):
     cv.rect(rx, top, rw, 0.28, "2B2B2B", None)
     cv.text(rx + 0.12, top, rw - 0.24, 0.28, "3  AFTER EVERY CALL", size=6.4, bold=True, color=T1, track=120,
             anchor=MSO_ANCHOR.MIDDLE)
-    gate(cv, rx + 0.12, top + 0.4, rw - 0.24, 0.82, "Hand-off to a person", "Identity not verified, upset "
+    gate(cv, rx + 0.12, top + 0.38, rw - 0.24, 0.7, "Hand-off to a person", "Identity not verified, upset "
          "caller or a clinical question.")
     after = [("Masked transcripts", "Recordings hold PHI: access control, retention limits, masked before "
               "analytics.", None),
-             ("Outcomes to Gold A", "Booked, cancelled, rescheduled, escalated, as aggregates for measurement.",
+             ("Opt-outs at once", "A caller who says stop: the consent of record updates immediately.", None),
+             ("Outcomes → Gold B → Gold A", "Per call into Gold B; aggregates into Gold A for measurement.",
               "googlebigquery"),
              ("Test calls before go-live", "Wrong caller, outside the window, a question no article covers.",
               None)]
-    y = top + 1.36
+    y = top + 1.16
     for t, d, ic in after:
-        card(cv, rx + 0.12, y, rw - 0.24, 0.9, t, d, line=EDGE, fill=CARD, icon=ic, tsize=6.8, bsize=6.0,
+        card(cv, rx + 0.12, y, rw - 0.24, 0.72, t, d, line=EDGE, fill=CARD, icon=ic, tsize=6.8, bsize=6.0,
              tcolor=T1, bcolor=T2)
-        y += 1.0
+        y += 0.78
     # ---------------------------------------------------------------- safeguards
     gy, gh = 5.88, 0.86
     cv.text(0.45, gy, 1.3, gh, [[("SAFEGUARDS", {"bold": True, "color": T1, "track": 120})],
@@ -211,8 +214,9 @@ def build(prs, layout):
               ("System of record", "never a GCP copy"),
               ("Rules in the API", "not only in an article"),
               ("Governed articles", "owner, version, PHI-scanned"),
-              ("Tested before release", "scripted test calls")]
-    w = (12.88 - 1.8 - 5 * 0.1) / 6
+              ("Tested before release", "scripted test calls"),
+              ("Opt-outs at once", "consent of record updated")]
+    w = (12.88 - 1.8 - 6 * 0.1) / 7
     for k, (t, d) in enumerate(guards):
         x = 1.8 + k * (w + 0.1)
         cv.rect(x, gy, w, gh, CARD, None)
