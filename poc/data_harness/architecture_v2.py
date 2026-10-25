@@ -47,31 +47,32 @@ def head_bar(cv, x, y, w, t, color, sub=""):
 
 
 # ================================================================== A: Codex is the single interface
-NOTES_A = """SLIDE: Codex is the single interface for discovery, approvals and activation   (about 3 minutes)
+NOTES_A = """SLIDE: Codex is the single interface for discovery, approvals and continuous activation   (about 3 minutes)
 
 KEY MESSAGE
-The business user works in one place, Codex. Agents decide what campaign and what cohort, from definitions and counts. Two engines we build in Google Cloud decide exactly which patients, and release only the minimum fields to Marketing Cloud after people approve.
+The business user works in one place, Codex. Agents decide what campaign and what cohort, from definitions and counts. Engines we build in Google Cloud decide exactly which patients, release only the minimum fields to Marketing Cloud after people approve, and keep the cohort current without a daily approval.
 
 WALK IT
 1 Govern the data in Google Cloud: before anything is ingested, a Collibra steward approves each dataset, DLP classifies the PHI and the policy tags are set; approved extracts land in Bronze, where DLP re-scans; Silver resolves identity across systems (EUID) and holds the consent of record; Gold splits into Gold A (insight: aggregates, small groups suppressed, for agents) and Gold B (restricted: patient, contact and consent, for the engines only).
-2 Governed intelligence, side by side on Gold A: the semantic layer (Kyvos or built in-house) gives one meaning to patient, discharge, cohort, consent, engagement and KPI; the knowledge graph in Spanner holds concepts, cohort rules, campaigns, templates, lineage and owners, with no patient nodes.
-3 Codex: the user sets the goal; the agent returns the campaign and cohort JSON, the campaign contract, approved at G1; the Design and Readiness agents build and test the journey on test contacts, approved by clinical and compliance at G3; the engines return a summary only, approved at G2. Approvals come from the approval service with named roles and a signed token; Codex shows them and never grants them.
-4 The Cohort Resolution Engine checks the JSON and the G1 + G3 token, builds a parameterized query from approved concepts (agents never write SQL), queries Gold B inside the protected boundary, applies consent, STOP, suppression, deceased, duplicate and contactability rules, and returns counts and exclusions only. After G2 the Activation Engine checks the G2 token, purpose, rule version and minimum fields and pushes the approved records to a Marketing Cloud data extension for this run only; the journey re-checks consent at send.
-Always on: immediate opt-out to the consent of record, a run ID with reconciliation (G2 count = released = loaded = sent), and engagement back into Gold B, aggregated into Gold A."""
+2 Governed intelligence, side by side on Gold A: the semantic layer (Kyvos or built in-house) and the knowledge graph in Spanner, with no patient nodes.
+3 Codex: the goal; the campaign and cohort JSON, a versioned contract with its refresh policy, approved at G1; the journey built and tested on test contacts, approved at G3; the first run's summary, approved at G2; then ongoing status: each refresh, failure, pause and rule-change alert. Approvals come from the approval service with named roles and a signed token.
+4 The Cohort Resolution Engine checks the JSON and the token, runs a controlled, parameterized query on Gold B, applies consent, STOP, suppression, deceased, duplicate and contactability rules, and returns counts only. After G2 the Activation Engine checks the G2 token, purpose, rule version and minimum fields and pushes the records to a Marketing Cloud data extension; Journey Builder runs the cadence, day 1 to day 30, and re-checks consent at send.
+5 Continuous cohort refresh: a daily or event-driven trigger, skipped if the data is stale; the incremental resolver applies the approved rule to new and changed patients and re-checks consent every run; delta activation adds the newly eligible without duplicates; exit sync removes anyone who opted out, died or no longer meets the rule. No daily approval while the rule version, purpose, fields and destination are unchanged; volume caps and spike alerts pause the run; re-approval when any of those change, a semantic definition changes, or the approval expires.
+Always on: immediate opt-out to the consent of record, a run ID with reconciliation on every run, and engagement back into Gold B, aggregated into Gold A."""
 
 
 def slide_a(prs, layout):
     s, cv = new_slide(prs, layout)
     dark_header(cv, "AGENTIC HEALTHCARE CAMPAIGN PLATFORM · SINGLE USER EXPERIENCE",
-                "Codex is the single interface for discovery, approvals and activation",
-                "Backend engines stay headless. Agents see definitions and counts only; patient-level data never "
-                "returns to the Codex conversation.")
+                "Codex is the single interface for discovery, approvals and continuous activation",
+                "Agents see definitions and counts only. Approved, versioned cohort rules keep adding newly eligible "
+                "patients, within set limits, without a daily approval.")
     # ---------------------------------------------------------------- 1 govern the data
-    by, bh = 1.24, 0.98
+    by, bh = 1.22, 0.86
     cv.rect(0.45, by, 12.43, bh, "0A0A0A", EDGE, 0.75, R, 0.04)
-    cv.text(0.6, by + 0.03, 6, 0.2, "1  GOVERN THE DATA IN GOOGLE CLOUD", size=7, bold=True, color=MAGENTA,
+    cv.text(0.6, by + 0.02, 6, 0.2, "1  GOVERN THE DATA IN GOOGLE CLOUD", size=7, bold=True, color=MAGENTA,
             track=120, anchor=MSO_ANCHOR.MIDDLE)
-    iy, ih = by + 0.27, 0.62
+    iy, ih = by + 0.24, 0.54
     w = (12.43 - 0.24 - 4 * 0.16) / 5
     xs = [0.57 + k * (w + 0.16) for k in range(5)]
     chip(cv, xs[0], iy, w, ih, "Sources", "Epic, athenahealth, ADSI, Salesforce, SFMC", EDGE)
@@ -79,96 +80,86 @@ def slide_a(prs, layout):
          "ingest", MAGENTA)
     chip(cv, xs[2], iy, w, ih, "Bronze", "approved raw extracts, lineage; restricted; DLP re-scans", EDGE)
     chip(cv, xs[3], iy, w, ih, "Silver", "identity resolution (EUID); consent of record", EDGE)
-    gh = (ih - 0.05) / 2
+    gh = (ih - 0.04) / 2
     chip(cv, xs[4], iy, w, gh, "Gold A · insight", "aggregates → agents", YELLOW, 7)
-    chip(cv, xs[4], iy + gh + 0.05, w, gh, "Gold B · restricted", "patients → engines only", MAGENTA, 7)
+    chip(cv, xs[4], iy + gh + 0.04, w, gh, "Gold B · restricted", "patients → engines only", MAGENTA, 7)
     for k in range(3):
         cv.arrow(xs[k] + w, iy + ih / 2, xs[k + 1], iy + ih / 2, T2, 1.0)
     cv.arrow(xs[3] + w, iy + gh / 2, xs[4], iy + gh / 2, T2, 1.0)
-    cv.arrow(xs[3] + w, iy + gh + 0.05 + gh / 2, xs[4], iy + gh + 0.05 + gh / 2, T2, 1.0)
+    cv.arrow(xs[3] + w, iy + gh + 0.04 + gh / 2, xs[4], iy + gh + 0.04 + gh / 2, T2, 1.0)
     # ---------------------------------------------------------------- columns
-    top, bot = 2.36, 6.5
+    top, bot = 2.2, 5.5
     lx, lw = 0.45, 3.0
     mx, mw = 3.65, 3.85
     rx, rw = 8.2, 4.68
     # 2 governed intelligence
     cv.text(lx, top, lw, 0.26, "2  GOVERNED INTELLIGENCE · ON GOLD A", size=7, bold=True, color=CYAN, track=100,
             anchor=MSO_ANCHOR.MIDDLE)
-    ch = 1.62
+    ch = 1.38
     cards = [(CYAN, "Semantic layer", "Kyvos or built in-house", "One meaning for every term: patient, discharge, "
-              "cohort, consent, engagement, KPI. Small groups suppressed; query limits."),
+              "cohort, consent, engagement, KPI. Small groups suppressed."),
              (MAGENTA, "Knowledge graph", "Spanner Graph", "Concepts, cohort rules, campaigns, templates, lineage "
               "and owners. No patient nodes.")]
-    ys = [top + 0.34, top + 0.34 + ch + 0.14]
+    ys = [top + 0.32, top + 0.32 + ch + 0.14]
     for (c, t, sub, d), y in zip(cards, ys):
         cv.rect(lx, y, lw, ch, TINTS[c], c, 1.0, R, 0.05)
-        cv.text(lx + 0.15, y + 0.12, lw - 0.3, 0.5, [[(t, {"bold": True, "color": T1, "size": 10})],
+        cv.text(lx + 0.15, y + 0.1, lw - 0.3, 0.46, [[(t, {"bold": True, "color": T1, "size": 10})],
                                                      [(sub, {"color": c, "size": 7.5})]], size=10, after=1)
-        cv.text(lx + 0.15, y + 0.68, lw - 0.3, ch - 0.75, d, size=7.5, color=T2)
+        cv.text(lx + 0.15, y + 0.62, lw - 0.3, ch - 0.68, d, size=7.5, color=T2)
         cv.arrow(lx + lw, y + ch / 2, mx, y + ch / 2, c, 1.5)
-    cv.text(lx, ys[1] + ch + 0.08, lw, 0.2, "Side by side, not a chain; both read Gold A only.", size=7, color=T3,
-            anchor=MSO_ANCHOR.MIDDLE)
     # 3 Codex
     cv.rect(mx, top, mw, bot - top, BLACK, YELLOW, 1.5, R, 0.06)
-    cv.text(mx, top + 0.1, mw, 0.3, "3  CODEX · AGENTIC ORCHESTRATION", size=11, bold=True, color=T1,
+    cv.text(mx, top + 0.06, mw, 0.28, "3  CODEX · AGENTIC ORCHESTRATION", size=11, bold=True, color=T1,
             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(mx, top + 0.4, mw, 0.2, "One conversation · named approvers · no screen switching", size=7.5,
-            color=YELLOW, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    steps = [(CYAN, "A", "User sets the campaign goal", "“Create a cardiac post-discharge SMS campaign.”", None),
-             (YELLOW, "B", "Agent returns the campaign + cohort JSON", "the campaign contract: purpose, criteria, "
-              "channel, fields, KPIs, rule versions", "G1"),
+    cv.text(mx + 0.1, top + 0.34, mw - 0.2, 0.2, "One conversation · approvals by named roles, signed by the "
+            "approval service", size=7, color=YELLOW, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    steps = [(CYAN, "A", "Campaign goal", "channel, cadence and target population", None),
+             (YELLOW, "B", "Cohort JSON + refresh policy", "versioned contract: purpose, criteria, fields, KPIs",
+              "G1"),
              (YELLOW, "C", "Build + test the journey", "Design + Readiness agents, test contacts only", "G3"),
-             (YELLOW, "D", "Summary only, then activation", "counts, exclusions by rule, fields, destination; no PHI",
+             (YELLOW, "D", "First run, then ongoing status", "counts only; refreshes, pauses, rule-change alerts",
               "G2")]
-    sx, sw, sh = mx + 0.18, mw - 0.36, 0.62
-    sy = [top + 0.72 + k * (sh + 0.08) for k in range(4)]
+    sx, sw, sh = mx + 0.16, mw - 0.32, 0.58
+    sy = [top + 0.62 + k * (sh + 0.08) for k in range(4)]
     for (c, n, t, d, g), y in zip(steps, sy):
         cv.rect(sx, y, sw, sh, TINTS[c], c, 1.0, R, 0.08)
-        cv.text(sx + 0.12, y + 0.06, sw - 0.75, 0.25, [[(n + "  ", {"bold": True, "color": c}),
+        cv.text(sx + 0.12, y + 0.04, sw - 0.75, 0.25, [[(n + "  ", {"bold": True, "color": c}),
                                                        (t, {"bold": True, "color": T1})]], size=8,
                 anchor=MSO_ANCHOR.MIDDLE)
-        cv.text(sx + 0.12, y + 0.32, sw - 0.24, sh - 0.36, d, size=7, color=T2)
+        cv.text(sx + 0.12, y + 0.3, sw - 0.24, sh - 0.32, d, size=7, color=T2)
         if g:
-            cv.rect(sx + sw - 0.55, y + 0.08, 0.45, 0.2, YELLOW, None, shape=R, radius=0.5)
-            cv.text(sx + sw - 0.55, y + 0.08, 0.45, 0.2, g, size=7, bold=True, color="000000",
+            cv.rect(sx + sw - 0.55, y + 0.07, 0.45, 0.2, YELLOW, None, shape=R, radius=0.5)
+            cv.text(sx + sw - 0.55, y + 0.07, 0.45, 0.2, g, size=7, bold=True, color="000000",
                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     for y0, y1 in zip(sy, sy[1:]):
         cv.arrow(mx + mw / 2, y0 + sh, mx + mw / 2, y1, T2, 1.0)
-    cv.text(sx, sy[3] + sh + 0.06, sw, 0.42, [[("Approvals come from the approval service: ", {"bold": True,
-                                                                                           "color": YELLOW}),
-                                             ("SSO, named roles, a signed token. Codex shows them; it never grants "
-                                              "them.", {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE)
     # 4 engines, inside the protected boundary
     cv.rect(rx - 0.06, top - 0.04, rw + 0.12, bot - top + 0.08, None, MAGENTA, 1.25, R, 0.03, dash="dash")
-    cv.text(rx + 0.06, top + 0.02, rw - 0.12, 0.24, "4  COHORT RESOLUTION + ACTIVATION ENGINES", size=7, bold=True,
-            color=MAGENTA, track=100, anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(rx + 0.06, top + 0.24, rw - 0.12, 0.18, "Google Cloud · deterministic, no AI · patient data stays inside",
-            size=7, color=T3, anchor=MSO_ANCHOR.MIDDLE)
+    cv.text(rx + 0.06, top + 0.02, rw - 0.12, 0.22, "4  COHORT RESOLUTION + ACTIVATION · ON GOLD B", size=7,
+            bold=True, color=MAGENTA, track=100, anchor=MSO_ANCHOR.MIDDLE)
     ex, ew = rx + 0.06, rw - 0.12
-    e1y = top + 0.46
-    head_bar(cv, ex, e1y, ew, "COHORT RESOLUTION ENGINE", CYAN)
+    e1y = top + 0.3
+    head_bar(cv, ex, e1y, ew, "COHORT RESOLUTION ENGINE", CYAN, "deterministic, no AI")
     res = [("1", "Cohort API", "checks the JSON and the G1 + G3 token"),
-           ("2", "Controlled query builder", "approved concepts → parameterized SQL; agents never write SQL"),
-           ("3", "Gold B query", "inside the protected boundary"),
-           ("4", "Eligibility + consent rules", "consent · STOP · suppression · deceased · duplicates · "
+           ("2", "Controlled query on Gold B", "approved concepts → parameterized SQL; agents never write SQL"),
+           ("3", "Eligibility + consent rules", "consent · STOP · suppression · deceased · duplicates · "
             "contactability"),
-           ("5", "Summary to Codex", "counts and exclusions by rule; no PHI")]
+           ("4", "Summary to Codex", "counts and exclusions by rule; no PHI")]
     rh = 0.3
-    ry = [e1y + 0.32 + k * (rh + 0.045) for k in range(len(res))]
+    ry = [e1y + 0.32 + k * (rh + 0.04) for k in range(len(res))]
     for (n, t, d), y in zip(res, ry):
         row(cv, ex, y, ew, rh, n, t, d, CYAN)
-    e2y = ry[-1] + rh + 0.1
-    head_bar(cv, ex, e2y, ew, "ACTIVATION ENGINE", MAGENTA, "rules engine")
-    act = [("6", "Activation rules", "checks the G2 token, purpose, rule version, minimum fields"),
-           ("7", "Marketing Cloud DE", "neutral name; this run only; purged after"),
-           ("8", "Journey", "sends; consent re-checked at send")]
-    ay = [e2y + 0.32 + k * (rh + 0.045) for k in range(len(act))]
+    e2y = ry[-1] + rh + 0.08
+    head_bar(cv, ex, e2y, ew, "CAMPAIGN ACTIVATION ENGINE", MAGENTA, "rules engine")
+    act = [("5", "Activation rules", "checks the G2 token, purpose, rule version, minimum fields"),
+           ("6", "Marketing Cloud DE → journey", "day 1 → day 30 cadence; consent re-checked at send")]
+    ay = [e2y + 0.32 + k * (rh + 0.04) for k in range(len(act))]
     for (n, t, d), y in zip(act, ay):
         row(cv, ex, y, ew, rh, n, t, d, MAGENTA)
-    # Codex <-> engines: (from y, to y, x of the vertical, colour, dash, label, label y)
+    # Codex <-> engines: (from x, from y, to y, x of the vertical, colour, dash, label, label offset)
     gx0, gx1 = mx + mw, rx - 0.06
     links = [(gx0, sy[1] + sh / 2, ry[0] + rh / 2, gx1 - 0.1, CYAN, None, "JSON + token", -0.3),
-             (gx1, ry[4] + rh / 2, sy[3] + 0.18, gx1 - 0.1, T2, "dash", "summary only", None),
+             (gx1, ry[3] + rh / 2, sy[3] + 0.16, gx1 - 0.1, T2, "dash", "summary only", None),
              (gx0, sy[3] + sh - 0.1, ay[0] + rh / 2, gx1 - 0.24, YELLOW, None, "G2 token", 0.03)]
     for a, ya, yb, xv, c, dash, lab, dy in links:
         b = gx1 if a == gx0 else gx0
@@ -178,14 +169,36 @@ def slide_a(prs, layout):
         ly = (ya + dy) if dy is not None else yb - 0.3
         cv.text(gx0 + 0.03, ly, xv - gx0 - 0.06, 0.27, lab.split(" ", 1), size=7, bold=True,
                 color=c if c != T2 else T1, anchor=MSO_ANCHOR.MIDDLE, line=0.85)
+    # ---------------------------------------------------------------- 5 continuous cohort refresh
+    cy_, chh = bot + 0.1, 0.92
+    cv.rect(0.45, cy_, 12.43, chh, "06262B", CYAN, 1.0, R, 0.05)
+    cv.text(0.6, cy_, 1.75, chh, [[("5  CONTINUOUS", {"bold": True, "color": CYAN, "track": 100})],
+                                  [("COHORT REFRESH", {"bold": True, "color": CYAN, "track": 100})],
+                                  [("on Gold B, no daily approval", {"color": T2})]], size=7,
+            anchor=MSO_ANCHOR.MIDDLE, after=1)
+    refresh = [("Refresh trigger", "daily or on new data; skipped if data is stale"),
+               ("Incremental resolver", "approved rule on new + changed patients; consent re-checked"),
+               ("Delta activation", "adds the newly eligible to the journey; no duplicates"),
+               ("Exit sync", "removes anyone who opts out, dies or no longer qualifies")]
+    w4 = 1.95
+    for k, (t, d) in enumerate(refresh):
+        x = 2.4 + k * (w4 + 0.14)
+        chip(cv, x, cy_ + 0.12, w4, chh - 0.24, t, d, CYAN, 7.5)
+        if k < 3:
+            cv.arrow(x + w4, cy_ + chh / 2, x + w4 + 0.14, cy_ + chh / 2, T2, 1.0)
+    gxr = 2.4 + 4 * (w4 + 0.14) - 0.04
+    cv.text(gxr, cy_ + 0.06, 12.8 - gxr, chh - 0.12, [
+        [("Re-approval only ", {"bold": True, "color": YELLOW}),
+         ("when the rule, purpose, fields, destination, consent policy or a semantic definition changes, or "
+          "the approval expires. Volume caps and spike alerts pause a run.", {"color": T1})]], size=7,
+        anchor=MSO_ANCHOR.MIDDLE)
     # ---------------------------------------------------------------- always on
-    fy = bot + 0.1
-    fx, fy_, fw, fh = cv.frame(0.45, fy, 12.43, 0.36, "0A0A0A", 0.02)
+    fy = cy_ + chh + 0.06
+    fx, fy_, fw, fh = cv.frame(0.45, fy, 12.43, 0.3, "0A0A0A", 0.02)
     cv.text(fx + 0.15, fy_, fw - 0.3, fh, [[("ALWAYS ON   ", {"bold": True, "color": YELLOW, "track": 100}),
-                                           ("Send-time consent re-check  ·  opt-outs to the consent of record at "
-                                            "once  ·  run ID + reconciliation: G2 = released = loaded = sent  ·  "
-                                            "engagement → Gold B → aggregated into Gold A", {"color": T1})]],
-            size=7, anchor=MSO_ANCHOR.MIDDLE)
+                                           ("opt-outs to the consent of record at once  ·  run ID + reconciliation "
+                                            "on every run  ·  engagement → Gold B → aggregated into Gold A",
+                                            {"color": T1})]], size=7, anchor=MSO_ANCHOR.MIDDLE)
     set_notes(s, NOTES_A)
     return s
 

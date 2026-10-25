@@ -35,7 +35,7 @@ Sierra answers questions from governed knowledge base articles in Google Cloud, 
 WALK IT
 - Left: the caller talks to the Sierra voice agent.
 - Top, knowledge path (no PHI): articles live in GCP with an owner, version, review date and approval; DLP and Collibra scan them for PHI; only approved articles are indexed and synced to Sierra when they change.
-- Bottom, patient path: verify the caller first. Then two scoped APIs, each returning only this caller's data: the scheduling API reads and writes the scheduling system of record (Epic) and enforces the rules (cancellation window, reschedule rules, provider restrictions), so bookings are never a GCP copy; the patient-context API reads Gold B, read-only, for this caller's campaign status and consent, for example "you received a heart-failure follow-up text". It never returns a list.
+- Bottom, patient path: first the Patient Identity & Verification Service checks, in seconds, that the caller ID matches the number on file (with carrier and SIM-swap checks) and the date of birth, and issues a short-lived Verified Patient Token; a step-up (app push, SMS code or a person) only when the caller ID does not match or the change is higher risk. Emergencies skip verification and go straight to 911 or the nurse line. Then the Verified Patient Action Engine exposes narrow functions: SearchAvailableSlots and RescheduleAppointment against Epic, the system of record, with the rules enforced; and GetPatientContext, read-only on Gold B, for this caller's campaign status and consent. It never returns a list.
 - Right, after every call: hand-off to a person when needed, masked transcripts with retention limits, opt-outs said on the call update the consent of record at once, outcomes go per call into Gold B and as aggregates into Gold A, and test calls before every release.
 - The knowledge base uses the same semantic layer and knowledge graph as campaigns, so Sierra and every campaign use one vocabulary for locations, visit types and services.
 - Bottom: the seven safeguards."""
@@ -89,8 +89,8 @@ def build(prs, layout):
     s, cv = new_slide(prs, layout)
     dark_header(cv, "ASCENSION · SIERRA VOICE AGENT",
                 "Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions",
-                "Articles in Google Cloud keep every answer accurate. Booking, cancelling and rescheduling go through "
-                "the scheduling system of record, only after the caller is verified.")
+                "Approved articles keep every answer accurate. Patient actions go through the Verified Patient Action "
+                "Engine after a quick check; emergencies go straight to 911 or a nurse.")
     top, bot = 1.3, 5.72
     # ---------------------------------------------------------------- left: caller + Sierra
     lx, lw = 0.45, 2.05
@@ -116,7 +116,7 @@ def build(prs, layout):
     jobs = [("Answers questions", "from approved articles only"),
             ("Verifies the caller", "before anything patient-specific"),
             ("Books, cancels, reschedules", "through the scoped API"),
-            ("Hands off to a person", "when it should not decide")]
+            ("Hands off at once", "emergencies to 911 or a nurse")]
     for k, (t, d) in enumerate(jobs):
         y = sy + 0.6 + k * 0.62
         cv.rect(lx + 0.12, y + 0.07, 0.07, 0.07, CYAN, None, shape=MSO_SHAPE.OVAL)
@@ -129,7 +129,7 @@ def build(prs, layout):
     kb_y, kb_h = top, 2.05
     pt_y, pt_h = top + 2.37, bot - top - 2.37
     band(cv, mx, kb_y, mw, kb_h, "1  KNOWLEDGE PATH", "no PHI · keeps every answer accurate")
-    band(cv, mx, pt_y, mw, pt_h, "2  PATIENT PATH", "PHI · verified caller only · this patient only")
+    band(cv, mx, pt_y, mw, pt_h, "2  PATIENT PATH", "PHI · verified patient token · Verified Patient Action Engine")
     cw = (mw - 0.24 - 3 * 0.16) / 4
     cy, ch = kb_y + 0.4, 0.98
     xs = [mx + 0.12 + k * (cw + 0.16) for k in range(4)]
@@ -163,12 +163,12 @@ def build(prs, layout):
     px = [mx + 0.12]
     for w in pw[:-1]:
         px.append(px[-1] + w + 0.2)
-    gate(cv, px[0], py, pw[0], ph, "Verify the caller", "Date of birth plus a one-time code, before any "
-         "patient detail.")
+    gate(cv, px[0], py, pw[0], ph, "Identity + verification", "Caller ID on file + date of birth, in seconds; "
+         "step-up only if needed.")
     rh_ = (ph - 0.08) / 2
-    apis = [("Scoped scheduling API", "This patient's appointments and slots; rules enforced.", None, "Epic",
+    apis = [("Action Engine · scheduling", "SearchAvailableSlots, Reschedule; this patient only.", None, "Epic",
              "Scheduling system of record", "Book, cancel, reschedule written here."),
-            ("Scoped patient-context API", "This caller's campaign status and consent; never a list.", CYAN,
+            ("Action Engine · patient context", "GetPatientContext: campaign status, consent; no lists.", CYAN,
              "Gold B", "Restricted patient layer", "Read-only, for this verified call.")]
     for k, (t, d, c, tag, st, sd) in enumerate(apis):
         y = py + k * (rh_ + 0.08)
@@ -192,7 +192,7 @@ def build(prs, layout):
         cv.arrow(px[1] + pw[1], my_ - 0.06, px[2], my_ - 0.06, CYAN, 1.25)
         cv.arrow(px[2], my_ + 0.06, px[1] + pw[1], my_ + 0.06, CYAN, 1.25)
     cv.arrow(lx + lw, py + ph / 2, px[0], py + ph / 2, CYAN, 1.25)
-    chips(cv, mx + 0.12, py + ph + 0.14, mw - 0.24, "RULES IN THE API",
+    chips(cv, mx + 0.12, py + ph + 0.14, mw - 0.24, "RULES IN THE ENGINE",
           ["cancellation window", "reschedule rules", "visit types", "provider restrictions", "minimum fields"])
     # ---------------------------------------------------------------- right: after the call
     rx, rw = 10.05, 12.88 - 10.05
@@ -220,12 +220,12 @@ def build(prs, layout):
                                 [("accurate, and safe for patients", {"color": T3, "size": 5.2})]], size=6.4,
             anchor=MSO_ANCHOR.MIDDLE, after=1)
     guards = [("BAA with Sierra", "calls carry PHI"),
-              ("Verify before any PHI", "then this patient only"),
+              ("Verified in seconds", "no SMS wait; step-up if needed"),
               ("System of record", "never a GCP copy"),
-              ("Rules in the API", "not only in an article"),
+              ("Rules in the engine", "not only in an article"),
               ("Governed articles", "owner, version, PHI-scanned"),
               ("Tested before release", "scripted test calls"),
-              ("Opt-outs at once", "consent of record updated")]
+              ("Emergencies never wait", "911 or a nurse; no check")]
     w = (12.88 - 1.8 - 6 * 0.1) / 7
     for k, (t, d) in enumerate(guards):
         x = 1.8 + k * (w + 0.1)

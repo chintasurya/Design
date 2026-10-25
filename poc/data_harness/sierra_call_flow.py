@@ -21,58 +21,58 @@ OUT = os.path.join(HERE, "build", "sierra_call_flow.pptx")
 TINTS = {CYAN: "06262B", YELLOW: "2B2508", MAGENTA: "2B0716", T1: "1A1A1A"}
 BOUNDARY = 1            # lanes from here on carry the verified caller's PHI; the knowledge base has none
 
-LANES = [("googlecloud", "Knowledge base", "approved articles · semantic layer + graph", CYAN),
+LANES = [("googlecloud", "Shared knowledge", "approved articles · semantic layer + graph", CYAN),
          ("people", "Patient", "calls the Ascension number", YELLOW),
          (None, "Sierra voice agent", "answers, verifies, acts · BAA", CYAN),
-         (None, "Identity verification", "date of birth + one-time code", YELLOW),
-         (None, "Scoped scheduling API", "this patient only · rules enforced", MAGENTA),
+         (None, "Identity + verification", "caller ID + date of birth · patient token", YELLOW),
+         (None, "Verified Patient Action Engine", "narrow functions · this patient only", MAGENTA),
          (None, "Epic scheduling", "system of record", T1),
-         ("googlebigquery", "Patient-context API", "Gold B · read-only · this caller", MAGENTA)]
+         ("googlebigquery", "Gold B", "patient context · read-only", MAGENTA)]
 
 # (kind, from lane, to lane, label, colour); kinds: msg, ret (dashed return), gate, self
-ROWS = [("msg", 1, 2, "1  “When is my cardiology appointment? Can I move it?”", YELLOW),
-        ("self", 2, 2, "2  Patient-specific request: verify first", CYAN),
-        ("msg", 2, 3, "3  Verify: date of birth + number on file", CYAN),
-        ("msg", 3, 1, "4  One-time code by SMS; the caller reads it back", YELLOW),
-        ("ret", 3, 2, "5  Verified: a session token for this patient only", T2),
-        ("msg", 2, 4, "6  Upcoming appointments for this token", CYAN),
-        ("msg", 4, 5, "7  Read: this patient only", MAGENTA),
-        ("ret", 5, 4, "8  Appointment record", T2),
-        ("ret", 4, 2, "9  Date, time, provider, location: minimum fields", T2),
-        ("msg", 2, 6, "10  Any campaign or consent context for this caller?", CYAN),
-        ("ret", 6, 2, "11  Heart-failure follow-up text sent Monday; SMS consent on file", T2),
-        ("msg", 2, 0, "12  Prep for a cardiology follow-up?", CYAN),
-        ("ret", 0, 2, "13  Approved article, cited; no PHI", T2),
-        ("ret", 2, 1, "14  “Tuesday 10:30 with cardiology. Bring your medication list.”", T2),
-        ("msg", 1, 2, "15  “Move it to Friday morning.”", YELLOW),
-        ("msg", 2, 4, "16  Friday slots; reschedule rules checked in the API", CYAN),
-        ("msg", 4, 5, "17  Reschedule written to Epic", MAGENTA),
-        ("ret", 4, 1, "18  Confirmed Friday 9:00; Sierra tells the caller; confirmation text sent", T2),
-        ("gate", 1, 1, "Hand-off to a person: not verified, upset or clinical", YELLOW),
-        ("msg", 2, 6, "19  After the call: outcome into Gold B, aggregates into Gold A; transcript masked", CYAN)]
+ROWS = [("gate", 1, 1, "Emergency words? Straight to 911 or the nurse line: no check, no wait", MAGENTA),
+        ("msg", 1, 2, "1  “When is my next cardiology appointment?”", YELLOW),
+        ("msg", 2, 3, "2  Caller ID matches the number on file + date of birth; carrier + SIM-swap checks", CYAN),
+        ("ret", 3, 2, "3  Verified in seconds: a short-lived Verified Patient Token (no SMS wait)", T2),
+        ("msg", 2, 4, "4  GetNextAppointment(token)", CYAN),
+        ("msg", 4, 5, "5  Read: this patient only", MAGENTA),
+        ("ret", 5, 4, "6  Appointment record", T2),
+        ("ret", 4, 2, "7  Minimum fields: Monday 10:30, cardiology, location", T2),
+        ("ret", 2, 1, "8  “Your cardiology appointment is Monday at 10:30 AM.”", T2),
+        ("msg", 1, 2, "9  “Can you move it to Friday?”", YELLOW),
+        ("msg", 2, 4, "10  SearchAvailableSlots(token, Friday): rules applied", CYAN),
+        ("msg", 4, 5, "11  Live availability", MAGENTA),
+        ("ret", 2, 1, "12  “Friday has 10:00 AM and 2:30 PM available.”", T2),
+        ("msg", 1, 2, "13  “2:30.”", YELLOW),
+        ("msg", 2, 4, "14  RescheduleAppointment(token, Friday 2:30)", CYAN),
+        ("msg", 4, 5, "15  Written to Epic", MAGENTA),
+        ("ret", 4, 1, "16  Confirmed: Sierra tells the caller; confirmation text sent", T2),
+        ("msg", 2, 0, "17  Prep for a cardiology follow-up? Approved article, no PHI", CYAN),
+        ("gate", 1, 1, "Step-up or hand-off: no caller-ID match, a higher-risk change or a clinical question", YELLOW),
+        ("msg", 4, 6, "18  After the call: outcome into Gold B, aggregates into Gold A; transcript masked", CYAN)]
 
 NOTES = """PREVIEW: a patient calls about a booked appointment   (about 2 minutes)
 
 KEY MESSAGE
-Sierra answers general questions from approved articles with no PHI, and acts only for the verified caller, through scoped APIs, with bookings written to Epic.
+Knowledge is shared across agents; patient-level transactions are not. Sierra answers general questions from shared, governed knowledge, and acts for a patient only through the Verified Patient Action Engine, after a check that takes seconds. Emergencies never wait for a check.
 
 WALK IT (top to bottom)
-1-2 The patient asks about their cardiology appointment and wants to move it. That is patient-specific, so Sierra verifies first.
-3-5 The verification service checks the date of birth and the number on file and sends a one-time code by SMS; once the caller reads it back, Sierra gets a session token for this patient only.
-6-9 With the token, the scoped scheduling API reads this patient's appointments from Epic and returns only the minimum fields: date, time, provider and location.
-10-11 The patient-context API reads Gold B, read-only, for this caller: for example, the heart-failure follow-up text sent on Monday and the SMS consent on file. It never returns a list.
-12-14 For preparation advice Sierra uses an approved knowledge-base article, cited, with no PHI, then answers the caller.
-15-18 The caller asks to move it; the scheduling API offers Friday slots, checks the reschedule rules and writes the change to Epic. Sierra confirms and a confirmation text is sent.
-Hand-off: if the caller is not verified, upset, or asks a clinical question, a person takes over.
-19 After the call the outcome goes into Gold B for this patient and into Gold A as aggregates; the transcript is masked before any analytics."""
+Emergency: words such as chest pain or can't breathe send the caller straight to 911 or the nurse line. No PHI is needed, so nothing is verified.
+1-3 The patient asks about their next cardiology appointment. The Patient Identity & Verification Service checks that the caller ID matches the number on file, with carrier and SIM-swap checks, and the spoken date of birth, and issues a short-lived Verified Patient Token in seconds. No SMS wait.
+4-8 With the token, the Verified Patient Action Engine calls GetNextAppointment against Epic and returns the minimum fields; Sierra answers.
+9-12 The patient asks to move it; SearchAvailableSlots returns Friday's live availability with the rules applied; Sierra offers 10:00 and 2:30.
+13-16 The patient picks 2:30; RescheduleAppointment writes it to Epic; Sierra confirms and a confirmation text is sent.
+17 Preparation advice comes from an approved article in the shared knowledge, with no PHI.
+Step-up or hand-off: an app push, SMS code or a person only when the caller ID does not match, the change is higher risk (for example new contact details), or the question is clinical.
+18 After the call the outcome goes into Gold B for this patient and into Gold A as aggregates; the transcript is masked before any analytics."""
 
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
     dark_header(cv, "ASCENSION · SIERRA VOICE AGENT · CALL FLOW (PREVIEW)",
                 "A patient calls about their appointment: what happens behind the scenes",
-                "Sierra answers from approved articles, and acts only for the verified caller through scoped APIs; "
-                "bookings stay in Epic.")
+                "Knowledge is shared; patient transactions are not. Sierra acts for a patient only through the Verified "
+                "Patient Action Engine, after a check that takes seconds.")
     x0, wtot = 0.45, 12.43
     lw = wtot / len(LANES)
     cx = [x0 + lw * (i + 0.5) for i in range(len(LANES))]
@@ -107,9 +107,10 @@ def build(prs, layout):
             cv.text(lx, y - 0.16, tw, 0.135, label, size=7, color=T1 if kind == "msg" else T2,
                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         elif kind == "gate":
-            w = 3.4
-            cv.rect(cx[a] - 0.75, y - 0.09, w, 0.18, YELLOW, None, shape=R, radius=0.5)
-            cv.text(cx[a] - 0.75, y - 0.09, w, 0.18, label, size=7, bold=True, color="000000",
+            w = 0.055 * len(label) + 0.3
+            cv.rect(cx[a] - 0.75, y - 0.13, w, 0.16, col, None, shape=R, radius=0.5)   # clear of the next label
+            cv.text(cx[a] - 0.75, y - 0.13, w, 0.16, label, size=7, bold=True,
+                    color="FFFFFE" if col == MAGENTA else "000000",
                     align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         else:
             w = 0.055 * len(label) + 0.2
@@ -118,8 +119,8 @@ def build(prs, layout):
             cv.text(lx, y - 0.09, w, 0.18, label, size=7, color=T1, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         y += step
     px_ = max(tb - 2.7, x0)
-    cv.rect(px_, bot + 0.1, 5.4, 0.2, MAGENTA, None, shape=R, radius=0.5)
-    cv.text(px_, bot + 0.1, 5.4, 0.2, "←  NO PHI: APPROVED ARTICLES ONLY   ·   PHI: THE VERIFIED CALLER ONLY  →",
+    cv.rect(px_, bot + 0.1, 6.2, 0.2, MAGENTA, None, shape=R, radius=0.5)
+    cv.text(px_, bot + 0.1, 6.2, 0.2, "←  SHARED KNOWLEDGE: NO PHI   ·   PATIENT TRANSACTIONS: THE VERIFIED CALLER ONLY  →",
             size=7, bold=True, color="FFFFFE", track=60, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     cv.text(0.45, bot + 0.36, 12.43, 0.2, [[("Never: ", {"bold": True, "color": T1}),
                                             ("lists of patients, anyone else's data, or a Google Cloud copy of a "
