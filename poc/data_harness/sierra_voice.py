@@ -35,7 +35,7 @@ Sierra answers questions from governed knowledge base articles in Google Cloud, 
 WALK IT
 - Left: the caller talks to the Sierra voice agent.
 - Top, knowledge path (no PHI): articles live in GCP with an owner, version, review date and approval; DLP and Collibra scan them for PHI; only approved articles are indexed and synced to Sierra when they change.
-- Bottom, patient path: verify the caller first; then a scoped scheduling API returns only that patient's data and enforces the rules (cancellation window, reschedule rules, provider restrictions); bookings are written to the scheduling system of record, never a GCP copy.
+- Bottom, patient path: verify the caller first. Then two scoped APIs, each returning only this caller's data: the scheduling API reads and writes the scheduling system of record (Epic) and enforces the rules (cancellation window, reschedule rules, provider restrictions), so bookings are never a GCP copy; the patient-context API reads Gold B, read-only, for this caller's campaign status and consent, for example "you received a heart-failure follow-up text". It never returns a list.
 - Right, after every call: hand-off to a person when needed, masked transcripts with retention limits, opt-outs said on the call update the consent of record at once, outcomes go per call into Gold B and as aggregates into Gold A, and test calls before every release.
 - The knowledge base uses the same semantic layer and knowledge graph as campaigns, so Sierra and every campaign use one vocabulary for locations, visit types and services.
 - Bottom: the seven safeguards."""
@@ -157,30 +157,40 @@ def build(prs, layout):
     cv.rect(mx + mw / 2 - 1.6, by - 0.1, 3.2, 0.2, "000000", None)
     pill(cv, mx + mw / 2 - 1.55, by - 0.09, 3.1, "NO PATIENT RECORDS IN THE KNOWLEDGE BASE", CYAN, h=0.18,
          size=5.2)
-    # patient path
+    # patient path: verify, then two scoped APIs, each to one source
     py, ph = pt_y + 0.4, 1.0
-    pw = [1.75, 2.55, 2.42]
+    pw = [1.6, 2.6, 2.4]
     px = [mx + 0.12]
     for w in pw[:-1]:
         px.append(px[-1] + w + 0.2)
     gate(cv, px[0], py, pw[0], ph, "Verify the caller", "Date of birth plus a one-time code, before any "
          "patient detail.")
-    fx, fy, fw, fh = cv.frame(px[1], py, pw[1], ph, CARD, 0.02)
-    cv.text(fx + 0.1, fy + 0.04, fw - 0.2, 0.26, "Scoped scheduling API", size=7, bold=True, color=T1,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(fx + 0.1, fy + 0.32, fw - 0.18, fh - 0.34, "Returns only this patient's data and minimum fields. "
-            "Enforces the rules; the agent never writes queries.", size=6, color=T2)
-    cv.rect(px[2], py, pw[2], ph, CARD, EDGE, 0.75, R, 0.08)
-    cv.rect(px[2] + 0.1, py + 0.08, 0.36, 0.2, CARD2, EDGE, 0.6, R, 0.3)
-    cv.text(px[2] + 0.1, py + 0.08, 0.36, 0.2, "Epic", size=5.4, bold=True, color=T1, align=PP_ALIGN.CENTER,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(px[2] + 0.52, py + 0.05, pw[2] - 0.6, 0.26, "Scheduling system of record", size=7, bold=True, color=T1,
-            anchor=MSO_ANCHOR.MIDDLE)
-    cv.text(px[2] + 0.1, py + 0.36, pw[2] - 0.18, ph - 0.4, "Live availability; book, cancel, reschedule written "
-            "here. Never a GCP copy, which can lag.", size=6, color=T2)
-    cv.arrow(px[0] + pw[0], py + ph / 2, px[1], py + ph / 2, "8C8C8C", 1.0)
-    cv.arrow(px[1] + pw[1], py + ph / 2 - 0.12, px[2], py + ph / 2 - 0.12, CYAN, 1.25)
-    cv.arrow(px[2], py + ph / 2 + 0.12, px[1] + pw[1], py + ph / 2 + 0.12, CYAN, 1.25)
+    rh_ = (ph - 0.08) / 2
+    apis = [("Scoped scheduling API", "This patient's appointments and slots; rules enforced.", None, "Epic",
+             "Scheduling system of record", "Book, cancel, reschedule written here."),
+            ("Scoped patient-context API", "This caller's campaign status and consent; never a list.", CYAN,
+             "Gold B", "Restricted patient layer", "Read-only, for this verified call.")]
+    for k, (t, d, c, tag, st, sd) in enumerate(apis):
+        y = py + k * (rh_ + 0.08)
+        if c:
+            cv.rect(px[1], y, pw[1], rh_, CARD, c, 1.25, R, 0.08)
+        else:
+            fx, fy, fw, fh = cv.frame(px[1], y, pw[1], rh_, CARD, 0.02)
+        cv.text(px[1] + 0.1, y + 0.02, pw[1] - 0.2, rh_ - 0.04, [[(t, {"bold": True, "color": T1})],
+                                                                [(d, {"color": T2, "size": 6})]], size=7,
+                anchor=MSO_ANCHOR.MIDDLE, after=1)
+        cv.rect(px[2], y, pw[2], rh_, CARD, EDGE, 0.75, R, 0.08)
+        tw = 0.18 + 0.06 * len(tag)
+        cv.rect(px[2] + 0.1, y + (rh_ - 0.2) / 2, tw, 0.2, CARD2, EDGE, 0.6, R, 0.3)
+        cv.text(px[2] + 0.1, y + (rh_ - 0.2) / 2, tw, 0.2, tag, size=5.4, bold=True, color=T1,
+                align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        cv.text(px[2] + tw + 0.18, y + 0.02, pw[2] - tw - 0.24, rh_ - 0.04, [[(st, {"bold": True, "color": T1})],
+                                                                          [(sd, {"color": T2, "size": 6})]],
+                size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
+        my_ = y + rh_ / 2
+        cv.arrow(px[0] + pw[0], my_, px[1], my_, "8C8C8C", 1.0)
+        cv.arrow(px[1] + pw[1], my_ - 0.06, px[2], my_ - 0.06, CYAN, 1.25)
+        cv.arrow(px[2], my_ + 0.06, px[1] + pw[1], my_ + 0.06, CYAN, 1.25)
     cv.arrow(lx + lw, py + ph / 2, px[0], py + ph / 2, CYAN, 1.25)
     chips(cv, mx + 0.12, py + ph + 0.14, mw - 0.24, "RULES IN THE API",
           ["cancellation window", "reschedule rules", "visit types", "provider restrictions", "minimum fields"])

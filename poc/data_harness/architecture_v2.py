@@ -199,7 +199,7 @@ Gold B holds what it takes to decide exactly who may be contacted, now, for an a
 WALK IT
 - Top: Silver resolves identity and consent; Gold B serves the Cohort Resolution Engine, the masked G2 summary and the Activation Engine; engagement comes back into Gold B and is aggregated into Gold A.
 - Left, what is in it: the patient key, the cohort facts the rules need, consent per channel and purpose, verified contact points, exclusions, preferences, and engagement and outcomes per patient.
-- Middle, who can read it: the two engines, for an approved run only. Agents, Codex, the semantic layer and the knowledge graph never; people see the masked G2 summary; any break-glass access is logged.
+- Middle, who can read it: the two engines, for an approved run only; the Sierra voice agent through the patient-context API, for one verified caller. Agents, Codex, the semantic layer and the knowledge graph never; people see the masked G2 summary; any break-glass access is logged.
 - Right, what we can do with it: resolve the exact audience, apply consent and suppression at run time, produce the G2 summary, release minimum fields, hold out a control group, track outcomes such as readmissions, and feed safe aggregates back to Gold A.
 - Bottom: the controls on Gold B."""
 
@@ -239,7 +239,8 @@ def slide_b(prs, layout):
            (False, "Agents and Codex", "never: counts only, through the summary"),
            (False, "Semantic layer + graph", "never: they read Gold A"),
            (True, "People", "the masked G2 summary; break-glass logged"),
-           (True, "Marketing Cloud", "only the released fields, this run")]
+           (True, "Marketing Cloud", "only the released fields, this run"),
+           (True, "Sierra voice agent", "patient-context API: this verified caller only")]
     can = ["Resolve the exact eligible audience for an approved campaign",
            "Apply consent, STOP, suppression and contactability at run time",
            "Produce the masked G2 summary: counts and exclusions by rule",
@@ -253,7 +254,7 @@ def slide_b(prs, layout):
     rh = 0.44
     for k, (t, d) in enumerate(inside):
         row(cv, xs[0], top + 0.38 + k * (rh + 0.06), ws[0], rh, "", t, d, MAGENTA)
-    rh2 = (7 * (rh + 0.06) - 6 * 0.06) / 6
+    rh2 = (7 * (rh + 0.06) - (len(who) - 1) * 0.06) / len(who)
     for k, (ok, t, d) in enumerate(who):
         y = top + 0.38 + k * (rh2 + 0.06)
         c = CYAN if ok else MAGENTA
