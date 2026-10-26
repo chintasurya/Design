@@ -1,4 +1,4 @@
-"""Agentic Factory + data harness: a short deck on the IG template (13 slides).
+"""Agentic Factory + data harness: a short deck on the IG template (17 slides).
 
 1 Title
 2 One agent team: seven delivery agents and seven campaign agents
@@ -7,12 +7,16 @@
 5 A Health Cloud change: ~2 weeks manual vs ~2 days on the Agentic Harness (hc_timeline.py)
 6 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
 7 Marketing campaigns end to end, from governed data to a tested, approved campaign (combined_flow.py)
-8 Launching a campaign: ~90 days manual vs ~10-12 days on the data harness (campaign_timeline.py)
-9 How we build it: safeguards first, release last (campaign_platform_deck.py)
-10 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
-11 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
-12 Platform fit: one harness for every pod and job (platform_fit.py)
-13 Lean squads and three-year savings (lean_team.py)
+8 Codex is the single interface for discovery, approvals and continuous activation (architecture_v2.py)
+9 Gold B: the restricted patient layer behind every campaign (architecture_v2.py)
+10 Create a campaign in Codex: what happens behind the scenes (mc_backend_flow.py)
+11 Launching a campaign: ~90 days manual vs ~10-12 days on the data harness (campaign_timeline.py)
+12 How we build it: safeguards first, release last (campaign_platform_deck.py)
+13 PHI governance: classification and approval stay; masking alone is not HIPAA compliance
+14 Sierra voice agent: governed knowledge for answers, scoped APIs for patient actions (sierra_voice.py)
+15 A patient calls about their appointment: what happens behind the scenes (sierra_call_flow.py)
+16 Platform fit: one harness for every pod and job (platform_fit.py)
+17 Lean squads and three-year savings (lean_team.py)
 
 Black deck: the original colourful design in IG colours (muted_theme.vivid). White deck (theme "white"): the
 muted styles in muted_theme.py, recoloured for white.
@@ -735,6 +739,13 @@ def main(out=OUT, theme="dark"):
     platform_fit.build(prs, layout, colorful=not white)   # platform fit: build, scale, accuracy, data, control
     import lean_team
     lean = lean_team.build(prs, layout)         # last slide: lean squads and savings
+    import architecture_v2
+    import mc_backend_flow
+    import sierra_call_flow
+    architecture_v2.slide_a(prs, layout)        # Codex single interface + continuous cohort refresh
+    architecture_v2.slide_b(prs, layout)        # Gold B, the restricted patient layer
+    mc_backend_flow.build(prs, layout)          # create a campaign in Codex: behind the scenes
+    sierra_call_flow.build(prs, layout)         # a Sierra call about a booked appointment
     w1 = (11.95 - 4 * 0.16) / 5
     xs1 = [0.6 + k * (w1 + 0.16) for k in range(5)]
     gh = (combined_flow.CH1 - 0.06) / 2
@@ -764,11 +775,12 @@ def main(out=OUT, theme="dark"):
             mt.vivid(sl)
         mt.metals(flow, metal_cards, theme="dark")
     # built as title, team, platform, health, health timeline, section, governance, flow, order, timeline, sierra,
-    # platform fit, lean squads; shown with the timeline after the flow and governance before sierra
+    # platform fit, lean squads, Codex interface, Gold B, campaign backend flow, Sierra call flow; shown with the
+    # new architecture slides after the flow, governance before sierra and the call flow after sierra
     ids = list(lst)
     for el in ids:
         lst.remove(el)
-    for k in (0, 1, 2, 3, 4, 5, 7, 9, 8, 6, 10, 11, 12):
+    for k in (0, 1, 2, 3, 4, 5, 7, 13, 14, 15, 9, 8, 6, 10, 16, 11, 12):
         lst.append(ids[k])
     if white:                                   # same muted design, recoloured for a white background
         for sl in prs.slides:

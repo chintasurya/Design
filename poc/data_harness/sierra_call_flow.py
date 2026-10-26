@@ -51,7 +51,7 @@ ROWS = [("gate", 1, 1, "Emergency words? Straight to 911 or the nurse line: no c
         ("gate", 1, 1, "Step-up or hand-off: no caller-ID match, a higher-risk change or a clinical question", YELLOW),
         ("msg", 4, 6, "18  After the call: outcome into Gold B, aggregates into Gold A; transcript masked", CYAN)]
 
-NOTES = """PREVIEW: a patient calls about a booked appointment   (about 2 minutes)
+NOTES = """SLIDE: a patient calls about a booked appointment   (about 2 minutes)
 
 KEY MESSAGE
 Knowledge is shared across agents; patient-level transactions are not. Sierra answers general questions from shared, governed knowledge, and acts for a patient only through the Verified Patient Action Engine, after a check that takes seconds. Emergencies never wait for a check.
@@ -69,7 +69,7 @@ Step-up or hand-off: an app push, SMS code or a person only when the caller ID d
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "ASCENSION · SIERRA VOICE AGENT · CALL FLOW (PREVIEW)",
+    dark_header(cv, "ASCENSION · SIERRA VOICE AGENT · CALL FLOW",
                 "A patient calls about their appointment: what happens behind the scenes",
                 "Knowledge is shared; patient transactions are not. Sierra acts for a patient only through the Verified "
                 "Patient Action Engine, after a check that takes seconds.")

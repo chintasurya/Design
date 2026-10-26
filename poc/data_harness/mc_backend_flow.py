@@ -49,7 +49,7 @@ ROWS = [("msg", 2, 3, "0  Kept current: aggregates and definitions only, never p
         ("self", 6, 6, "14  Journey sends; consent re-checked at send", T1),
         ("ret", 6, 2, "15  Results back as aggregates, for measurement", T2)]
 
-NOTES = """PREVIEW: what happens behind "create a campaign" in Codex   (about 2 minutes)
+NOTES = """SLIDE: what happens behind "create a campaign" in Codex   (about 2 minutes)
 
 KEY MESSAGE
 Agents work only with definitions and counts. Patient-level data moves only through deterministic services, and only after people approve.
@@ -67,7 +67,7 @@ The data harness keeps Sources, Bronze, Silver, Gold A and Gold B current in Goo
 
 def build(prs, layout):
     s, cv = new_slide(prs, layout)
-    dark_header(cv, "AGENTIC HEALTHCARE CAMPAIGN PLATFORM · FUNCTIONAL FLOW (PREVIEW)",
+    dark_header(cv, "AGENTIC HEALTHCARE CAMPAIGN PLATFORM · FUNCTIONAL FLOW",
                 "Create a campaign in Codex: what happens behind the scenes",
                 "Agents work only with definitions and counts. Patient-level data moves only through deterministic "
                 "services, and only after people approve.")
