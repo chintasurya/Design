@@ -40,7 +40,7 @@ Agents have no access to raw patient data. Only Gold A's protected aggregates cr
 
 BAND 2 · PROMPT IN CODEX, PLAN, BUILD + TEST
 (7) The marketer types in Codex or a business console: "Build a post-discharge follow-up campaign for heart patients."
-(8) The Orchestrator, Campaign Strategist and Analytics agents read the knowledge graph and Gold A and size the audience in counts, never names.
+(8) Gold A feeds the knowledge graph, and the Orchestrator, Campaign Strategist and Analytics agents read the knowledge graph to size the audience in counts, never names.
 (9) G1: the marketer and a clinical reviewer approve the Campaign Opportunity Brief, using masked Tableau dashboards.
 (10) The Campaign Design Agent uses Journey Builder to build the journey and data extension, paused.
 (11) The Activation Readiness Agent tests with test contacts only, against a catalog of failure modes (consent, STOP, links, quiet hours). Failures go back to 10, at most five times, then to a named owner.

@@ -89,8 +89,8 @@ def build(prs, layout):
     xs2 = slots(X0, [w2] * 6)
     item(cv, xs2[0], my, w2, mh, "Prompt in Codex", "“Build a post-discharge follow-up campaign for heart "
          "patients”. Or the business console.", line=CYAN, n=7, icon="openai-white", bsize=5.3, tsize=6.4)
-    item(cv, xs2[1], my, w2, mh, "Planning agents", "Orchestrator, Strategist and Analytics read the graph and "
-         "Gold A; counts only.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=5.9)
+    item(cv, xs2[1], my, w2, mh, "Planning agents", "Orchestrator, Strategist and Analytics read the knowledge "
+         "graph; counts only.", line=VIO, n=8, ncolor=VIO, bsize=5.4, tsize=5.9)
     gatecard(cv, xs2[2], my, w2, mh, "G1", "Confirm brief", "People only, no agent: marketer + clinical approve "
              "the brief: size, channel, content plan.", n=9, bsize=5.2)
     item(cv, xs2[3], my, w2, mh, "Campaign Design Agent", "Invokes Journey Builder (native); builds the journey and "
@@ -130,10 +130,11 @@ def build(prs, layout):
     gatecard(cv, xs2[5], sy, w2, sh, "G1-3", "People approve", "Approvals go to the gateway (15).", bsize=5.0)
     cv.arrow(xs2[1] + w2 / 2, sy, xs2[1] + w2 / 2, my + mh, VIO, 1.25)
     cv.arrow(xs2[2] + w2 / 2, sy, xs2[2] + w2 / 2, my + mh, "E97627", 1.25)
-    # Gold A -> agents (8), across boundary 1
+    # Gold A -> knowledge graph, across boundary 1; the graph feeds the planning agents (8)
     ga_y = cy + gh + 0.06 + gh
     ch1 = 2.68
-    path(cv, [(gx + w1 / 2, ga_y), (gx + w1 / 2, ch1), (xs2[1] + w2 / 2 + 0.3, ch1), (xs2[1] + w2 / 2 + 0.3, my)],
+    xg = xs2[1] + w2 + 0.08                     # down the gap between 8 and 9, into the graph card
+    path(cv, [(gx + w1 / 2, ga_y), (gx + w1 / 2, ch1), (xg, ch1), (xg, sy + sh / 2), (xs2[1] + w2, sy + sh / 2)],
          YELLOW, 1.5)
     # ---------------------------------------------------------------- boundary 2
     l2 = 4.74
