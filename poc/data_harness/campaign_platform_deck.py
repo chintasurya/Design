@@ -29,8 +29,8 @@ This one slide is the whole platform. Read it top to bottom: first we govern the
 
 BAND 1 · GOVERN THE DATA IN GOOGLE CLOUD
 (1) Sources: Epic, athenahealth, ADSI, Strata, Salesforce, Marketing Cloud engagement. Approved datasets only, not the whole estate.
-(2) Bronze keeps raw extracts with lineage, under restricted access.
-(3) DLP finds the sensitive columns, a Collibra steward approves each classification, policy tags mask the PHI.
+(2) Governance comes first: before anything lands, a Collibra steward approves each dataset, DLP finds the sensitive columns and policy tags mask the PHI.
+(3) Bronze keeps the approved, tagged extracts with lineage, under restricted access; DLP re-scans what lands.
 (4) Silver standardizes identities, encounters, contacts and consent evidence. It keeps every patient: eligibility is decided per campaign.
 (5) Gold B: identity-linked eligibility inputs, restricted services only. (6) Gold A: protected aggregates (heart, maternity, general and more), the only thing agents use.
 This is prepared once and kept fresh, instead of rebuilt for every campaign.
@@ -72,8 +72,8 @@ The 1-20 numbers are the order a campaign runs. We build in a different order: e
 
 WALK IT
 - Phase 0: confirm what is in Google Cloud and who owns it, map today's CHF campaign, check BAAs and licences, and measure today's process as the baseline.
-- Phase 1: the data foundation, boxes 1, 2, 4, 5, 6, synthetic first.
-- Phase 2: PHI governance, box 3, overlapping Phase 1. Its exit is a hard gate: zero unauthorized PHI access in security tests before any agent connects.
+- Phase 1: PHI governance first, box 2: a Collibra steward approves each dataset, DLP classifies and policy tags are set before anything lands in Bronze. Its exit is a hard gate: zero unauthorized PHI access in security tests before any agent connects.
+- Phase 2: the data foundation, boxes 1, 3, 4, 5, 6, overlapping Phase 1, synthetic first: approved, tagged sources into Bronze, then Silver and Gold.
 - Phase 3: the knowledge graph, Tableau and agents on Gold A, boxes 7-9. It can start on synthetic Gold A while Phase 2 finishes.
 - Phase 4: build and test the journey with test contacts only, boxes 10-12.
 - Phase 5: governed activation, boxes 13-19: Data Cloud first, the direct path only after parity; a pilot on synthetic data, then a small real audience.
@@ -86,14 +86,15 @@ PHASES = [("0", "Discovery", "before 1",
            ["BigQuery inventory, PHI classifications, Collibra owners, refresh rates",
             "Map today's CHF campaign end to end", "BAAs, Salesforce licences, G1-G3 signers",
             "Measure today's CHF process"], "Approved architecture, owners, a baseline", CYAN),
-          ("1", "Data foundation", "1 · 2 · 4 · 5 · 6",
-           ["Approved sources into Bronze", "Silver: identities, encounters, contacts, consent; keeps everyone",
+          ("1", "PHI governance", "2",
+           ["Collibra steward approves each dataset before ingest",
+            "DLP classification, policy tags, masking, row access",
+            "Separate service identities; fail-closed policy removal", "Negative-access tests"],
+           "Approved and tagged before ingest; zero unauthorized PHI access in tests", MAGENTA),
+          ("2", "Data foundation", "1 · 3 · 4 · 5 · 6",
+           ["Approved, tagged sources into Bronze", "Silver: identities, encounters, contacts, consent; keeps everyone",
             "Gold B (restricted) and Gold A (aggregates)", "Synthetic data first"],
            "Data contracts, refresh times, quality checks pass", MAGENTA),
-          ("2", "PHI governance", "3",
-           ["DLP, Collibra steward approval, policy tags, masking, row access",
-            "Separate service identities; fail-closed policy removal", "Negative-access tests"],
-           "Zero unauthorized PHI access in tests", MAGENTA),
           ("3", "Agentic intelligence", "6 → 7 · 8 · 9",
            ["Knowledge graph and Tableau on Gold A only", "Codex prompt; Orchestrator, Strategist, Analytics",
             "Opportunity Brief and G1"], "A CHF brief from counts only, approved", VIO),
@@ -141,13 +142,12 @@ def build_order(prs, layout):
                 anchor=MSO_ANCHOR.MIDDLE, after=1)
     # markers under the phases
     x1 = 0.45 + 1 * (w + 0.08)
-    x2 = 0.45 + 2 * (w + 0.08)
     x3 = 0.45 + 3 * (w + 0.08)
     x5 = 0.45 + 5 * (w + 0.08)
     cv.rect(x1 + 0.1, 5.2, 2 * w + 0.08 - 0.2, 0.2, None, MAGENTA, 1.0, R, 0.5, dash="dash")
     cv.text(x1 + 0.1, 5.2, 2 * w + 0.08 - 0.2, 0.2, "PHASES 1 + 2 RUN PARTLY IN PARALLEL", size=5, bold=True,
             color=MAGENTA, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
-    pill(cv, x2 + w - 0.55, 1.2, 1.0, "HARD GATE", MAGENTA, True, h=0.16, size=5, tcolor=ON_COLOR)
+    pill(cv, x1 + w - 0.55, 1.2, 1.0, "HARD GATE", MAGENTA, True, h=0.16, size=5, tcolor=ON_COLOR)
     cv.rect(x3 + 0.1, 5.2, w - 0.2, 0.2, None, VIO, 1.0, R, 0.5, dash="dash")
     cv.text(x3 + 0.1, 5.2, w - 0.2, 0.2, "SYNTHETIC GOLD A FIRST", size=4.6, bold=True, color=VIO,
             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
@@ -155,8 +155,8 @@ def build_order(prs, layout):
     cv.text(x5 + 0.1, 5.2, w - 0.2, 0.2, "FIRST REAL PATIENTS", size=4.8, bold=True, color=BLACK,
             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, track=80)
     # three rules
-    rules = [("Governance before agents", "No agent connects until security tests prove it cannot see PHI (Phase 2 "
-              "exit).", MAGENTA),
+    rules = [("Governance before agents", "No data lands and no agent connects until governance passes its tests "
+              "(Phase 1 exit).", MAGENTA),
              ("Build and test before release", "The data extension starts the journey by itself, so the journey is "
               "ready first (Phase 4 before 5).", GREEN),
              ("Data Cloud before direct", "Keep today's proven route until the direct path passes parity and "
@@ -171,7 +171,7 @@ def build_order(prs, layout):
         cv.text(x + 0.18, 5.78, rw - 0.26, 0.66, [[(t, {"bold": True, "size": 7.6, "color": WHITE})],
                                                   [(d, {"color": SOFT})]], size=6.2, anchor=MSO_ANCHOR.MIDDLE,
                 after=1)
-    cv.text(0.45, 6.5, 12.43, 0.3, [[("Nothing in Phase 5 touches real patients until Phases 2 and 4 pass their "
+    cv.text(0.45, 6.5, 12.43, 0.3, [[("Nothing in Phase 5 touches real patients until Phases 1 and 4 pass their "
                                       "exits. ", {"bold": True, "color": WHITE}),
                                      ("No speed or ROI number is committed before Phase 6 compares the pilot with "
                                       "today's baseline.", {"color": SOFT})]], size=6.6, anchor=MSO_ANCHOR.MIDDLE)

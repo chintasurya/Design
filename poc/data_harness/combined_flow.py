@@ -56,9 +56,10 @@ def build(prs, layout):
     xs1 = slots(X0, [w1] * 5)
     data = [("Sources", "Epic, athenahealth, ADSI, Strata, SFDC, SFMC engagement. Approved datasets only.", EDGE,
              CARD, "googlecloud"),
-            ("Bronze", "Approved raw extracts with lineage and timestamps. Restricted access.", "A0703C", CARD, None),
-            ("DLP + Collibra", "DLP classifies, the Collibra steward approves, policy tags mask PHI.", MAGENTA,
-             TINT[MAGENTA], None),
+            ("DLP + Collibra", "Before ingest: the Collibra steward approves, DLP classifies, policy tags mask "
+             "PHI.", MAGENTA, TINT[MAGENTA], None),
+            ("Bronze", "Approved, tagged extracts with lineage and timestamps. Restricted; DLP re-scans.", "A0703C",
+             CARD, None),
             ("Silver", "Validated identities, encounters, contacts, consent evidence. Keeps everyone.", SOFT, CARD,
              None)]
     for k, (t, d, ln, fl, ic) in enumerate(data):

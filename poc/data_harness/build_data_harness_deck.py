@@ -749,7 +749,7 @@ def main(out=OUT, theme="dark"):
     w1 = (11.95 - 4 * 0.16) / 5
     xs1 = [0.6 + k * (w1 + 0.16) for k in range(5)]
     gh = (combined_flow.CH1 - 0.06) / 2
-    metal_cards = [("bronze", xs1[1], 1.62, w1, combined_flow.CH1), ("silver", xs1[3], 1.62, w1, combined_flow.CH1),
+    metal_cards = [("bronze", xs1[2], 1.62, w1, combined_flow.CH1), ("silver", xs1[3], 1.62, w1, combined_flow.CH1),
                    ("gold", xs1[4], 1.62, w1, gh), ("gold", xs1[4], 1.62 + gh + 0.06, w1, gh)]
     if white:
         # muted styles: greys, one accent, thin borders, the IG gradient only on hooks
