@@ -289,6 +289,105 @@ def slide_b(prs, layout):
     return s
 
 
+# ================================================================== B2: Gold B as the not-yet-consented layer (preview)
+NOTES_B2 = """SLIDE: Gold B, patients we cannot contact yet   (about 2 minutes)
+
+KEY MESSAGE
+Gold B holds the patients who have not given consent or whose information is incomplete. They stay restricted; we invite those we are allowed to ask to give consent or complete their details. When they opt in, they move to Gold A. Explicit opt-outs, STOP and deceased patients are never asked again.
+
+WALK IT
+- Top: Silver resolves identity and consent; patients without consent or with missing information land in Gold B. The Cohort Resolution Engine separates explicit opt-outs (never asked) from patients we may ask (consent unknown, details missing). After the masked G2 summary is approved, the Activation Engine sends an update request through a permitted channel. Engagement decides the branch: opted in goes to Gold A; not opted in or still missing stays in Gold B.
+- Left, what is in it: the patient key, consent status, the missing information, the contact points we do have, the never-contact exclusions, preferences, and the history of requests.
+- Middle, who can read it: the two engines, for an approved run only; the Sierra voice agent for one verified caller. Agents, Codex, the semantic layer and the knowledge graph never; people see the masked G2 summary.
+- Right, what we can do with it: find who may be asked, never re-ask opt-outs, approve on counts, send the request, write the answers back to Epic and the consent system, and move consented patients to Gold A at the next refresh.
+- Bottom: the controls on Gold B."""
+
+
+def slide_b2(prs, layout):
+    s, cv = new_slide(prs, layout)
+    dark_header(cv, "AGENTIC HEALTHCARE CAMPAIGN PLATFORM · GOLD B",
+                "Gold B: patients we cannot contact yet",
+                "Patients without consent or with missing information stay in Gold B, restricted. Those we may ask are "
+                "invited to opt in or complete their details; when they opt in, they move to Gold A.")
+    # flow strip, ending in two branches
+    fy, fh = 1.26, 0.72
+    flow = [("Silver", "identity + consent", EDGE),
+            ("Gold B · restricted", "opted out or missing information", MAGENTA),
+            ("Cohort Resolution", "engine: checks opt-outs + filled-in information", CYAN),
+            ("G2", "masked summary", YELLOW),
+            ("Activation", "engine", MAGENTA),
+            ("Marketing Cloud", "update request: consent + details", EDGE),
+            ("Engagement", "replies + updates", EDGE)]
+    w = (12.43 - 7 * 0.16) / 8
+    for k, (t, d, c) in enumerate(flow):
+        x = 0.45 + k * (w + 0.16)
+        chip(cv, x, fy, w, fh, t, d, c)
+        if k < 6:
+            cv.arrow(x + w, fy + fh / 2, x + w + 0.16, fy + fh / 2, T2, 1.0)
+    bx = 0.45 + 7 * (w + 0.16)
+    bh = (fh - 0.06) / 2
+    ex = 0.45 + 6 * (w + 0.16) + w
+    xm = ex + 0.06
+    for k, (t, d, c) in enumerate([("Gold A · opted in", "consented; aggregates only", YELLOW),
+                                   ("Gold B · not opted in", "or still missing; per patient", MAGENTA)]):
+        y = fy + k * (bh + 0.06)
+        chip(cv, bx, y, w, bh, t, d, c, 7)
+        cv.arrow(ex, fy + fh / 2, xm, fy + fh / 2, T2, 1.0, head=False)
+        cv.arrow(xm, fy + fh / 2, xm, y + bh / 2, T2, 1.0, head=False)
+        cv.arrow(xm, y + bh / 2, bx, y + bh / 2, YELLOW if k == 0 else MAGENTA, 1.0)
+    # three columns
+    top = 2.16
+    ws = [4.0, 3.9, 4.25]
+    xs = [0.45, 0.45 + ws[0] + 0.14, 0.45 + ws[0] + ws[1] + 0.28]
+    inside = [("Patient key", "EUID, from Silver identity resolution"),
+              ("Consent status", "opted out, or unknown / expired, per channel and purpose"),
+              ("Missing information", "no email, no mobile number, or unverified contact"),
+              ("Contact points we have", "verified email or phone, where they exist"),
+              ("Never-contact", "explicit opt-out, STOP, deceased, do-not-contact"),
+              ("Preferences", "language, quiet hours"),
+              ("Request history", "update requests sent, replies, consents given")]
+    who = [(True, "Cohort Resolution Engine", "for an approved cohort JSON only"),
+           (True, "Activation Engine", "minimum fields, for the approved run"),
+           (False, "Agents and Codex", "never: counts only, through the summary"),
+           (False, "Semantic layer + graph", "never: they read Gold A"),
+           (True, "People", "the masked G2 summary; break-glass logged"),
+           (True, "Marketing Cloud", "only the released fields, this run"),
+           (True, "Sierra voice agent", "patient-context API: this verified caller only")]
+    can = ["Find who may be asked: consent unknown or information missing",
+           "Never re-ask explicit opt-outs, STOP, deceased or do-not-contact",
+           "Produce the masked G2 summary: counts by reason",
+           "Send an update request by email where an address exists; else portal",
+           "Write answers back to Epic and the consent system, not to Gold B",
+           "Opted in: the patient moves to Gold A at the next daily refresh",
+           "Not opted in or still missing: stays in Gold B, restricted"]
+    head_bar(cv, xs[0], top, ws[0], "WHAT IS IN GOLD B", MAGENTA)
+    head_bar(cv, xs[1], top, ws[1], "WHO CAN READ IT", YELLOW)
+    head_bar(cv, xs[2], top, ws[2], "WHAT WE CAN DO WITH IT", CYAN)
+    rh = 0.44
+    for k, (t, d) in enumerate(inside):
+        row(cv, xs[0], top + 0.38 + k * (rh + 0.06), ws[0], rh, "", t, d, MAGENTA)
+    for k, (ok, t, d) in enumerate(who):
+        row(cv, xs[1], top + 0.38 + k * (rh + 0.06), ws[1], rh, "✓" if ok else "✕", t, d, CYAN if ok else MAGENTA)
+    for k, t in enumerate(can):
+        row(cv, xs[2], top + 0.38 + k * (rh + 0.06), ws[2], rh, str(k + 1), t, "", CYAN)
+    # controls
+    gy, gh = 6.08, 0.74
+    cv.text(0.45, gy, 1.3, gh, [[("CONTROLS", {"bold": True, "color": T1, "track": 120})],
+                                [("on Gold B", {"color": T3})]], size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
+    ctrls = [("Service identities only", "no agent, no dashboard"), ("Row + column policies", "CMEK encryption"),
+             ("Every read logged", "who, why, which rule version"), ("Retention limits", "purged on schedule"),
+             ("Opt-outs never re-asked", "STOP and deceased excluded"), ("Reconciled every run", "counts match end to end")]
+    w = (12.88 - 1.8 - 5 * 0.1) / 6
+    for k, (t, d) in enumerate(ctrls):
+        x = 1.8 + k * (w + 0.1)
+        cv.rect(x, gy, w, gh, CARD, None)
+        gbar(cv, x, gy, 0.05, gh)
+        cv.text(x + 0.16, gy, w - 0.22, gh, [[(t, {"bold": True, "color": T1, "size": 7.5})], [(d, {"color": T2})]],
+                size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
+    set_notes(s, NOTES_B2)
+    return s
+
+
 def main(out=OUT):
     import muted_theme as mt
     import sierra_voice
