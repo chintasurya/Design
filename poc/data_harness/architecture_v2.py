@@ -55,7 +55,7 @@ The business user works in one place, Codex. The data is refreshed every day, ag
 WALK IT
 1 Governed intelligence, left: authoritative sources refresh daily or by streaming; a Collibra steward approves each dataset, DLP classifies the PHI and the policy tags are set before ingest; Bronze, then Silver resolves identity (EUID) and holds the consent of record; Gold A (insight, aggregates for agents) and the restricted patient layer (patients, for the engines only); the semantic layer (Kyvos or built in-house) and the Spanner knowledge graph, with no patient nodes, read Gold A.
 2 Codex, middle: the goal; the cohort JSON with its refresh policy, approved at G1; the journey built and tested on test contacts, approved at G3; the first run's counts, approved at G2; then ongoing status. Approvals come from the approval service with named roles.
-3 Cohort resolution and activation, right: the Cohort Resolution Engine checks the JSON and token and builds a controlled query; the patient query finds the matching patients inside the protected boundary; eligibility checks apply consent, STOP, suppression, deceased, duplicates and contactability; a summary with no PHI goes back to Codex; after G2 the Campaign Activation Engine checks the G2 token, purpose, rule version and fields and loads the Marketing Cloud data extension.
+3 Cohort resolution and activation, right: the Cohort Resolution Engine checks the JSON and token and builds a controlled query; the patient query finds the matching patients inside the protected boundary; eligibility checks apply consent, STOP, suppression, deceased, duplicates and contactability; a summary with no PHI goes back to Codex; after G2 the Campaign Activation Engine checks the G2 token, purpose, rule version and fields, unmasks only the minimum fields for this run, and loads the Marketing Cloud data extension.
 4 Continuous cohort refresh: every day the data refreshes and its freshness is checked; the refresh trigger runs after it, or skips the run if the data is stale; the incremental resolver applies the approved rule to new and changed patients and re-checks consent; delta activation adds the newly eligible and exit sync removes anyone who opted out, died or no longer qualifies. Each run's results show in Codex.
 Marketing Cloud execution, bottom strip: a pseudonymous, stable contact key mapped only inside the protected boundary; records loaded by REST upsert or encrypted SFTP, with exits flagged; Journey Builder with a daily entry schedule, a re-entry rule, exit criteria and a goal, running day 1 to day 30; consent synced both ways within minutes (SMS STOP and email unsubscribes back to the consent of record, opt-outs from elsewhere into SFMC suppression); channel rules (TCPA, STOP/HELP keywords, quiet hours in the patient's time zone, CAN-SPAM, sender authentication); approved templates with no condition or PHI in subject lines, SMS text or URLs; a daily tracking extract into the restricted patient layer, with bounces updating contactability; and a dedicated business unit with SSO, retention policies, encryption and the BAA confirmed for each SFMC service used. Re-approval only when the cohort logic, purpose, fields, destination, consent policy, a semantic definition or the campaign status changes, or the approval expires."""
 
@@ -134,7 +134,7 @@ def slide_a(prs, layout):
             ("6", "Patient query", "matching patients, inside the boundary", MAGENTA),
             ("7", "Eligibility checks", "consent · STOP · suppression · deceased · duplicates", CYAN)]
     row2 = [("8", "Summary → Codex", "counts, exclusions, fields; no PHI", YELLOW),
-            ("9", "Activation Engine", "checks G2, purpose, rule version, fields", MAGENTA),
+            ("9", "Activation Engine", "checks G2, purpose, rule, fields; unmasks minimum fields", MAGENTA),
             ("10", "MC data extension", "approved records; neutral name", EDGE)]
     for ry_, rowd in ((r1, row1), (r2, row2)):
         for k, (n, t, d, c) in enumerate(rowd):
@@ -296,7 +296,7 @@ KEY MESSAGE
 Gold B holds the patients who have not given consent or whose information is incomplete. They stay restricted; we invite those we are allowed to ask to give consent or complete their details. When they opt in, they move to Gold A. Explicit opt-outs, STOP and deceased patients are never asked again.
 
 WALK IT
-- Top: Silver resolves identity and consent; patients without consent or with missing information land in Gold B. The Cohort Resolution Engine separates explicit opt-outs (never asked) from patients we may ask (consent unknown, details missing). After the masked G2 summary is approved, the Activation Engine sends an update request through a permitted channel. Engagement decides the branch: opted in goes to Gold A; not opted in or still missing stays in Gold B.
+- Top: Silver resolves identity and consent; patients without consent or with missing information land in Gold B. The Cohort Resolution Engine separates explicit opt-outs (never asked) from patients we may ask (consent unknown, details missing). After the masked G2 summary is approved, the Activation Engine unmasks only the minimum fields needed, for this run, and sends an update request through a permitted channel. Engagement decides the branch: opted in goes to Gold A; not opted in or still missing stays in Gold B.
 - Left, what is in it: the patient key, consent status, the missing information, the contact points we do have, the never-contact exclusions, preferences, and the history of requests.
 - Middle, who can read it: the two engines, for an approved run only; the Sierra voice agent for one verified caller. Agents, Codex, the semantic layer and the knowledge graph never; people see the masked G2 summary.
 - Right, what we can do with it: find who may be asked, never re-ask opt-outs, approve on counts, send the request, write the answers back to Epic and the consent system, and move consented patients to Gold A at the next refresh.
@@ -315,7 +315,7 @@ def slide_b2(prs, layout):
             ("Gold B · restricted", "opted out or missing information", MAGENTA),
             ("Cohort Resolution", "engine: checks opt-outs + filled-in information", CYAN),
             ("G2", "masked summary", YELLOW),
-            ("Activation", "engine", MAGENTA),
+            ("Activation", "engine: unmasks the minimum fields", MAGENTA),
             ("Marketing Cloud", "update request: consent + details", EDGE),
             ("Engagement", "replies + updates", EDGE)]
     w = (12.43 - 7 * 0.16) / 8
@@ -347,7 +347,7 @@ def slide_b2(prs, layout):
               ("Preferences", "language, quiet hours"),
               ("Request history", "update requests sent, replies, consents given")]
     who = [(True, "Cohort Resolution Engine", "for an approved cohort JSON only"),
-           (True, "Activation Engine", "minimum fields, for the approved run"),
+           (True, "Activation Engine", "unmasks the minimum fields, for the approved run"),
            (False, "Agents and Codex", "never: counts only, through the summary"),
            (False, "Semantic layer + graph", "never: they read Gold A"),
            (True, "People", "the masked G2 summary; break-glass logged"),

@@ -8,7 +8,7 @@
 6 Section: HIPAA-Aligned Agentic Healthcare Campaign Platform
 7 Marketing campaigns end to end, from governed data to a tested, approved campaign (combined_flow.py)
 8 Codex is the single interface for discovery, approvals and continuous activation (architecture_v2.py)
-9 Gold B: the restricted patient layer behind every campaign (architecture_v2.py)
+9 Gold B: patients we cannot contact yet (architecture_v2.py)
 10 Create a campaign in Codex: what happens behind the scenes (mc_backend_flow.py)
 11 Launching a campaign: ~90 days manual vs ~10-12 days on the data harness (campaign_timeline.py)
 12 How we build it: safeguards first, release last (campaign_platform_deck.py)
@@ -743,7 +743,7 @@ def main(out=OUT, theme="dark"):
     import mc_backend_flow
     import sierra_call_flow
     architecture_v2.slide_a(prs, layout)        # Codex single interface + continuous cohort refresh
-    architecture_v2.slide_b(prs, layout)        # Gold B, the restricted patient layer
+    architecture_v2.slide_b2(prs, layout)       # Gold B: patients we cannot contact yet
     mc_backend_flow.build(prs, layout)          # create a campaign in Codex: behind the scenes
     sierra_call_flow.build(prs, layout)         # a Sierra call about a booked appointment
     w1 = (11.95 - 4 * 0.16) / 5
