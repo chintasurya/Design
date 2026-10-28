@@ -53,11 +53,11 @@ KEY MESSAGE
 The business user works in one place, Codex. The data is refreshed every day, agents decide what campaign and what cohort from definitions and counts, and engines we build in Google Cloud decide exactly which patients, push the newly eligible to Marketing Cloud every day and take out anyone who no longer qualifies, without a daily approval.
 
 WALK IT
-1 Governed intelligence, left: authoritative sources refresh daily or by streaming; a Collibra steward approves each dataset, DLP classifies the PHI and the policy tags are set before ingest; Bronze, then Silver resolves identity (EUID) and holds the consent of record; Gold A (insight, aggregates for agents) and the restricted patient layer (patients, for the engines only); the semantic layer (Kyvos or built in-house) and the Spanner knowledge graph, with no patient nodes, read Gold A.
+1 Governed intelligence, left: authoritative sources refresh daily or by streaming; a Collibra steward approves each dataset, SDP (Sensitive Data Protection, formerly DLP) classifies the PHI and the policy tags are set before ingest; Bronze, then Silver resolves identity (EUID) and holds the consent of record; Gold A (insight, aggregates for agents) and the restricted patient layer (patients, for the engines only); the semantic layer (Kyvos or built in-house) and the Spanner knowledge graph, with no patient nodes, read Gold A.
 2 Codex, middle: the goal; the cohort JSON with its refresh policy, approved at G1; the journey built and tested on test contacts, approved at G3; the first run's counts, approved at G2; then ongoing status. Approvals come from the approval service with named roles.
-3 Cohort resolution and activation, right: the Cohort Resolution Engine checks the JSON and token and builds a controlled query; the patient query finds the matching patients inside the protected boundary; eligibility checks apply consent, STOP, suppression, deceased, duplicates and contactability; a summary with no PHI goes back to Codex; after G2 the Campaign Activation Engine checks the G2 token, purpose, rule version and fields, unmasks only the minimum fields for this run, and loads the Marketing Cloud data extension.
-4 Continuous cohort refresh: every day the data refreshes and its freshness is checked; the refresh trigger runs after it, or skips the run if the data is stale; the incremental resolver applies the approved rule to new and changed patients and re-checks consent; delta activation adds the newly eligible and exit sync removes anyone who opted out, died or no longer qualifies. Each run's results show in Codex.
-Marketing Cloud execution, bottom strip: a pseudonymous, stable contact key mapped only inside the protected boundary; records loaded by REST upsert or encrypted SFTP, with exits flagged; Journey Builder with a daily entry schedule, a re-entry rule, exit criteria and a goal, running day 1 to day 30; consent synced both ways within minutes (SMS STOP and email unsubscribes back to the consent of record, opt-outs from elsewhere into SFMC suppression); channel rules (TCPA, STOP/HELP keywords, quiet hours in the patient's time zone, CAN-SPAM, sender authentication); approved templates with no condition or PHI in subject lines, SMS text or URLs; a daily tracking extract into the restricted patient layer, with bounces updating contactability; and a dedicated business unit with SSO, retention policies, encryption and the BAA confirmed for each SFMC service used. Re-approval only when the cohort logic, purpose, fields, destination, consent policy, a semantic definition or the campaign status changes, or the approval expires."""
+3 Cohort resolution and activation, right (steps 3.1 to 3.6): the Cohort Resolution Engine checks the JSON and token and builds a controlled query; the patient query finds the matching patients inside the protected boundary; eligibility checks apply consent, STOP, suppression, deceased, duplicates and contactability; a summary with no PHI goes back to Codex; after G2 the Campaign Activation Engine checks the G2 token, purpose, rule version and fields, unmasks only the minimum fields for this run, and loads the Marketing Cloud data extension.
+4 Continuous cohort refresh (steps 4.1 to 4.4): every day the data refreshes and its freshness is checked; the refresh trigger runs after it, or skips the run if the data is stale; the incremental resolver applies the approved rule to new and changed patients and re-checks consent; delta activation adds the newly eligible and exit sync removes anyone who opted out, died or no longer qualifies. Each run's results show in Codex.
+Marketing Cloud execution, bottom strip, left to right: the data is ready (approved patients only, with a pseudonymous contact key); it loads by REST API or SFTP into a data extension or Data Cloud; the journey is built in Journey Builder with entry, exit and goal rules; it uses approved content with no PHI in the text or links; the journey triggers the send, and an opt-out received in Marketing Cloud stops at once; outcomes return to Google Cloud for measurement. Consent is not decided in Marketing Cloud: it is applied upstream by the eligibility checks (3.3) and re-checked every day (4.3). Re-approval only when the cohort logic, purpose, fields, destination, consent policy, a semantic definition or the campaign status changes, or the approval expires."""
 
 
 def slide_a(prs, layout):
@@ -80,7 +80,7 @@ def slide_a(prs, layout):
     # ---------------------------------------------------------------- 1 governed intelligence
     section(lx, hy, "1", "GOVERNED INTELLIGENCE", CYAN)
     items = [(CYAN, "Authoritative sources", "Epic · athenahealth · ADSI · Salesforce · SFMC; daily or streaming"),
-             (MAGENTA, "DLP + Collibra", "approve datasets, classify PHI, set policy tags before ingest"),
+             (MAGENTA, "SDP + Collibra", "approve datasets, classify PHI, set policy tags before ingest"),
              (EDGE, "Bronze → Silver", "raw extracts, then identity resolution (EUID) + consent of record"),
              (YELLOW, "Gold A · insight  |  restricted patient layer", "aggregates for agents  |  patients for the engines only"),
              (CYAN, "Kyvos semantic layer", "governed measures and cohort concepts (or built in-house)"),
@@ -130,12 +130,12 @@ def slide_a(prs, layout):
     cw = (rw - 0.16 - 2 * 0.14) / 3
     cxs = [rx + 0.08 + k * (cw + 0.14) for k in range(3)]
     r1, r2, chh = top + 0.08, top + 0.8, 0.62
-    row1 = [("5", "Cohort Resolution Engine", "checks JSON + token; controlled query", CYAN),
-            ("6", "Patient query", "matching patients, inside the boundary", MAGENTA),
-            ("7", "Eligibility checks", "consent · STOP · suppression · deceased · duplicates", CYAN)]
-    row2 = [("8", "Summary → Codex", "counts, exclusions, fields; no PHI", YELLOW),
-            ("9", "Activation Engine", "checks G2, purpose, rule, fields; unmasks minimum fields", MAGENTA),
-            ("10", "MC data extension", "approved records; neutral name", EDGE)]
+    row1 = [("3.1", "Cohort Resolution Engine", "checks JSON + token; controlled query", CYAN),
+            ("3.2", "Patient query", "matching patients, inside the boundary", MAGENTA),
+            ("3.3", "Eligibility checks", "consent · STOP · suppression · deceased · duplicates", CYAN)]
+    row2 = [("3.4", "Summary → Codex", "counts, exclusions, fields; no PHI", YELLOW),
+            ("3.5", "Activation Engine", "checks G2, purpose, rule version, fields, unmask the data", MAGENTA),
+            ("3.6", "MC data extension", "approved records; neutral name", EDGE)]
     for ry_, rowd in ((r1, row1), (r2, row2)):
         for k, (n, t, d, c) in enumerate(rowd):
             chip(cv, cxs[k], ry_, cw, chh, n + "  " + t, d, c, 7.5)
@@ -149,10 +149,10 @@ def slide_a(prs, layout):
     section(rx + 0.08, ry4, "4", "CONTINUOUS COHORT REFRESH · EVERY DAY", CYAN)
     bx, bw_, byy = rx + 0.08, rw - 0.16, ry4 + 0.3
     cv.rect(bx, byy, bw_, bot - byy - 0.04, "06262B", CYAN, 1.0, R, 0.04)
-    ref = [("11", "Daily data refresh", "sources → Bronze → Silver → Gold; freshness checked"),
-           ("12", "Refresh trigger", "runs after each refresh; skips the run if data is stale"),
-           ("13", "Incremental resolver", "approved rule on new + changed patients; consent re-checked"),
-           ("14", "Delta activation + exit sync", "adds the newly eligible; removes those who no longer qualify")]
+    ref = [("4.1", "Daily data refresh", "sources → Bronze → Silver → Gold; freshness checked"),
+           ("4.2", "Refresh trigger", "runs after each refresh; skips the run if data is stale"),
+           ("4.3", "Incremental resolver", "approved rule on new + changed patients; consent re-checked"),
+           ("4.4", "Delta activation + exit sync", "adds the newly eligible; removes those who no longer qualify")]
     rh = 0.3
     for k, (n, t, d) in enumerate(ref):
         row(cv, bx + 0.08, byy + 0.08 + k * (rh + 0.04), bw_ - 0.16, rh, n, t, d, CYAN)
@@ -169,24 +169,24 @@ def slide_a(prs, layout):
     jy, jh = bot + 0.13, 0.76
     cv.rect(0.45, jy, 12.43, jh, "06262B", CYAN, 1.0, R, 0.06)
     cv.text(0.6, jy, 1.3, jh, [[("MARKETING CLOUD", {"bold": True, "color": CYAN, "track": 80})],
-                               [("EXECUTION", {"bold": True, "color": CYAN, "track": 80})],
-                               [("inside SFMC", {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
-    mc = [("Contact key", "pseudonymous, stable; mapped only inside the boundary"),
-          ("Load method", "REST upsert or encrypted SFTP; flags exits"),
-          ("Journey", "daily entry, re-entry rule, exit + goal; day 1 → 30"),
-          ("Consent sync", "two-way in minutes: STOP, unsubscribes"),
-          ("Channel rules", "TCPA, STOP/HELP, quiet hours; CAN-SPAM, DMARC"),
-          ("Content", "approved templates; no condition or PHI in text, URLs"),
-          ("Tracking back", "daily extract → restricted layer; bounces → contactability"),
-          ("Security", "own BU, SSO, retention, encryption; BAA confirmed")]
-    tw = (12.88 - 0.1 - 1.95 - 7 * 0.08) / 8
+                               [("EXECUTION", {"bold": True, "color": CYAN, "track": 80})]], size=7, anchor=MSO_ANCHOR.MIDDLE, after=1)
+    mc = [("Data ready", "approved patients only; pseudonymous contact key"),
+          ("Load", "REST API or SFTP into a data extension or Data Cloud"),
+          ("Journey", "built in Journey Builder: entry, exit and goal rules"),
+          ("Approved content", "approved templates; no PHI in text or links"),
+          ("Send", "the journey triggers; opt-outs stop at once"),
+          ("Results back", "outcomes return to Google Cloud for measurement")]
+    tg = 0.22
+    tw = (12.88 - 0.1 - 1.95 - 5 * tg) / 6
     for k, (t, d) in enumerate(mc):
-        x = 1.95 + k * (tw + 0.08)
+        x = 1.95 + k * (tw + tg)
         cv.rect(x, jy + 0.08, tw, jh - 0.16, CARD, None)
         cv.rect(x, jy + 0.08, 0.04, jh - 0.16, CYAN, None)
         cv.text(x + 0.1, jy + 0.1, tw - 0.14, jh - 0.2, [[(t, {"bold": True, "color": T1, "size": 7.5})],
                                                         [(d, {"color": T2})]], size=7, anchor=MSO_ANCHOR.MIDDLE,
                 after=1, line=0.92)
+        if k < len(mc) - 1:
+            cv.arrow(x + tw + 0.03, jy + jh / 2, x + tw + tg - 0.03, jy + jh / 2, CYAN, 1.25)
     # ---------------------------------------------------------------- re-approval
     ay_ = jy + jh + 0.07
     cv.rect(0.45, ay_, 12.43, 0.4, "2B2508", YELLOW, 1.0, R, 0.08)
